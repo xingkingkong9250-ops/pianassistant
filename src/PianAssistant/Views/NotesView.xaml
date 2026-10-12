@@ -1,40 +1,104 @@
 <UserControl x:Class="PianAssistant.Views.NotesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#252526"
-             Foreground="#E0E0E0">
+             xmlns:models="clr-namespace:PianAssistant.Models"
+             Background="#161616"
+             Foreground="#E8E8E8">
+
+    <UserControl.Resources>
+        <!-- 截图缩略图模板 -->
+        <DataTemplate x:Key="ScreenshotTemplate" DataType="{x:Type models:ScreenshotEntry}">
+            <Border Margin="8,3" Padding="0" CornerRadius="4"
+                    Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1"
+                    MouseLeftButtonDown="OnScreenshotClick" Cursor="Hand">
+                <DockPanel>
+                    <!-- 缩略图 -->
+                    <Border DockPanel.Dock="Left" Width="120" Height="68" Margin="0" ClipToBounds="True"
+                            Background="#000000">
+                        <Image Source="{Binding OutputPath}" Stretch="UniformToFill"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+                    <!-- 信息 -->
+                    <StackPanel Margin="8,4" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Position, StringFormat='mm\\:ss\\.fff'}"
+                                   FontFamily="Consolas" FontSize="12" Foreground="#4EC9B0" />
+                        <TextBlock Text="{Binding CapturedAt, StringFormat='HH:mm:ss'}"
+                                   FontFamily="Consolas" FontSize="10" Foreground="#666666"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- 片段段模板 -->
+        <DataTemplate x:Key="SegmentTemplate" DataType="{x:Type models:TimelineSegment}">
+            <Border Margin="8,3" Padding="8,6" CornerRadius="4"
+                    Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1"
+                    MouseLeftButtonDown="OnSegmentClick" Cursor="Hand">
+                <DockPanel>
+                    <!-- 导出按钮 -->
+                    <Button DockPanel.Dock="Right" Content="📤" Padding="4" Margin="4,0"
+                            FontSize="13" Background="Transparent" Foreground="#888888"
+                            BorderThickness="0" Cursor="Hand" Focusable="False"
+                            Click="OnSegmentExport" ToolTip="导出此段" />
+                    <!-- 编号 -->
+                    <Border DockPanel.Dock="Left" Width="28" Height="28" CornerRadius="4"
+                            Background="#1A6B8A" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding Index}" Foreground="White" FontWeight="SemiBold"
+                                   FontFamily="Consolas" FontSize="14"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <!-- 信息 -->
+                    <StackPanel VerticalAlignment="Center">
+                        <DockPanel>
+                            <TextBlock Text="{Binding StartText}" FontFamily="Consolas" FontSize="11"
+                                       Foreground="#CE9178" />
+                            <TextBlock Text=" → " FontFamily="Consolas" FontSize="11"
+                                       Foreground="#666666" />
+                            <TextBlock Text="{Binding EndText}" FontFamily="Consolas" FontSize="11"
+                                       Foreground="#CE9178" />
+                        </DockPanel>
+                        <TextBlock Text="{Binding Summary}" FontFamily="Consolas" FontSize="11"
+                                   Foreground="#888888" Margin="0,2,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <DockPanel>
-        <TextBlock DockPanel.Dock="Top" Text="拉片笔记" FontWeight="SemiBold"
-                   Padding="8,6" Background="#2D2D2D" />
+        <!-- 顶部子标签栏 -->
+        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="0"
+                BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="📷 截图" Padding="0,8" FontSize="13"
+                        Background="Transparent" Foreground="#E8E8E8" BorderThickness="0,0,1,0"
+                        BorderBrush="#2A2A2A" Cursor="Hand" Focusable="False"
+                        Click="OnShowScreenshots" x:Name="BtnScreenshots" />
+                <Button Grid.Column="1" Content="✂ 片段" Padding="0,8" FontSize="13"
+                        Background="Transparent" Foreground="#888888" BorderThickness="0"
+                        Cursor="Hand" Focusable="False"
+                        Click="OnShowSegments" x:Name="BtnSegments" />
+            </Grid>
+        </Border>
 
-        <!-- New note input -->
-        <DockPanel DockPanel.Dock="Bottom" Margin="4">
-            <Button DockPanel.Dock="Right" Content="添加" Padding="8,2" Margin="4,0,0,0"
-                    Click="OnAddNote" />
-            <TextBox x:Name="NoteInput"
-                     Text="{Binding NewNoteText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     KeyDown="OnNoteInputKeyDown"
-                     Padding="4,2" Background="#333333" Foreground="#E0E0E0" BorderBrush="#3F3F46" />
-        </DockPanel>
+        <!-- 截图面板 -->
+        <ScrollViewer x:Name="ScreenshotsPanel" VerticalScrollBarVisibility="Auto" Background="#161616">
+            <ItemsControl ItemsSource="{Binding Screenshots}"
+                          ItemTemplate="{StaticResource ScreenshotTemplate}"
+                          Margin="0,4" />
+        </ScrollViewer>
 
-        <!-- Notes list -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Margin="4,2" Padding="6" Background="#333333"
-                                CornerRadius="3" MouseLeftButtonDown="OnNoteClick">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Position, StringFormat='hh\\:mm\\:ss\\.fff'}"
-                                           FontFamily="Consolas" FontSize="11"
-                                           Foreground="#569CD6" />
-                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
-                                           Margin="0,2,0,0" />
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+        <!-- 片段面板（默认隐藏） -->
+        <ScrollViewer x:Name="SegmentsPanel" VerticalScrollBarVisibility="Auto" Background="#161616"
+                      Visibility="Collapsed">
+            <ItemsControl ItemsSource="{Binding Segments}"
+                          ItemTemplate="{StaticResource SegmentTemplate}"
+                          Margin="0,4" />
         </ScrollViewer>
     </DockPanel>
 </UserControl>

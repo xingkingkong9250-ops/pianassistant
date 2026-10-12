@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
@@ -68,10 +69,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Screenshots = new ScreenshotGalleryViewModel();
         Settings = new SettingsViewModel(services.Settings, services.Hotkeys);
 
-        // Wire Player → panel VMs.
-        Player.ScreenshotCaptured += (_, entry) => Screenshots.Add(entry);
-        Player.ClipExtracted += (_, e) => Clips.Add(e.Range);
-        Player.SegmentExported += (_, e) => Clips.Add(e.Range);
+        // Wire Player → panel VMs + Notes 活动流.
+        Player.ScreenshotCaptured += (_, entry) =>
+        {
+            Screenshots.Add(entry);
+            Notes.AddScreenshot(entry);
+        };
+        Player.ClipExtracted += (_, e) =>
+        {
+            Clips.Add(e.Range);
+            Notes.AddClip(e.Range, e.OutputPath);
+        };
+        Player.SegmentExported += (_, e) =>
+        {
+            Clips.Add(e.Range);
+            Notes.AddClip(e.Range, e.OutputPath);
+        };
+
+        // 裁切点变化 → Notes 活动流
+        Player.CutPoints.CollectionChanged += OnCutPointsChanged;
 
         // Wire Playlist → Player.
         Playlist.CurrentChanged += OnPlaylistCurrentChanged;
@@ -129,11 +145,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             Player.Open(media.Path);
             _services.Settings.AddRecentFile(media.Path);
+            // 打开新视频时清空截图和段
+            Notes.ClearAll();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ShellVM] Open media failed: {ex.Message}");
         }
+    }
+
+    /// <summary>裁切点集合变化时同步到 Notes 活动流（仅添加，不删除历史）。</summary>
+    private void OnCutPointsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null)
+        {
+            foreach (TimeSpan cp in e.NewItems)
+                Notes.AddCutPoint(cp);
+        }
+        // 重新计算段
+        Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
     }
 
     public void Dispose()

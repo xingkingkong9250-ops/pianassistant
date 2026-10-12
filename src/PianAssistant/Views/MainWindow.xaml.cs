@@ -1,4 +1,6 @@
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using LibVLCSharp.Shared;
 using PianAssistant.Services;
 using PianAssistant.ViewModels;
@@ -38,5 +40,35 @@ public partial class MainWindow : Window
     private void OnTimelineSegmentSelected(object sender, TimeSpan e)
     {
         Shell?.Player.SelectSegmentAt(e);
+    }
+
+    /// <summary>缩放变化时更新标签。</summary>
+    private void OnTimelineScaleChanged(object sender, double e)
+    {
+        if (ZoomLabel is not null)
+            ZoomLabel.Text = $"{e:F1}×";
+    }
+
+    /// <summary>ScrollViewer 尺寸变化时更新 TimelineControl 的 viewport 宽度。</summary>
+    private void OnTimelineScrollSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (sender is ScrollViewer sv)
+        {
+            var tc = FindTimelineControl(sv);
+            if (tc is not null)
+                tc.SetViewportWidth(sv.ViewportWidth);
+        }
+    }
+
+    private TimelineControl? FindTimelineControl(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is TimelineControl tc) return tc;
+            var found = FindTimelineControl(child);
+            if (found is not null) return found;
+        }
+        return null;
     }
 }
