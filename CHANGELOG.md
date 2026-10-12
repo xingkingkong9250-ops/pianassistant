@@ -7,6 +7,24 @@
 
 ## [Unreleased]
 
+### v0.1.1 — 启动崩溃修复（NO.P，2026-10-12）
+
+#### 修复
+
+- **SxS 并行配置错误**：`app.manifest` 根元素属性名 `manifest` 应为 `manifestVersion`，
+  导致 Windows SxS 系统无法解析清单，应用完全无法启动。移除 csproj 中
+  `<ApplicationManifest>` 引用，由 SDK 自动生成默认清单（PerMonitorV2 DPI 由
+  csproj `<ApplicationHighDpiMode>` 处理，不再在 manifest 中重复声明）。
+- **VideoView.MediaPlayer 未绑定**：`App.xaml` 的 `StartupUri` 让窗口在
+  `base.OnStartup()` 时就创建并触发 `Loaded`，但此时 `DataContext` 尚未设置，
+  导致 `VideoView.MediaPlayer` 从未绑定到 LibVLC 播放器，视频无法显示。
+  改为手动创建窗口、先设 `DataContext` 再 `Show()`。
+- **TimelineControl 渲染崩溃**：`OnRender` 在控件初始布局阶段
+  `ActualWidth/ActualHeight` 为 0 时直接创建 `Rect`，抛出
+  `ArgumentException: 宽度和高度必须为非负值`。加入 `<= 0` 提前返回保护。
+- **打开视频后不自动播放**：`ShellViewModel.OpenMedia` 只调用 `Open(path)`
+  设置媒体但未调用 `Play()`。末尾追加 `PlayPauseCommand.Execute(null)` 自动播放。
+
 ### M0 v0.1.0 — MVP 起步（NO.M，2026-10-12）
 
 **首版拉片助手**：基于 LibVLCSharp + WPF 的桌面视频拉片工具，覆盖编导核心拉片工作流。

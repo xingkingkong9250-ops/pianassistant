@@ -48,13 +48,15 @@ public partial class App : Application
         _shell.ExitRequested += (_, _) => Shutdown();
         _shell.SettingsRequested += (_, _) => ShowSettings();
 
-        // Main window.
-        var mainWindow = MainWindow;
-        if (mainWindow is not null)
+        // Create main window manually (no StartupUri) so that DataContext
+        // is set BEFORE Loaded fires — VideoView.MediaPlayer binding in
+        // OnLoaded needs Shell to be available.
+        var mainWindow = new MainWindow
         {
-            mainWindow.DataContext = _shell;
-            mainWindow.Closing += (_, _) => _shell.Dispose();
-        }
+            DataContext = _shell
+        };
+        mainWindow.Closing += (_, _) => _shell.Dispose();
+        mainWindow.Show();
     }
 
     private void OpenFileViaDialog()

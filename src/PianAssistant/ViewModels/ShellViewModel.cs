@@ -110,6 +110,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var media = Playlist.AddPath(path);
         Playlist.Select(media);
         _services.Settings.AddRecentFile(path);
+        // Auto-play after opening.
+        Player.PlayPauseCommand.Execute(null);
     }
 
     private void RequestOpenFile()

@@ -74,6 +74,10 @@ public sealed class TimelineControl : Control
 
     protected override void OnRender(DrawingContext dc)
     {
+        // Guard: skip render when control hasn't been laid out yet
+        // (ActualWidth/Height can be 0 or negative during initial measure).
+        if (ActualWidth <= 0 || ActualHeight <= 0) return;
+
         var rect = new Rect(0, 0, ActualWidth, ActualHeight);
         var bg = new SolidColorBrush(Color.FromRgb(0x1E, 0x1E, 0x1E));
         var tickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x45, 0x45, 0x48)), 1);
