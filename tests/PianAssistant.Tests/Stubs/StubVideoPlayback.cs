@@ -19,6 +19,8 @@ public sealed class StubVideoPlayback : IVideoPlayback
     public TimeSpan Position { get; private set; }
     public TimeSpan Length { get; set; } = TimeSpan.FromMinutes(5);
     public double Rate { get; set; } = 1.0;
+    public int Volume { get; set; } = 100;
+    public bool IsMuted { get; set; }
     public double Fps { get; set; } = 25.0;
     public int Width { get; set; } = 1920;
     public int Height { get; set; } = 1080;

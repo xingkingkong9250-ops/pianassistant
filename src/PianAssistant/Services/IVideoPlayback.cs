@@ -18,6 +18,8 @@ public interface IVideoPlayback : IDisposable
     TimeSpan Position { get; }
     TimeSpan Length { get; }
     double Rate { get; set; }
+    int Volume { get; set; }
+    bool IsMuted { get; set; }
     double Fps { get; }
     int Width { get; }
     int Height { get; }

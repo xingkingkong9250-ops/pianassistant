@@ -39,6 +39,16 @@ public sealed class VideoPlaybackService : IVideoPlayback
         get => _mediaPlayer.Rate;
         set => _mediaPlayer.SetRate((float)value);
     }
+    public int Volume
+    {
+        get => _mediaPlayer.Volume;
+        set => _mediaPlayer.Volume = Math.Clamp(value, 0, 100);
+    }
+    public bool IsMuted
+    {
+        get => _mediaPlayer.Mute;
+        set => _mediaPlayer.Mute = value;
+    }
     public double Fps { get; private set; } = 25.0;
     public int Width { get; private set; }
     public int Height { get; private set; }

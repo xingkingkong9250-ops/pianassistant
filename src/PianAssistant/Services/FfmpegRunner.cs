@@ -149,7 +149,8 @@ public sealed class FfmpegRunner
         };
         using var process = new Process { StartInfo = psi };
         process.Start();
-        var stderrTask = process.StandardError.ReadLineAsync();
+        // 异步读取全部 stderr，避免缓冲区满导致死锁
+        var stderrTask = process.StandardError.ReadToEndAsync();
         while (!process.HasExited)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -157,19 +158,12 @@ public sealed class FfmpegRunner
                 try { process.Kill(entireProcessTree: true); } catch { }
                 cancellationToken.ThrowIfCancellationRequested();
             }
-            // ffmpeg progress reports as "time=HH:MM:SS.ff" on stderr.
-            // We read line-by-line to avoid buffering huge output.
-            var line = ReadLine(process.StandardError);
-            if (line is not null && ParseFfmpegTimeMs(line, out var tMs))
-            {
-                var ratio = totalDurationMs > 0 ? tMs / totalDurationMs : 0;
-                if (ratio > 1) ratio = 1;
-                onProgress?.Invoke(ratio);
-            }
-            System.Threading.Thread.Sleep(50);
+            System.Threading.Thread.Sleep(100);
         }
+        var stderr = stderrTask.GetAwaiter().GetResult();
         if (process.ExitCode != 0)
-            throw new InvalidOperationException($"ffmpeg failed (exit {process.ExitCode}).");
+            throw new InvalidOperationException(
+                $"ffmpeg failed (exit {process.ExitCode}). stderr: {stderr}");
     }
 
     private (int exitCode, string stderr) Run(string arguments, CancellationToken cancellationToken)
@@ -187,6 +181,8 @@ public sealed class FfmpegRunner
         };
         using var process = new Process { StartInfo = psi };
         process.Start();
+        // 异步读取 stdout+stderr，避免缓冲区满导致死锁
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
         var stderrTask = process.StandardError.ReadToEndAsync();
         while (!process.HasExited)
         {
@@ -198,6 +194,7 @@ public sealed class FfmpegRunner
             System.Threading.Thread.Sleep(20);
         }
         var stderr = stderrTask.GetAwaiter().GetResult();
+        stdoutTask.GetAwaiter().GetResult(); // drain stdout
         return (process.ExitCode, stderr);
     }
 

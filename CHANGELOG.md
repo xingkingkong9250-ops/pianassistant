@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### v0.2.0 — 音量调节 + 倍速UI + 片段截取修复（NO.M，2026-10-12）
+
+#### 新增
+
+- **音量调节**：工具栏音量滑块（0-100%），M 键静音，Ctrl+Up/Down 调节。
+  `IVideoPlayback` 新增 `Volume`/`IsMuted` 接口，`VideoPlaybackService` 映射到
+  LibVLC `MediaPlayer.Volume`/`MediaPlayer.Mute`。
+- **倍速选择器**：工具栏 ComboBox（0.25×~4.0×），双向绑定 `Player.Rate`，
+  与现有 + / - 快捷键同步。
+
+#### 修复
+
+- **片段截取死锁**：`FfmpegRunner.RunWithProgress` 同步读 stderr 可能缓冲区满死锁，
+  改为 `ReadToEndAsync` 异步读取。`Run` 方法同样修复。
+- **片段截取错误信息**：失败时现在包含 stderr 输出便于诊断。
+
 ### v0.1.2 — 启动器修复（NO.P，2026-10-12）
 
 #### 修复

@@ -29,6 +29,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private bool _loopMode;
     private bool _isExtracting;
     private double _extractProgress;
+    private int _volume = 100;
+    private bool _isMuted;
 
     private static readonly double[] RateSteps =
         { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 4.0 };
@@ -82,6 +84,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             () => FullscreenExitRequested?.Invoke(this, EventArgs.Empty));
         ToggleLoopCommand = new RelayCommand(
             () => LoopMode = !LoopMode);
+        ToggleMuteCommand = new RelayCommand(() => IsMuted = !IsMuted);
+        VolumeUpCommand = new RelayCommand(() => Volume = Math.Min(100, Volume + 10));
+        VolumeDownCommand = new RelayCommand(() => Volume = Math.Max(0, Volume - 10));
     }
 
     // --- Properties ---
@@ -184,6 +189,31 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _loopMode, value);
     }
 
+    public int Volume
+    {
+        get => _volume;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 100);
+            if (SetProperty(ref _volume, clamped))
+            {
+                _playback.Volume = clamped;
+                if (clamped > 0 && _isMuted)
+                    IsMuted = false;
+            }
+        }
+    }
+
+    public bool IsMuted
+    {
+        get => _isMuted;
+        set
+        {
+            if (SetProperty(ref _isMuted, value))
+                _playback.IsMuted = value;
+        }
+    }
+
     public bool IsExtracting
     {
         get => _isExtracting;
@@ -234,6 +264,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand ToggleFullscreenCommand { get; }
     public ICommand ExitFullscreenCommand { get; }
     public ICommand ToggleLoopCommand { get; }
+    public ICommand ToggleMuteCommand { get; }
+    public ICommand VolumeUpCommand { get; }
+    public ICommand VolumeDownCommand { get; }
 
     // --- Events ---
 
