@@ -21,6 +21,10 @@ public enum HotkeyAction
     ClearInOut,
     CaptureScreenshot,
     ExtractClip,
+    AddCutPoint,
+    RemoveLastCutPoint,
+    ClearCutPoints,
+    ExportSelectedSegment,
     ToggleFullscreen,
     ExitFullscreen,
     TogglePlayPauseLoop, // L: A/B-like loop toggle (M2+)

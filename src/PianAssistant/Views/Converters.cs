@@ -25,3 +25,18 @@ public sealed class PanelToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         Binding.DoNothing;
 }
+
+/// <summary>
+/// 反向布尔转可见性：true→Collapsed, false→Visible。
+/// 用于无视频时显示叠加层。
+/// </summary>
+public sealed class InverseBoolToVisibilityConverter : IValueConverter
+{
+    public static readonly InverseBoolToVisibilityConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is bool b ? (b ? Visibility.Collapsed : Visibility.Visible) : Visibility.Visible;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}

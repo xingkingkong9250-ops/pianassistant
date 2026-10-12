@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
@@ -31,6 +32,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private double _extractProgress;
     private int _volume = 100;
     private bool _isMuted;
+    // PR 风格裁切点
+    private TimeSpan? _selectedSegmentStart;
+    private TimeSpan? _selectedSegmentEnd;
 
     private static readonly double[] RateSteps =
         { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 4.0 };
@@ -87,6 +91,13 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         ToggleMuteCommand = new RelayCommand(() => IsMuted = !IsMuted);
         VolumeUpCommand = new RelayCommand(() => Volume = Math.Min(100, Volume + 10));
         VolumeDownCommand = new RelayCommand(() => Volume = Math.Max(0, Volume - 10));
+
+        // PR 风格裁切命令
+        AddCutPointCommand = new RelayCommand(AddCutPoint, () => HasMedia);
+        RemoveLastCutPointCommand = new RelayCommand(RemoveLastCutPoint);
+        ClearCutPointsCommand = new RelayCommand(ClearCutPoints);
+        ExportSelectedSegmentCommand = new AsyncRelayCommand(
+            ExportSelectedSegmentAsync, () => !_isExtracting && HasSelectedSegment);
     }
 
     // --- Properties ---
@@ -214,6 +225,27 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         }
     }
 
+    // --- PR 风格裁切点 ---
+
+    /// <summary>所有裁切点（按时间排序）。</summary>
+    public ObservableCollection<TimeSpan> CutPoints { get; } = new();
+
+    public TimeSpan? SelectedSegmentStart
+    {
+        get => _selectedSegmentStart;
+        private set => SetProperty(ref _selectedSegmentStart, value);
+    }
+
+    public TimeSpan? SelectedSegmentEnd
+    {
+        get => _selectedSegmentEnd;
+        private set => SetProperty(ref _selectedSegmentEnd, value);
+    }
+
+    /// <summary>是否已选中一段（start 和 end 都有值且 end > start）。</summary>
+    public bool HasSelectedSegment =>
+        _selectedSegmentStart is { } s && _selectedSegmentEnd is { } e && e > s;
+
     public bool IsExtracting
     {
         get => _isExtracting;
@@ -267,11 +299,16 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand ToggleMuteCommand { get; }
     public ICommand VolumeUpCommand { get; }
     public ICommand VolumeDownCommand { get; }
+    public ICommand AddCutPointCommand { get; }
+    public ICommand RemoveLastCutPointCommand { get; }
+    public ICommand ClearCutPointsCommand { get; }
+    public AsyncRelayCommand ExportSelectedSegmentCommand { get; }
 
     // --- Events ---
 
     public event EventHandler<ScreenshotEntry>? ScreenshotCaptured;
     public event EventHandler<ClipExtractedEventArgs>? ClipExtracted;
+    public event EventHandler<ClipExtractedEventArgs>? SegmentExported;
     public event EventHandler? FullscreenToggleRequested;
     public event EventHandler? FullscreenExitRequested;
 
@@ -285,6 +322,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         Position = TimeSpan.Zero;
         InPoint = null;
         OutPoint = null;
+        CutPoints.Clear();
+        SelectedSegmentStart = null;
+        SelectedSegmentEnd = null;
         OnPropertyChanged(nameof(HasMedia));
         OnPropertyChanged(nameof(CurrentPath));
         OnPropertyChanged(nameof(Fps));
@@ -376,6 +416,94 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[PlayerVM] ExtractClip failed: {ex.Message}");
+        }
+        finally
+        {
+            IsExtracting = false;
+            ExtractProgress = 0;
+        }
+    }
+
+    // --- PR 风格裁切 ---
+
+    private void AddCutPoint()
+    {
+        var pos = _position;
+        // 避免重复添加极接近的点（<100ms）
+        if (CutPoints.Any(c => Math.Abs((c - pos).TotalMilliseconds) < 100))
+            return;
+        // 保持有序
+        var index = CutPoints.TakeWhile(c => c < pos).Count();
+        CutPoints.Insert(index, pos);
+    }
+
+    private void RemoveLastCutPoint()
+    {
+        if (CutPoints.Count > 0)
+            CutPoints.RemoveAt(CutPoints.Count - 1);
+        SelectedSegmentStart = null;
+        SelectedSegmentEnd = null;
+        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+    }
+
+    private void ClearCutPoints()
+    {
+        CutPoints.Clear();
+        SelectedSegmentStart = null;
+        SelectedSegmentEnd = null;
+        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 根据点击位置确定所属段：找到前后两个相邻裁切点。
+    /// 若只有一个裁切点，段为 [该点, 视频尾]。
+    /// 若无裁切点，不选中。
+    /// </summary>
+    public void SelectSegmentAt(TimeSpan position)
+    {
+        if (CutPoints.Count == 0) return;
+        // 找到 position 落在哪两个裁切点之间
+        TimeSpan start = TimeSpan.Zero;
+        TimeSpan end = _length;
+        foreach (var cp in CutPoints)
+        {
+            if (cp <= position)
+                start = cp;
+            else
+            {
+                end = cp;
+                break;
+            }
+        }
+        // 如果 position 比所有裁切点都大，段为 [最后一个裁切点, 尾]
+        // 如果 position 比所有裁切点都小，段为 [0, 第一个裁切点]
+        // 上面循环已处理这两种情况
+        SelectedSegmentStart = start;
+        SelectedSegmentEnd = end;
+        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+    }
+
+    private async Task ExportSelectedSegmentAsync()
+    {
+        if (!HasSelectedSegment) return;
+        var inP = _selectedSegmentStart!.Value;
+        var outP = _selectedSegmentEnd!.Value;
+        var source = _playback.CurrentPath;
+        if (source is null) return;
+
+        IsExtracting = true;
+        ExtractProgress = 0;
+        try
+        {
+            var range = new ClipRange(source, inP, outP);
+            var outputPath = await Task.Run(() => _clips.Extract(
+                range, false, CancellationToken.None, p => ExtractProgress = p));
+            ExtractProgress = 1;
+            SegmentExported?.Invoke(this, new ClipExtractedEventArgs(range, outputPath));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PlayerVM] ExportSegment failed: {ex.Message}");
         }
         finally
         {

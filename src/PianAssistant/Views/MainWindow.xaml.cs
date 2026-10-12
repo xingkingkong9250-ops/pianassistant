@@ -33,4 +33,10 @@ public partial class MainWindow : Window
     {
         Shell?.Player.SeekPercent(e);
     }
+
+    /// <summary>Timeline segment selected: user clicked between cut points.</summary>
+    private void OnTimelineSegmentSelected(object sender, TimeSpan e)
+    {
+        Shell?.Player.SelectSegmentAt(e);
+    }
 }

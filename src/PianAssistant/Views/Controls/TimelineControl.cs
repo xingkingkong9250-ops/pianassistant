@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -6,9 +7,8 @@ using System.Windows.Media;
 namespace PianAssistant.Views.Controls;
 
 /// <summary>
-/// A custom timeline strip showing tick marks, a playhead, and optional
-/// in/out point markers. The user can click or drag to seek.
-/// Raises <see cref="SeekRequested"/> with a 0..1 ratio.
+/// 时间轴控件：刻度、播放头、I/O 入出点高亮、PR 风格裁切线、选中段。
+/// 点击/拖动触发 <see cref="SeekRequested"/>；点击裁切点之间触发 <see cref="SegmentSelected"/>。
 /// </summary>
 public sealed class TimelineControl : Control
 {
@@ -43,6 +43,24 @@ public sealed class TimelineControl : Control
             new FrameworkPropertyMetadata(null,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty CutPointsProperty =
+        DependencyProperty.Register(
+            nameof(CutPoints), typeof(IEnumerable<TimeSpan>), typeof(TimelineControl),
+            new FrameworkPropertyMetadata(null,
+                FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty SelectedSegmentStartProperty =
+        DependencyProperty.Register(
+            nameof(SelectedSegmentStart), typeof(TimeSpan?), typeof(TimelineControl),
+            new FrameworkPropertyMetadata(null,
+                FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty SelectedSegmentEndProperty =
+        DependencyProperty.Register(
+            nameof(SelectedSegmentEnd), typeof(TimeSpan?), typeof(TimelineControl),
+            new FrameworkPropertyMetadata(null,
+                FrameworkPropertyMetadataOptions.AffectsRender));
+
     public double PositionRatio
     {
         get => (double)GetValue(PositionRatioProperty);
@@ -67,15 +85,34 @@ public sealed class TimelineControl : Control
         set => SetValue(OutPointProperty, value);
     }
 
-    /// <summary>Raised when the user clicks/drags to seek. Value is 0..1.</summary>
+    public IEnumerable<TimeSpan> CutPoints
+    {
+        get => (IEnumerable<TimeSpan>)GetValue(CutPointsProperty);
+        set => SetValue(CutPointsProperty, value);
+    }
+
+    public TimeSpan? SelectedSegmentStart
+    {
+        get => (TimeSpan?)GetValue(SelectedSegmentStartProperty);
+        set => SetValue(SelectedSegmentStartProperty, value);
+    }
+
+    public TimeSpan? SelectedSegmentEnd
+    {
+        get => (TimeSpan?)GetValue(SelectedSegmentEndProperty);
+        set => SetValue(SelectedSegmentEndProperty, value);
+    }
+
+    /// <summary>点击/拖动 seek，值为 0..1。</summary>
     public event EventHandler<double>? SeekRequested;
+
+    /// <summary>点击裁切段时触发，值为点击位置的时间。</summary>
+    public event EventHandler<TimeSpan>? SegmentSelected;
 
     private bool _isDragging;
 
     protected override void OnRender(DrawingContext dc)
     {
-        // Guard: skip render when control hasn't been laid out yet
-        // (ActualWidth/Height can be 0 or negative during initial measure).
         if (ActualWidth <= 0 || ActualHeight <= 0) return;
 
         var rect = new Rect(0, 0, ActualWidth, ActualHeight);
@@ -84,14 +121,28 @@ public sealed class TimelineControl : Control
         var playheadPen = new Pen(new SolidColorBrush(Color.FromRgb(0xFF, 0xCC, 0x00)), 2);
         var inOutBrush = new SolidColorBrush(Color.FromRgb(0x00, 0x7A, 0xCC)) { Opacity = 0.3 };
         var inOutPen = new Pen(new SolidColorBrush(Color.FromRgb(0x00, 0x9A, 0xEC)), 1.5);
-        var textBrush = new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80));
+        var selectedBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0x4B, 0x4B)) { Opacity = 0.2 };
+        var cutPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE0, 0x4B, 0x4B)), 2);
+        var cutCapBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0x4B, 0x4B));
 
         bg.Freeze();
         tickPen.Freeze();
         playheadPen.Freeze();
+        inOutPen.Freeze();
+        cutPen.Freeze();
+        cutCapBrush.Freeze();
 
         // Background
         dc.DrawRectangle(bg, null, rect);
+
+        // Selected segment highlight (PR 风格)
+        if (SelectedSegmentStart is { } selStart && SelectedSegmentEnd is { } selEnd
+            && Length > TimeSpan.Zero && selEnd > selStart)
+        {
+            var sx = selStart.TotalMilliseconds / Length.TotalMilliseconds * ActualWidth;
+            var ex = selEnd.TotalMilliseconds / Length.TotalMilliseconds * ActualWidth;
+            dc.DrawRectangle(selectedBrush, null, new Rect(sx, 0, ex - sx, ActualHeight));
+        }
 
         // In/out highlight band
         if (InPoint is { } inP && Length > TimeSpan.Zero)
@@ -114,6 +165,26 @@ public sealed class TimelineControl : Control
             var x = ActualWidth * i / 10;
             var y0 = ActualHeight * 0.7;
             dc.DrawLine(tickPen, new Point(x, y0), new Point(x, ActualHeight));
+        }
+
+        // Cut points (PR 剃刀风格红色竖线 + 顶部三角)
+        if (CutPoints is not null && Length > TimeSpan.Zero)
+        {
+            foreach (var cp in CutPoints)
+            {
+                var x = cp.TotalMilliseconds / Length.TotalMilliseconds * ActualWidth;
+                dc.DrawLine(cutPen, new Point(x, 0), new Point(x, ActualHeight));
+                // 顶部小三角作为切口标记
+                var tri = new StreamGeometry();
+                using (var ctx = tri.Open())
+                {
+                    ctx.BeginFigure(new Point(x - 4, 0), true, true);
+                    ctx.LineTo(new Point(x + 4, 0), true, false);
+                    ctx.LineTo(new Point(x, 6), true, false);
+                }
+                tri.Freeze();
+                dc.DrawGeometry(cutCapBrush, null, tri);
+            }
         }
 
         // Playhead
@@ -139,6 +210,15 @@ public sealed class TimelineControl : Control
     {
         _isDragging = false;
         ReleaseMouseCapture();
+        // 鼠标释放时，如果有裁切点，触发段选中
+        if (CutPoints is not null && Length > TimeSpan.Zero)
+        {
+            var pos = e.GetPosition(this);
+            var ratio = ActualWidth > 0 ? pos.X / ActualWidth : 0;
+            ratio = Math.Clamp(ratio, 0, 1);
+            var time = TimeSpan.FromMilliseconds(ratio * Length.TotalMilliseconds);
+            SegmentSelected?.Invoke(this, time);
+        }
     }
 
     private void SeekToMouse(MouseEventArgs e)

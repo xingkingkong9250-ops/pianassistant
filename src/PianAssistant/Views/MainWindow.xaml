@@ -7,10 +7,120 @@
         Title="拉片助手 — PianAssistant"
         Width="1280" Height="800"
         WindowStartupLocation="CenterScreen"
-        Background="#1E1E1E"
-        Foreground="#E0E0E0"
+        Background="#0F0F0F"
+        Foreground="#E8E8E8"
         FontFamily="Microsoft YaHei UI, Segoe UI"
         FontSize="13">
+
+    <Window.Resources>
+        <!-- 按钮基础样式 -->
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Margin" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#505050" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#606060" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 强调色按钮 -->
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Background" Value="#1A6B8A" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2480A0" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- 导航标签按钮 -->
+        <Style x:Key="NavTab" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#999999" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <Grid>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Rectangle x:Name="underline" Height="2" VerticalAlignment="Bottom"
+                                          Fill="#1A6B8A" RadiusX="1" RadiusY="1"
+                                          Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#E0E0E0" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 滑块样式 -->
+        <Style x:Key="PlayerSlider" TargetType="Slider">
+            <Setter Property="Height" Value="4" />
+            <Setter Property="Background" Value="#2A2A2A" />
+            <Setter Property="Foreground" Value="#1A6B8A" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Border Height="4" Background="#2A2A2A" CornerRadius="2" VerticalAlignment="Center" />
+                            <Track x:Name="PART_Track" VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Background="#1A6B8A" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" />
+                                </Track.IncreaseRepeatButton>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Ellipse Width="12" Height="12" Fill="#E8E8E8"
+                                                     Stroke="#1A6B8A" StrokeThickness="2" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
     <Window.InputBindings>
         <KeyBinding Key="Space" Command="{Binding Player.PlayPauseCommand}" />
@@ -28,7 +138,10 @@
         <KeyBinding Key="O" Command="{Binding Player.MarkOutCommand}" />
         <KeyBinding Gesture="Ctrl+Shift+I" Command="{Binding Player.ClearInOutCommand}" />
         <KeyBinding Key="S" Command="{Binding Player.CaptureScreenshotCommand}" />
-        <KeyBinding Key="C" Command="{Binding Player.ExtractClipCommand}" />
+        <KeyBinding Key="C" Command="{Binding Player.AddCutPointCommand}" />
+        <KeyBinding Key="Back" Command="{Binding Player.RemoveLastCutPointCommand}" />
+        <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding Player.ClearCutPointsCommand}" />
+        <KeyBinding Gesture="Ctrl+E" Command="{Binding Player.ExportSelectedSegmentCommand}" />
         <KeyBinding Key="F" Command="{Binding Player.ToggleFullscreenCommand}" />
         <KeyBinding Key="Escape" Command="{Binding Player.ExitFullscreenCommand}" />
         <KeyBinding Key="L" Command="{Binding Player.ToggleLoopCommand}" />
@@ -40,80 +153,101 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="48" />    <!-- 顶部导航栏 -->
+            <RowDefinition Height="*" />     <!-- 视频内容区 -->
+            <RowDefinition Height="Auto" />  <!-- 时间轴 -->
+            <RowDefinition Height="56" />    <!-- 底部控制栏 -->
         </Grid.RowDefinitions>
 
-        <!-- A1: Top toolbar -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Background="#2D2D2D">
-            <Button Content="📂 打开" Command="{Binding OpenFileCommand}" Padding="12,4" Margin="2" />
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <Button Content="⏮" Command="{Binding Player.PreviousFrameCommand}" Padding="8,4" Margin="2" />
-            <Button Content="⏯" Command="{Binding Player.PlayPauseCommand}" Padding="8,4" Margin="2" />
-            <Button Content="⏭" Command="{Binding Player.NextFrameCommand}" Padding="8,4" Margin="2" />
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <Button Content="◄ 入点" Command="{Binding Player.MarkInCommand}" Padding="8,4" Margin="2" />
-            <Button Content="出点 ►" Command="{Binding Player.MarkOutCommand}" Padding="8,4" Margin="2" />
-            <Button Content="✖" Command="{Binding Player.ClearInOutCommand}" Padding="8,4" Margin="2" />
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <Button Content="📷 截图" Command="{Binding Player.CaptureScreenshotCommand}" Padding="8,4" Margin="2" />
-            <Button Content="✂ 截取" Command="{Binding Player.ExtractClipCommand}" Padding="8,4" Margin="2" />
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <Button Content="🔁" Command="{Binding Player.ToggleLoopCommand}" Padding="8,4" Margin="2" />
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <!-- 音量控制 -->
-            <Button Content="🔊" Command="{Binding Player.ToggleMuteCommand}" Padding="8,4" Margin="2" />
-            <Slider Minimum="0" Maximum="100"
-                    Value="{Binding Player.Volume, Mode=TwoWay}"
-                    Width="100" VerticalAlignment="Center" Margin="4,0"
-                    ToolTip="音量 (M 静音, Ctrl+Up/Down 调节)" />
-            <TextBlock Text="{Binding Player.Volume, StringFormat={}{0}%}"
-                       VerticalAlignment="Center" Margin="2,0,8,0"
-                       FontFamily="Consolas" MinWidth="34" />
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <!-- 倍速选择 -->
-            <TextBlock Text="速度:" VerticalAlignment="Center" Margin="8,0,2,0" />
-            <ComboBox x:Name="RateComboBox" Width="70" Margin="2"
-                      SelectedValue="{Binding Player.Rate, Mode=TwoWay}"
-                      SelectedValuePath="Tag">
-                <ComboBoxItem Content="0.25×" Tag="0.25" />
-                <ComboBoxItem Content="0.5×" Tag="0.5" />
-                <ComboBoxItem Content="0.75×" Tag="0.75" />
-                <ComboBoxItem Content="1.0×" Tag="1" IsSelected="True" />
-                <ComboBoxItem Content="1.25×" Tag="1.25" />
-                <ComboBoxItem Content="1.5×" Tag="1.5" />
-                <ComboBoxItem Content="2.0×" Tag="2" />
-                <ComboBoxItem Content="4.0×" Tag="4" />
-            </ComboBox>
-            <Separator Margin="4,2" Background="#3F3F46" />
-            <Button Content="⚙ 设置" Command="{Binding OpenSettingsCommand}" Padding="8,4" Margin="2" />
-        </StackPanel>
+        <!-- ═══ 顶部导航栏 ═══ -->
+        <Border Grid.Row="0" Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <!-- Logo + 标题 -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
+                    <Border Width="28" Height="28" CornerRadius="14" Background="#1A6B8A" Margin="0,0,10,0">
+                        <TextBlock Text="P" Foreground="White" FontWeight="Bold" FontSize="16"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock Text="拉片助手" Foreground="#E8E8E8" FontSize="15" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                </StackPanel>
 
-        <!-- B: Content = video + sidebar -->
+                <!-- 右侧操作按钮 -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                    <Button Content="📂 打开文件" Style="{StaticResource AccentButton}" Padding="12,6"
+                            Command="{Binding OpenFileCommand}" />
+                    <Button Content="⚙" Style="{StaticResource IconButton}" Padding="10,6"
+                            Command="{Binding OpenSettingsCommand}" FontSize="16" />
+                </StackPanel>
+
+                <!-- 中间导航标签 -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20,0">
+                    <Button Content="播放列表" Style="{StaticResource NavTab}" Command="{Binding ShowPlaylistCommand}" />
+                    <Button Content="笔记" Style="{StaticResource NavTab}" Command="{Binding ShowNotesCommand}" />
+                    <Separator Width="1" Height="20" Background="#2A2A2A" Margin="8,0" />
+                    <!-- 工具按钮组 -->
+                    <Button Content="📷" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                            Command="{Binding Player.CaptureScreenshotCommand}" ToolTip="截图 (S)" />
+                    <Button Content="✂" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                            Command="{Binding Player.ExtractClipCommand}" ToolTip="截取片段 (Ctrl+Shift+E)" />
+                    <Separator Width="1" Height="20" Background="#2A2A2A" Margin="4,0" />
+                    <Button Content="🔴 裁切" Style="{StaticResource IconButton}" Padding="8,6" FontSize="13"
+                            Command="{Binding Player.AddCutPointCommand}" ToolTip="标记裁切点 (C)" />
+                    <Button Content="↩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                            Command="{Binding Player.RemoveLastCutPointCommand}" ToolTip="撤销裁切点 (Backspace)" />
+                    <Button Content="✖" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                            Command="{Binding Player.ClearCutPointsCommand}" ToolTip="清空裁切点 (Ctrl+Shift+C)" />
+                    <Button Content="📤 导出" Style="{StaticResource IconButton}" Padding="8,6" FontSize="13"
+                            Command="{Binding Player.ExportSelectedSegmentCommand}" ToolTip="导出选中段 (Ctrl+E)" />
+                    <Separator Width="1" Height="20" Background="#2A2A2A" Margin="4,0" />
+                    <Button Content="◄ I" Style="{StaticResource IconButton}" Padding="8,6"
+                            Command="{Binding Player.MarkInCommand}" ToolTip="标记入点 (I)" />
+                    <Button Content="O ►" Style="{StaticResource IconButton}" Padding="8,6"
+                            Command="{Binding Player.MarkOutCommand}" ToolTip="标记出点 (O)" />
+                    <Button Content="🔁" Style="{StaticResource IconButton}" Padding="8,6" FontSize="15"
+                            Command="{Binding Player.ToggleLoopCommand}" ToolTip="循环播放 (L)" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ═══ 视频内容区 ═══ -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="320" MinWidth="200" MaxWidth="500" />
+                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="300" MinWidth="200" MaxWidth="500" />
             </Grid.ColumnDefinitions>
 
-            <!-- B1: Video -->
-            <Grid Grid.Column="0" Background="Black">
+            <!-- 视频区 -->
+            <Grid Grid.Column="0" Background="#000000">
                 <vlc:VideoView x:Name="VideoView" />
+                <!-- 无视频时的大播放按钮叠加层 -->
+                <Border x:Name="EmptyStateOverlay" Background="#000000" Opacity="0.85"
+                        Visibility="{Binding Player.HasMedia, Converter={x:Static views:InverseBoolToVisibilityConverter.Instance}}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Border Width="72" Height="72" CornerRadius="36" Background="#1A6B8A"
+                                HorizontalAlignment="Center" Margin="0,0,0,16" Opacity="0.8">
+                            <TextBlock Text="▶" Foreground="White" FontSize="32"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Margin="4,0,0,0" />
+                        </Border>
+                        <TextBlock Text="点击「打开文件」加载视频" Foreground="#808080" FontSize="14"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
             </Grid>
 
-            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch"
-                          Background="#2D2D2D" ResizeBehavior="PreviousAndNext" />
+            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+                          Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
 
-            <!-- B3: Sidebar with panel toggle -->
-            <DockPanel Grid.Column="2" Background="#252526">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Background="#2D2D2D">
-                    <Button Content="播放列表" Width="160" Padding="4" Margin="0"
-                            Command="{Binding ShowPlaylistCommand}" />
-                    <Button Content="笔记" Width="160" Padding="4" Margin="0"
-                            Command="{Binding ShowNotesCommand}" />
-                </StackPanel>
+            <!-- 右侧面板 -->
+            <DockPanel Grid.Column="2" Background="#161616">
+                <!-- 面板标题 -->
+                <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="16,10"
+                        BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+                    <TextBlock Text="{Binding ActivePanel}" Foreground="#E8E8E8"
+                               FontWeight="SemiBold" FontSize="13" />
+                </Border>
 
                 <Grid>
                     <views:PlaylistView DataContext="{Binding Playlist}">
@@ -130,42 +264,79 @@
             </DockPanel>
         </Grid>
 
-        <!-- Timeline + Status -->
-        <Grid Grid.Row="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <!-- ═══ 时间轴 ═══ -->
+        <Border Grid.Row="2" Background="#1A1A1A" Padding="12,6"
+                BorderBrush="#2A2A2A" BorderThickness="0,1,0,1">
+            <ctrl:TimelineControl
+                Height="36"
+                PositionRatio="{Binding Player.PositionRatio, Mode=OneWay}"
+                Length="{Binding Player.Length}"
+                InPoint="{Binding Player.InPoint}"
+                OutPoint="{Binding Player.OutPoint}"
+                CutPoints="{Binding Player.CutPoints}"
+                SelectedSegmentStart="{Binding Player.SelectedSegmentStart, Mode=OneWay}"
+                SelectedSegmentEnd="{Binding Player.SelectedSegmentEnd, Mode=OneWay}"
+                SeekRequested="OnTimelineSeek"
+                SegmentSelected="OnTimelineSegmentSelected" />
+        </Border>
 
-            <Border Grid.Row="0" Background="#2D2D2D" Padding="8,4">
-                <ctrl:TimelineControl
-                    PositionRatio="{Binding Player.PositionRatio, Mode=OneWay}"
-                    Length="{Binding Player.Length}"
-                    InPoint="{Binding Player.InPoint}"
-                    OutPoint="{Binding Player.OutPoint}"
-                    SeekRequested="OnTimelineSeek" />
-            </Border>
+        <!-- ═══ 底部控制栏 ═══ -->
+        <Border Grid.Row="3" Background="#1A1A1A">
+            <DockPanel LastChildFill="True" Margin="16,0">
+                <!-- 左侧：时间码 -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Player.TimeCodeDisplayString}" Foreground="#E8E8E8"
+                               FontFamily="Consolas" FontSize="13" />
+                    <TextBlock Text=" / " Foreground="#666666" FontFamily="Consolas" FontSize="13" Margin="2,0" />
+                    <TextBlock Text="{Binding Player.LengthDisplayString}" Foreground="#999999"
+                               FontFamily="Consolas" FontSize="13" />
+                </StackPanel>
 
-            <StatusBar Grid.Row="1" Background="#007ACC" Foreground="White">
-                <StatusBarItem>
-                    <TextBlock Text="{Binding Player.TimeCodeDisplayString}" FontFamily="Consolas" />
-                </StatusBarItem>
-                <Separator Background="#3F7AB0" />
-                <StatusBarItem>
-                    <TextBlock Text=" / " FontFamily="Consolas" />
-                </StatusBarItem>
-                <StatusBarItem>
-                    <TextBlock Text="{Binding Player.LengthDisplayString}" FontFamily="Consolas" />
-                </StatusBarItem>
-                <Separator Background="#3F7AB0" />
-                <StatusBarItem>
-                    <TextBlock Text="{Binding Player.Rate, StringFormat='×{0:F2}'}" FontFamily="Consolas" />
-                </StatusBarItem>
-                <Separator Background="#3F7AB0" />
-                <StatusBarItem>
-                    <TextBlock Text="{Binding Player.CurrentPath}" TextTrimming="CharacterEllipsis" />
-                </StatusBarItem>
-            </StatusBar>
-        </Grid>
+                <!-- 右侧：音量 + 倍速 -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="🔊" Style="{StaticResource IconButton}" Padding="6,4" FontSize="15"
+                            Command="{Binding Player.ToggleMuteCommand}" ToolTip="静音 (M)" />
+                    <Slider Minimum="0" Maximum="100" Style="{StaticResource PlayerSlider}"
+                            Value="{Binding Player.Volume, Mode=TwoWay}"
+                            Width="80" VerticalAlignment="Center" Margin="4,0,8,0"
+                            ToolTip="音量" />
+                    <TextBlock Text="{Binding Player.Volume, StringFormat={}{0}%}" Foreground="#999999"
+                               FontFamily="Consolas" FontSize="12" MinWidth="30" VerticalAlignment="Center" />
+                    <Separator Width="1" Height="20" Background="#2A2A2A" Margin="8,0" />
+                    <ComboBox x:Name="RateComboBox" Width="70" Margin="0,0,8,0"
+                              Background="#2A2A2A" Foreground="#E8E8E8"
+                              SelectedValue="{Binding Player.Rate, Mode=TwoWay}"
+                              SelectedValuePath="Tag" ToolTip="播放倍速">
+                        <ComboBoxItem Content="0.25×" Tag="0.25" />
+                        <ComboBoxItem Content="0.5×" Tag="0.5" />
+                        <ComboBoxItem Content="0.75×" Tag="0.75" />
+                        <ComboBoxItem Content="1.0×" Tag="1" IsSelected="True" />
+                        <ComboBoxItem Content="1.25×" Tag="1.25" />
+                        <ComboBoxItem Content="1.5×" Tag="1.5" />
+                        <ComboBoxItem Content="2.0×" Tag="2" />
+                        <ComboBoxItem Content="4.0×" Tag="4" />
+                    </ComboBox>
+                    <Button Content="⛶" Style="{StaticResource IconButton}" Padding="6,4" FontSize="18"
+                            Command="{Binding Player.ToggleFullscreenCommand}" ToolTip="全屏 (F)" />
+                </StackPanel>
+
+                <!-- 中间：播放控制 -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Button Content="⏮" Style="{StaticResource IconButton}" Padding="10,6" FontSize="18"
+                            Command="{Binding Player.SeekToStartCommand}" ToolTip="跳到开头 (Home)" />
+                    <Button Content="◀" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
+                            Command="{Binding Player.PreviousFrameCommand}" ToolTip="上一帧 (←)" />
+                    <Border Width="44" Height="44" CornerRadius="22" Background="#1A6B8A" Margin="4,0">
+                        <Button Content="⏯" Style="{StaticResource AccentButton}" Padding="0" FontSize="20"
+                                Command="{Binding Player.PlayPauseCommand}" ToolTip="播放/暂停 (Space)"
+                                Width="44" Height="44" />
+                    </Border>
+                    <Button Content="▶" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
+                            Command="{Binding Player.NextFrameCommand}" ToolTip="下一帧 (→)" />
+                    <Button Content="⏭" Style="{StaticResource IconButton}" Padding="10,6" FontSize="18"
+                            Command="{Binding Player.SeekToEndCommand}" ToolTip="跳到结尾 (End)" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
     </Grid>
 </Window>

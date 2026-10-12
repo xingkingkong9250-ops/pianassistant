@@ -71,6 +71,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // Wire Player → panel VMs.
         Player.ScreenshotCaptured += (_, entry) => Screenshots.Add(entry);
         Player.ClipExtracted += (_, e) => Clips.Add(e.Range);
+        Player.SegmentExported += (_, e) => Clips.Add(e.Range);
 
         // Wire Playlist → Player.
         Playlist.CurrentChanged += OnPlaylistCurrentChanged;

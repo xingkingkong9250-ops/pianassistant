@@ -8,9 +8,9 @@ namespace PianAssistant.Tests;
 public class HotkeyServiceTests
 {
     [Fact]
-    public void Defaults_HaveAll29Actions()
+    public void Defaults_HaveAll33Actions()
     {
-        Assert.Equal(29, HotkeyService.Defaults.Count);
+        Assert.Equal(33, HotkeyService.Defaults.Count);
     }
 
     [Fact]
@@ -38,9 +38,33 @@ public class HotkeyServiceTests
     }
 
     [Fact]
-    public void Defaults_ExtractClipIsC()
+    public void Defaults_ExtractClipIsCtrlShiftE()
     {
-        Assert.Equal("C", HotkeyService.Defaults[HotkeyAction.ExtractClip]);
+        Assert.Equal("Ctrl+Shift+E", HotkeyService.Defaults[HotkeyAction.ExtractClip]);
+    }
+
+    [Fact]
+    public void Defaults_AddCutPointIsC()
+    {
+        Assert.Equal("C", HotkeyService.Defaults[HotkeyAction.AddCutPoint]);
+    }
+
+    [Fact]
+    public void Defaults_RemoveLastCutPointIsBack()
+    {
+        Assert.Equal("Back", HotkeyService.Defaults[HotkeyAction.RemoveLastCutPoint]);
+    }
+
+    [Fact]
+    public void Defaults_ClearCutPointsIsCtrlShiftC()
+    {
+        Assert.Equal("Ctrl+Shift+C", HotkeyService.Defaults[HotkeyAction.ClearCutPoints]);
+    }
+
+    [Fact]
+    public void Defaults_ExportSelectedSegmentIsCtrlE()
+    {
+        Assert.Equal("Ctrl+E", HotkeyService.Defaults[HotkeyAction.ExportSelectedSegment]);
     }
 
     [Fact]

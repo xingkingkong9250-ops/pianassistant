@@ -7,6 +7,32 @@
 
 ## [Unreleased]
 
+### v0.3.0 — PR 风格时间轴裁切 + UI 重设计（NO.M，2026-10-12）
+
+#### 新增
+
+- **PR 风格时间轴裁切**：
+  - C 键标记裁切点（原 C=ExtractClip 改为 Ctrl+Shift+E）
+  - 时间轴渲染红色裁切线 + 顶部三角标记（PR 剃刀风格）
+  - 点击两线之间选中段，半透明红色高亮
+  - Ctrl+E 导出选中段，Backspace 撤销，Ctrl+Shift+C 清空
+  - 工具栏新增裁切/撤销/清空/导出 4 个按钮
+  - HotkeyAction 枚举新增 4 项，HotkeyService 默认映射更新
+- **UI 重设计**：
+  - 顶部导航栏：圆形 Logo + 标题 + 导航标签 + 工具按钮组 + 右侧操作
+  - 视频区：无视频叠加层（大圆形播放按钮 + 提示文字）
+  - 底部控制栏：时间码 + 中央播放控制（圆形蓝色播放按钮）+ 音量/倍速/全屏
+  - 自定义按钮模板：圆角、hover/pressed 状态
+  - 自定义滑块模板：4px 轨道 + 蓝色进度 + 圆形 Thumb
+  - 配色：主背景 #0F0F0F、面板 #161616/#1A1A1A、强调色 #1A6B8A
+
+#### 变更
+
+- PlayerViewModel：新增 CutPoints/SelectedSegment 属性和命令
+- TimelineControl：新增 CutPoints/SelectedSegment 依赖属性和渲染
+- MainWindow.xaml：四行布局（导航栏+视频+时间轴+控制栏）
+- Converters.cs：新增 InverseBoolToVisibilityConverter
+
 ### v0.2.0 — 音量调节 + 倍速UI + 片段截取修复（NO.M，2026-10-12）
 
 #### 新增
