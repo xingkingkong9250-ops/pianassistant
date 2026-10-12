@@ -11,7 +11,10 @@ public sealed class NoteEntry
     public DateTime CreatedAt { get; }
     public DateTime? UpdatedAt { get; set; }
 
-    public NoteEntry(string sourcePath, TimeSpan position, string text, DateTime? createdAt = null)
+    /// <summary>数据库行 ID；新建笔记时为 null，从数据库加载时赋值。</summary>
+    public string? Id { get; }
+
+    public NoteEntry(string sourcePath, TimeSpan position, string text, DateTime? createdAt = null, string? id = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
         ArgumentNullException.ThrowIfNull(text);
@@ -19,5 +22,6 @@ public sealed class NoteEntry
         Position = position;
         Text = text;
         CreatedAt = createdAt ?? DateTime.Now;
+        Id = id;
     }
 }

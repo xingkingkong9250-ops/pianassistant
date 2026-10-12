@@ -104,6 +104,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // Wire Player fullscreen → Shell.
         Player.FullscreenToggleRequested += (_, _) => IsFullscreen = !IsFullscreen;
         Player.FullscreenExitRequested += (_, _) => IsFullscreen = false;
+        // 非循环模式播放结束 → 自动推进播放列表
+        Player.EndReached += OnPlayerEnded;
 
         // Commands.
         OpenFileCommand = new RelayCommand(RequestOpenFile);
@@ -155,6 +157,23 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             System.Diagnostics.Debug.WriteLine($"[ShellVM] Open media failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 非循环模式播放结束时推进播放列表并自动播放下一曲。
+    /// EndReached 来自 LibVLC 线程，需切回 UI 线程操作集合。
+    /// </summary>
+    private void OnPlayerEnded(object? sender, EventArgs e)
+    {
+        System.Windows.Application.Current?.Dispatcher?.BeginInvoke(() =>
+        {
+            if (Playlist.MoveNext())
+            {
+                // MoveNext 已通过 CurrentChanged → OnPlaylistCurrentChanged → Player.Open
+                // 自动加载下一曲；这里启动播放
+                Player.PlayPauseCommand.Execute(null);
+            }
+        });
     }
 
     /// <summary>裁切点集合变化时同步到 Notes 活动流（仅添加，不删除历史）。</summary>

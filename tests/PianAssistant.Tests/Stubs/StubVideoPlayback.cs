@@ -93,6 +93,14 @@ public sealed class StubVideoPlayback : IVideoPlayback
         return outputPath;
     }
 
+    /// <summary>Stub: 记录最后一次加载的字幕路径。</summary>
+    public string? LastSubtitlePath { get; private set; }
+
+    public void LoadSubtitle(string path)
+    {
+        LastSubtitlePath = path;
+    }
+
     /// <summary>Simulate playback advancing the position.</summary>
     public void SimulatePositionChange(TimeSpan newPos)
     {

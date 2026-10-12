@@ -15,6 +15,9 @@ public sealed class ServiceRegistry
     public ClipExtractionService Clips { get; }
     public FfmpegRunner Ffmpeg { get; }
     public HotkeyService Hotkeys { get; }
+    public ProjectDatabase Database { get; }
+    public ProjectRepository Repository { get; }
+    public ProjectService Projects { get; }
 
     public ServiceRegistry(
         AppSettingsService settings,
@@ -22,7 +25,10 @@ public sealed class ServiceRegistry
         ScreenshotService screenshots,
         ClipExtractionService clips,
         FfmpegRunner ffmpeg,
-        HotkeyService hotkeys)
+        HotkeyService hotkeys,
+        ProjectDatabase database,
+        ProjectRepository repository,
+        ProjectService projects)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         Playback = playback ?? throw new ArgumentNullException(nameof(playback));
@@ -30,11 +36,15 @@ public sealed class ServiceRegistry
         Clips = clips ?? throw new ArgumentNullException(nameof(clips));
         Ffmpeg = ffmpeg ?? throw new ArgumentNullException(nameof(ffmpeg));
         Hotkeys = hotkeys ?? throw new ArgumentNullException(nameof(hotkeys));
+        Database = database ?? throw new ArgumentNullException(nameof(database));
+        Repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        Projects = projects ?? throw new ArgumentNullException(nameof(projects));
     }
 
     /// <summary>
     /// Production wiring: resolves bundled ffmpeg.exe, constructs services
-    /// in the correct order, and applies user's hotkey overrides.
+    /// in the correct order, initializes the SQLite database, and applies
+    /// user's hotkey overrides.
     /// </summary>
     public static ServiceRegistry CreateDefault()
     {
@@ -48,6 +58,14 @@ public sealed class ServiceRegistry
         foreach (var kv in settings.GetHotkeyOverrides())
             hotkeys.SetCustom(kv.Key, kv.Value);
 
-        return new ServiceRegistry(settings, playback, screenshots, clips, ffmpeg, hotkeys);
+        // 初始化 SQLite 数据库与仓储（M3 持久化）。
+        var database = new ProjectDatabase();
+        database.Initialize();
+        database.MigrateIfNeeded();
+        var repository = new ProjectRepository(database);
+        var projects = new ProjectService(database, repository, settings);
+
+        return new ServiceRegistry(settings, playback, screenshots, clips, ffmpeg, hotkeys,
+            database, repository, projects);
     }
 }

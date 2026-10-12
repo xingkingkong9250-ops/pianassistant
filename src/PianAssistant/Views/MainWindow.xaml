@@ -122,7 +122,7 @@
         <KeyBinding Key="Tab" Command="{Binding ToggleSidebarPanelCommand}" />
     </Window.InputBindings>
 
-    <Grid>
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />    <!-- 顶部导航栏 -->
             <RowDefinition Height="*" />     <!-- 视频内容区 -->
@@ -131,7 +131,7 @@
         </Grid.RowDefinitions>
 
         <!-- ═══ 顶部导航栏 ═══ -->
-        <Border Grid.Row="0" Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+        <Border x:Name="TopNavBorder" Grid.Row="0" Background="#1A1A1A" BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
             <DockPanel>
                 <!-- Logo + 标题 -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
@@ -182,7 +182,7 @@
         </Border>
 
         <!-- ═══ 视频内容区 ═══ -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="ContentGrid" Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="6" />
@@ -190,7 +190,8 @@
             </Grid.ColumnDefinitions>
 
             <!-- 视频区 -->
-            <Grid Grid.Column="0" Background="#000000">
+            <Grid x:Name="VideoArea" Grid.Column="0" Background="#000000"
+                  AllowDrop="True" Drop="OnVideoDrop" DragOver="OnVideoDragOver">
                 <vlc:VideoView x:Name="VideoView" />
 
                 <!-- 方向键视觉反馈叠加层 -->
@@ -230,11 +231,11 @@
                 </Border>
             </Grid>
 
-            <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+            <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
                           Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
 
             <!-- 右侧面板 -->
-            <DockPanel Grid.Column="2" Background="#161616">
+            <DockPanel x:Name="SidebarPanel" Grid.Column="2" Background="#161616">
                 <!-- 面板标题 -->
                 <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="16,10"
                         BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
@@ -258,7 +259,7 @@
         </Grid>
 
         <!-- ═══ 时间轴 ═══ -->
-        <Border Grid.Row="2" Background="#1A1A1A"
+        <Border x:Name="TimelineBorder" Grid.Row="2" Background="#1A1A1A"
                 BorderBrush="#2A2A2A" BorderThickness="0,1,0,1">
             <DockPanel>
                 <!-- 缩放指示 -->
@@ -294,7 +295,7 @@
         </Border>
 
         <!-- ═══ 底部控制栏 ═══ -->
-        <Border Grid.Row="3" Background="#1A1A1A">
+        <Border x:Name="BottomControlBorder" Grid.Row="3" Background="#1A1A1A">
             <DockPanel LastChildFill="True" Margin="16,0">
                 <!-- 左侧：时间码 + 倍速标记 -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">

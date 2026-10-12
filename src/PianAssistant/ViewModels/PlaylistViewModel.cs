@@ -73,6 +73,38 @@ public sealed class PlaylistViewModel : ObservableObject
             Current = Items.Count > 0 ? Items[0] : null;
     }
 
+    /// <summary>删除指定索引处的项目。如果删除的是当前项，自动切换到首项。</summary>
+    public void RemoveAt(int index)
+    {
+        if (index < 0 || index >= Items.Count) return;
+        var media = Items[index];
+        Remove(media);
+    }
+
+    /// <summary>
+    /// 将项目从 oldIndex 移动到 newIndex，其余项目顺延。
+    /// 重新计算当前项索引（Current 引用不变）。
+    /// </summary>
+    public void MoveItem(int oldIndex, int newIndex)
+    {
+        if (oldIndex < 0 || oldIndex >= Items.Count) return;
+        if (newIndex < 0 || newIndex >= Items.Count) return;
+        if (oldIndex == newIndex) return;
+        var media = Items[oldIndex];
+        Items.RemoveAt(oldIndex);
+        Items.Insert(newIndex, media);
+        // 修正当前项索引
+        if (_current is not null)
+            CurrentIndex = Items.IndexOf(_current);
+    }
+
+    /// <summary>获取指定索引处项目的路径。越界返回 null。</summary>
+    public string? GetPath(int index)
+    {
+        if (index < 0 || index >= Items.Count) return null;
+        return Items[index].Path;
+    }
+
     public void Clear()
     {
         Items.Clear();

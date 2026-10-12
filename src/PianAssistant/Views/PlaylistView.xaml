@@ -16,6 +16,11 @@
                      Background="Transparent"
                      BorderThickness="0"
                      Foreground="#E0E0E0"
+                     AllowDrop="True"
+                     DragOver="OnListDragOver"
+                     Drop="OnListDrop"
+                     PreviewMouseLeftButtonDown="OnListPreviewMouseLeftButtonDown"
+                     PreviewMouseMove="OnListPreviewMouseMove"
                      MouseDoubleClick="OnItemDoubleClick">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
@@ -26,6 +31,15 @@
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Padding" Value="8,3" />
                         <Setter Property="Foreground" Value="#E0E0E0" />
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu>
+                                    <MenuItem Header="删除" Tag="Delete" Click="OnContextMenuItemClick" />
+                                    <MenuItem Header="复制路径" Tag="CopyPath" Click="OnContextMenuItemClick" />
+                                    <MenuItem Header="在资源管理器中打开" Tag="OpenInExplorer" Click="OnContextMenuItemClick" />
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
                         <Style.Triggers>
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="#007ACC" />

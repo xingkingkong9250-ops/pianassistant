@@ -19,6 +19,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private readonly Func<int> _getSeekStepFrames;
     private readonly Func<double> _getRateStep;
     private bool _disposed;
+    // 每个文件路径独立保存的播放倍速
+    private readonly Dictionary<string, double> _rateMemory = new();
 
     // Position binding state:
     // _isUpdatingFromPlayback guards against Seek→PositionChanged→Seek loops.
@@ -110,6 +112,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         SeekForwardCustomCommand = new RelayCommand(SeekForwardCustom, () => HasMedia);
         IncreaseRateCustomCommand = new RelayCommand(IncreaseRateCustom);
         DecreaseRateCustomCommand = new RelayCommand(DecreaseRateCustom);
+        // 字幕加载命令（接收文件路径参数）
+        LoadSubtitleCommand = new AsyncRelayCommand<string>(LoadSubtitleAsync);
     }
 
     // --- Properties ---
@@ -334,6 +338,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand SeekForwardCustomCommand { get; }
     public ICommand IncreaseRateCustomCommand { get; }
     public ICommand DecreaseRateCustomCommand { get; }
+    // 字幕加载命令（参数为字幕文件路径）
+    public AsyncRelayCommand<string> LoadSubtitleCommand { get; }
 
     // --- Events ---
 
@@ -342,13 +348,21 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public event EventHandler<ClipExtractedEventArgs>? SegmentExported;
     public event EventHandler? FullscreenToggleRequested;
     public event EventHandler? FullscreenExitRequested;
+    /// <summary>
+    /// 非循环模式下播放结束时触发，由 Shell 接管以推进播放列表。
+    /// </summary>
+    public event EventHandler? EndReached;
 
     // --- Methods ---
 
     public void Open(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        // 先保存当前视频的倍速到记忆表
+        SaveCurrentRate();
         _playback.Open(path);
+        // 再从记忆表加载新视频的倍速（无记录则重置为 1.0）
+        LoadRate(path);
         Length = _playback.Length;
         Position = TimeSpan.Zero;
         InPoint = null;
@@ -362,6 +376,34 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(VideoWidth));
         OnPropertyChanged(nameof(VideoHeight));
         OnPropertyChanged(nameof(LengthDisplayString));
+    }
+
+    /// <summary>将当前视频的倍速保存到记忆表（按路径索引）。</summary>
+    public void SaveCurrentRate()
+    {
+        var path = _playback.CurrentPath;
+        if (string.IsNullOrEmpty(path)) return;
+        _rateMemory[path] = _rate;
+    }
+
+    /// <summary>从记忆表加载指定路径的倍速；无记录时重置为 1.0。</summary>
+    public void LoadRate(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        Rate = _rateMemory.TryGetValue(path, out var rate) ? rate : 1.0;
+    }
+
+    /// <summary>加载外挂字幕文件到当前媒体。</summary>
+    public void LoadSubtitle(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        _playback.LoadSubtitle(path);
+    }
+
+    private async Task LoadSubtitleAsync(string path)
+    {
+        if (string.IsNullOrEmpty(path)) return;
+        await Task.Run(() => _playback.LoadSubtitle(path));
     }
 
     /// <summary>Seek to a percentage of the total length (0..1).</summary>
@@ -605,8 +647,14 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         IsPlaying = false;
         if (_loopMode)
         {
+            // 循环模式：回到开头继续播放
             _playback.Seek(TimeSpan.Zero);
             _playback.Play();
+        }
+        else
+        {
+            // 非循环模式：通知 Shell 推进播放列表
+            EndReached?.Invoke(this, EventArgs.Empty);
         }
     }
 

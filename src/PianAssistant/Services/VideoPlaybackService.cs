@@ -158,6 +158,19 @@ public sealed class VideoPlaybackService : IVideoPlayback
         return outputPath;
     }
 
+    /// <summary>
+    /// 加载外挂字幕文件。LibVLCSharp 3.8.2 通过 MediaPlayer.AddSlave
+    /// 以 Subtitle 类型挂载外挂字幕轨。
+    /// </summary>
+    public void LoadSubtitle(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Subtitle file not found.", path);
+        var uri = new Uri(path).AbsoluteUri;
+        _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, true);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
