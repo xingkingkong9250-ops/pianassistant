@@ -339,17 +339,10 @@
                     <Separator Width="1" Height="20" Background="#2A2A2A" Margin="8,0" />
                     <ComboBox x:Name="RateComboBox" Width="70" Margin="0,0,8,0"
                               Background="#2A2A2A" Foreground="#E8E8E8"
+                              ItemsSource="{Binding Player.AvailableRates}"
                               SelectedValue="{Binding Player.Rate, Mode=TwoWay}"
-                              SelectedValuePath="Tag" ToolTip="播放倍速">
-                        <ComboBoxItem Content="0.25×" Tag="0.25" />
-                        <ComboBoxItem Content="0.5×" Tag="0.5" />
-                        <ComboBoxItem Content="0.75×" Tag="0.75" />
-                        <ComboBoxItem Content="1.0×" Tag="1" IsSelected="True" />
-                        <ComboBoxItem Content="1.25×" Tag="1.25" />
-                        <ComboBoxItem Content="1.5×" Tag="1.5" />
-                        <ComboBoxItem Content="2.0×" Tag="2" />
-                        <ComboBoxItem Content="4.0×" Tag="4" />
-                    </ComboBox>
+                              SelectedValuePath="Value"
+                              DisplayMemberPath="Label" ToolTip="播放倍速" />
                     <Button Content="⛶" Style="{StaticResource IconButton}" Padding="6,4" FontSize="18"
                             Command="{Binding Player.ToggleFullscreenCommand}" ToolTip="全屏 (F)" />
                 </StackPanel>

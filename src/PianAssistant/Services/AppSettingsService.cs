@@ -64,6 +64,13 @@ public sealed class AppSettingsService
         set { _settings.RateStep = Math.Clamp(value, 0.05, 1.0); Save(); }
     }
 
+    /// <summary>最高播放倍率上限（2~32）。</summary>
+    public double MaxRate
+    {
+        get => Math.Clamp(_settings.MaxRate, 2.0, 32.0);
+        set { _settings.MaxRate = Math.Clamp(value, 2.0, 32.0); Save(); }
+    }
+
     /// <summary>全局热键开关（启用时应用失焦状态下按 S 也可截图）。</summary>
     public bool GlobalHotkeysEnabled
     {
@@ -171,6 +178,8 @@ public sealed class AppSettings
     public int SeekStepFrames { get; set; } = 5;
     /// <summary>方向键上下每次倍速变化量（0.05~1.0，默认0.25）。</summary>
     public double RateStep { get; set; } = 0.25;
+    /// <summary>最高播放倍率上限（2~32，默认8）。</summary>
+    public double MaxRate { get; set; } = 8.0;
     /// <summary>是否启用全局热键（应用失焦时 S 键截图；默认关闭）。</summary>
     public bool GlobalHotkeysEnabled { get; set; } = false;
     /// <summary>输出是否按日期（yyyyMMdd）分子目录（默认关闭）。</summary>

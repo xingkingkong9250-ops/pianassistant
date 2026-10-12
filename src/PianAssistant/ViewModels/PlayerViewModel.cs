@@ -18,6 +18,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private readonly ClipExtractionService _clips;
     private readonly Func<int> _getSeekStepFrames;
     private readonly Func<double> _getRateStep;
+    private readonly Func<double> _getMaxRate;
     private bool _disposed;
     // 每个文件路径独立保存的播放倍速
     private readonly Dictionary<string, double> _rateMemory = new();
@@ -41,14 +42,15 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private TimeSpan? _selectedSegmentEnd;
 
     private static readonly double[] RateSteps =
-        { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 4.0 };
+        { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 32.0 };
 
     public PlayerViewModel(
         IVideoPlayback playback,
         ScreenshotService screenshots,
         ClipExtractionService clips,
         Func<int> getSeekStepFrames,
-        Func<double> getRateStep)
+        Func<double> getRateStep,
+        Func<double> getMaxRate)
     {
         ArgumentNullException.ThrowIfNull(playback);
         ArgumentNullException.ThrowIfNull(screenshots);
@@ -58,6 +60,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _clips = clips;
         _getSeekStepFrames = getSeekStepFrames ?? (() => 5);
         _getRateStep = getRateStep ?? (() => 0.25);
+        _getMaxRate = getMaxRate ?? (() => 8.0);
 
         // Wire playback events.
         _playback.PositionChanged += OnPositionChanged;
@@ -169,12 +172,13 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         get => _rate;
         set
         {
-            var clamped = Math.Clamp(value, 0.25, 4.0);
+            var clamped = Math.Clamp(value, 0.25, CurrentMaxRate);
             if (SetProperty(ref _rate, clamped))
             {
                 _playback.SetRate(clamped);
                 OnPropertyChanged(nameof(RateText));
                 OnPropertyChanged(nameof(IsRateNormal));
+                OnPropertyChanged(nameof(IsRateAtMax));
             }
         }
     }
@@ -184,6 +188,53 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
 
     /// <summary>是否为正常倍速（1.0×）。</summary>
     public bool IsRateNormal => Math.Abs(_rate - 1.0) < 0.001;
+
+    /// <summary>当前配置的最高倍率上限（来自设置，2~32）。</summary>
+    public double CurrentMaxRate => Math.Max(2.0, _getMaxRate());
+
+    /// <summary>当前倍率是否已达到上限。</summary>
+    public bool IsRateAtMax => _rate >= CurrentMaxRate - 0.001;
+
+    /// <summary>更新最高倍率上限（设置窗调用）：刷新可达倍速列表并夹紧当前值。</summary>
+    public void SetMaxRate(double max)
+    {
+        OnPropertyChanged(nameof(CurrentMaxRate));
+        OnPropertyChanged(nameof(IsRateAtMax));
+        OnPropertyChanged(nameof(AvailableRates));
+        if (_rate > CurrentMaxRate)
+        {
+            Rate = CurrentMaxRate;
+        }
+        else
+        {
+            OnPropertyChanged(nameof(Rate));
+            OnPropertyChanged(nameof(RateText));
+        }
+    }
+
+    /// <summary>倍速下拉框可选项：全部预设中不超过上限的部分。</summary>
+    public IReadOnlyList<RateOption> AvailableRates
+    {
+        get
+        {
+            var list = new List<RateOption>();
+            foreach (var step in RateSteps)
+            {
+                if (step <= CurrentMaxRate + 0.001)
+                {
+                    list.Add(new RateOption(step));
+                }
+            }
+
+            // 上限不在预设档位中时，追加自定义上限项
+            if (list.Count == 0 || list[^1].Value < CurrentMaxRate - 0.001)
+            {
+                list.Add(new RateOption(CurrentMaxRate));
+            }
+
+            return list;
+        }
+    }
 
     public TimeSpan? InPoint
     {
@@ -422,13 +473,14 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     {
         for (int i = 0; i < RateSteps.Length; i++)
         {
-            if (RateSteps[i] > _rate + 0.001)
+            if (RateSteps[i] > _rate + 0.001 && RateSteps[i] <= CurrentMaxRate + 0.001)
             {
                 Rate = RateSteps[i];
                 return;
             }
         }
-        Rate = RateSteps[^1];
+
+        Rate = CurrentMaxRate;
     }
 
     private void DecreaseRate()
@@ -441,6 +493,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
                 return;
             }
         }
+
         Rate = RateSteps[0];
     }
 
@@ -466,14 +519,14 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private void IncreaseRateCustom()
     {
         var step = _getRateStep();
-        Rate = Math.Clamp(_rate + step, 0.25, 4.0);
+        Rate = Math.Clamp(_rate + step, 0.25, CurrentMaxRate);
     }
 
     /// <summary>方向键下：按自定义步长降低倍速（长按连续触发）。</summary>
     private void DecreaseRateCustom()
     {
         var step = _getRateStep();
-        Rate = Math.Clamp(_rate - step, 0.25, 4.0);
+        Rate = Math.Clamp(_rate - step, 0.25, CurrentMaxRate);
     }
 
     private void MarkIn() => InPoint = _position;
@@ -681,4 +734,10 @@ public sealed class ClipExtractedEventArgs : EventArgs
         Range = range;
         OutputPath = outputPath;
     }
+}
+
+/// <summary>倍速下拉框选项：值 + 显示文本。</summary>
+public sealed record RateOption(double Value)
+{
+    public string Label => $"{Value:0.0#}×";
 }

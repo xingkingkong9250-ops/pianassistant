@@ -87,7 +87,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Player = new PlayerViewModel(
             services.Playback, services.Screenshots, services.Clips,
             () => services.Settings.SeekStepFrames,
-            () => services.Settings.RateStep);
+            () => services.Settings.RateStep,
+            () => services.Settings.MaxRate);
         Playlist = new PlaylistViewModel();
         // Notes needs the current playback position to timestamp new notes.
         Notes = new NotesViewModel(() => Player.Position);
@@ -100,6 +101,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 services.Concats.ConcatAsync(ranges, outputPath, ct, onProgress));
         Screenshots = new ScreenshotGalleryViewModel();
         Settings = new SettingsViewModel(services.Settings, services.Hotkeys);
+        // 设置保存后刷新播放器的最高倍率上限（下拉框档位 + 夹紧当前倍速）。
+        Settings.Saved += (_, _) => Player.SetMaxRate(services.Settings.MaxRate);
 
         // Wire Player → panel VMs + Notes 活动流.
         Player.ScreenshotCaptured += (_, entry) =>

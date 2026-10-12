@@ -28,7 +28,7 @@ public class PlayerViewModelTests : IDisposable
         _playback = new StubVideoPlayback { Length = TimeSpan.FromMinutes(3) };
         _screenshots = new ScreenshotService(_playback, _ffmpeg, _tempDir, "png");
         _clips = new ClipExtractionService(_ffmpeg, _tempDir);
-        _vm = new PlayerViewModel(_playback, _screenshots, _clips, () => 5, () => 0.25);
+        _vm = new PlayerViewModel(_playback, _screenshots, _clips, () => 5, () => 0.25, () => 8.0);
     }
 
     public void Dispose()
@@ -121,15 +121,31 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Rate_ClampsBetween025And4()
+    public void Rate_ClampsBetween025And8()
     {
         for (int i = 0; i < 20; i++)
             _vm.IncreaseRateCommand.Execute(null);
-        Assert.Equal(4.0, _vm.Rate);
+        Assert.Equal(8.0, _vm.Rate);
 
         for (int i = 0; i < 20; i++)
             _vm.DecreaseRateCommand.Execute(null);
         Assert.Equal(0.25, _vm.Rate);
+    }
+
+    [Fact]
+    public void Rate_ClampsToConfiguredMaxRate()
+    {
+        // 上限 2.0：直接赋值和逐级增加都不得超过
+        var vm = new PlayerViewModel(_playback, _screenshots, _clips, () => 5, () => 0.25, () => 2.0);
+        vm.Rate = 16.0;
+        Assert.Equal(2.0, vm.Rate);
+        for (int i = 0; i < 10; i++)
+            vm.IncreaseRateCommand.Execute(null);
+        Assert.Equal(2.0, vm.Rate);
+        Assert.True(vm.IsRateAtMax);
+
+        // 可达倍速列表只含不超过上限的档位
+        Assert.All(vm.AvailableRates, r => Assert.True(r.Value <= 2.0 + 0.001));
     }
 
     [Fact]

@@ -22,6 +22,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _globalHotkeysEnabled;
     private bool _organizeByDate;
     private string? _projectSubfolderName;
+    private double _maxRate;
 
     public SettingsViewModel(AppSettingsService settings, HotkeyService hotkeys)
     {
@@ -37,6 +38,7 @@ public sealed class SettingsViewModel : ObservableObject
         _globalHotkeysEnabled = settings.GlobalHotkeysEnabled;
         _organizeByDate = settings.OrganizeByDate;
         _projectSubfolderName = settings.ProjectSubfolderName;
+        _maxRate = settings.MaxRate;
 
         BrowseScreenshotsCommand = new RelayCommand(BrowseScreenshots);
         BrowseClipsCommand = new RelayCommand(BrowseClips);
@@ -88,6 +90,17 @@ public sealed class SettingsViewModel : ObservableObject
         get => _projectSubfolderName;
         set => SetProperty(ref _projectSubfolderName, value);
     }
+
+    /// <summary>最高播放倍率上限（2~32，默认8）。</summary>
+    public double MaxRate
+    {
+        get => _maxRate;
+        set => SetProperty(ref _maxRate, Math.Clamp(value, 2.0, 32.0));
+    }
+
+    /// <summary>最高倍率预设档位（设置窗下拉框）。</summary>
+    public IReadOnlyList<double> MaxRateOptions { get; } =
+        new[] { 2.0, 4.0, 8.0, 12.0, 16.0, 20.0, 32.0 };
 
     /// <summary>Currently selected hotkey action for inline editing.</summary>
     public HotkeyAction SelectedAction
@@ -177,6 +190,7 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.SetSnapshotFormat(_snapshotFormat);
         _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
         _settings.SetOrganizationOptions(_organizeByDate, _projectSubfolderName);
+        _settings.MaxRate = MaxRate;
         Saved?.Invoke(this, EventArgs.Empty);
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }

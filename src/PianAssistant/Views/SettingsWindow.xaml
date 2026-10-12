@@ -79,6 +79,13 @@
                     <TextBox Grid.Row="4" Grid.Column="1"
                              Text="{Binding ProjectSubfolderName, Mode=TwoWay}" Margin="0,2"
                              ToolTip="非空时在日期层下再加一层 [项目名] 子目录；留空不启用" />
+
+                    <!-- 播放倍率上限：超出约4×后音频静音但视频可播 -->
+                    <Label Grid.Row="5" Content="最高倍率：" />
+                    <ComboBox Grid.Row="5" Grid.Column="1" Margin="0,2"
+                              ItemsSource="{Binding MaxRateOptions}"
+                              SelectedItem="{Binding MaxRate, Mode=TwoWay}"
+                              ToolTip="倍速上限（2×~32×）。超过约4×后音频会静音，仅视频快放" />
                 </Grid>
             </TabItem>
 
