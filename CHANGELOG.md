@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+### v0.1.2 — 启动器修复（NO.P，2026-10-12）
+
+#### 修复
+
+- **run.ps1 exe 路径错误**：`PlatformTarget=x64` 导致输出在 `bin\x64\Debug\`
+  而非 `bin\Debug\`，启动器找不到 exe。修正路径为 `bin\x64\Debug\`。
+- **run.ps1 EventHandle 类型不存在**：原代码 `New-Object System.Threading.EventHandle`
+  使用了不存在的类型。改为 `Get-Process | Stop-Process` 直接关闭旧实例。
+- **run.ps1 无控制台输出**：`Write-Log` 现在同时写文件和控制台，
+  直接 `powershell -File run.ps1` 运行时可见进度。
+
 ### v0.1.1 — 启动崩溃修复（NO.P，2026-10-12）
 
 #### 修复
