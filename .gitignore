@@ -1,0 +1,40 @@
+# Build output
+bin/
+obj/
+artifacts/
+dist/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Logs & temp
+*.log
+*.tmp
+*.bak
+*.partial
+
+# ffmpeg 二进制（大文件，随包发布但 gitignored；用户首次 clone 跑 tools\download-ffmpeg.ps1）
+src/PianAssistant/Tools/ffmpeg/ffmpeg.exe
+src/PianAssistant/Tools/ffmpeg/ffprobe.exe
+src/PianAssistant/Tools/ffmpeg/*.dll
+
+# 样例视频（用户测试用，不入库）
+samples/*.mp4
+samples/*.mov
+samples/*.mkv
+samples/*.avi
+
+# 截图/片段导出（运行时产物）
+screenshots/
+clips/
+
+# 数据目录运行时产物（开发态）
+%APPDATA%/PianAssistant/
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,40 @@
+<UserControl x:Class="PianAssistant.Views.NotesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#252526"
+             Foreground="#E0E0E0">
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="拉片笔记" FontWeight="SemiBold"
+                   Padding="8,6" Background="#2D2D2D" />
+
+        <!-- New note input -->
+        <DockPanel DockPanel.Dock="Bottom" Margin="4">
+            <Button DockPanel.Dock="Right" Content="添加" Padding="8,2" Margin="4,0,0,0"
+                    Click="OnAddNote" />
+            <TextBox x:Name="NoteInput"
+                     Text="{Binding NewNoteText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     KeyDown="OnNoteInputKeyDown"
+                     Padding="4,2" Background="#333333" Foreground="#E0E0E0" BorderBrush="#3F3F46" />
+        </DockPanel>
+
+        <!-- Notes list -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Border Margin="4,2" Padding="6" Background="#333333"
+                                CornerRadius="3" MouseLeftButtonDown="OnNoteClick">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Position, StringFormat='hh\\:mm\\:ss\\.fff'}"
+                                           FontFamily="Consolas" FontSize="11"
+                                           Foreground="#569CD6" />
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

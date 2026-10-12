@@ -1,0 +1,227 @@
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+
+namespace PianAssistant.Services;
+
+/// <summary>
+/// Wraps ffmpeg.exe / ffprobe.exe invocations as a child process.
+/// Stdout is parsed for progress; stderr is captured for diagnostics.
+/// </summary>
+public sealed class FfmpegRunner
+{
+    private readonly string _ffmpegPath;
+    private readonly string _ffprobePath;
+
+    public FfmpegRunner(string ffmpegPath, string ffprobePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ffmpegPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ffprobePath);
+        _ffmpegPath = ffmpegPath;
+        _ffprobePath = ffprobePath;
+    }
+
+    /// <summary>
+    /// Creates a FfmpegRunner that resolves ffmpeg.exe / ffprobe.exe from
+    /// the bundled Tools/ffmpeg/ directory next to AppContext.BaseDirectory.
+    /// Throws FileNotFoundException if the binaries are missing (first
+    /// clone needs tools/download-ffmpeg.ps1).
+    /// </summary>
+    public static FfmpegRunner FromBundledTools()
+    {
+        var root = AppContext.BaseDirectory;
+        var ffmpeg = Path.Combine(root, "tools", "ffmpeg", "ffmpeg.exe");
+        var ffprobe = Path.Combine(root, "tools", "ffmpeg", "ffprobe.exe");
+        if (!File.Exists(ffmpeg))
+            throw new FileNotFoundException(
+                "ffmpeg.exe not found at " + ffmpeg +
+                ". Run tools/download-ffmpeg.ps1 first.", ffmpeg);
+        if (!File.Exists(ffprobe))
+            throw new FileNotFoundException(
+                "ffprobe.exe not found at " + ffprobe +
+                ". Run tools/download-ffmpeg.ps1 first.", ffprobe);
+        return new FfmpegRunner(ffmpeg, ffprobe);
+    }
+
+    public string FfmpegPath => _ffmpegPath;
+    public string FfprobePath => _ffprobePath;
+
+    /// <summary>
+    /// Capture a single still frame at the given position using ffmpeg.
+    /// Used as a fallback when LibVLC TakeSnapshot fails.
+    /// </summary>
+    public void CaptureSingleFrame(string source, TimeSpan position, string outputPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        var args = new StringBuilder();
+        args.Append("-ss ").Append(position.TotalSeconds.ToString("0.###")).Append(' ');
+        args.Append("-i \"").Append(source).Append("\" ");
+        args.Append("-frames:v 1 ");
+        var ext = Path.GetExtension(outputPath).ToLowerInvariant();
+        args.Append(ext switch
+        {
+            ".png" => "-compression_level 6 ",
+            ".jpg" or ".jpeg" => "-q:v 2 ",
+            _ => string.Empty,
+        });
+        args.Append('"').Append(outputPath).Append('"');
+        var (exit, _) = Run(args.ToString(), CancellationToken.None);
+        if (exit != 0)
+            throw new InvalidOperationException($"ffmpeg single-frame capture failed (exit {exit}).");
+    }
+
+    /// <summary>
+    /// Extract a clip using stream copy (-c copy, fast, keyframe-aligned).
+    /// </summary>
+    /// <param name="source">Input video path.</param>
+    /// <param name="inPoint">Start time.</param>
+    /// <param name="outPoint">End time (exclusive).</param>
+    /// <param name="outputPath">Output file path (.mp4 recommended).</param>
+    /// <param name="cancellationToken">Cancellation token; kills the child process.</param>
+    /// <param name="onProgress">Optional progress callback receiving a 0..1 ratio.</param>
+    public void ExtractClipStreamCopy(
+        string source,
+        TimeSpan inPoint,
+        TimeSpan outPoint,
+        string outputPath,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        if (outPoint <= inPoint)
+            throw new ArgumentException("outPoint must be after inPoint.", nameof(outPoint));
+
+        var durationMs = (outPoint - inPoint).TotalMilliseconds;
+        var args = new StringBuilder();
+        args.Append("-ss ").Append(inPoint.TotalSeconds.ToString("0.###")).Append(' ');
+        args.Append("-to ").Append(outPoint.TotalSeconds.ToString("0.###")).Append(' ');
+        args.Append("-i \"").Append(source).Append("\" ");
+        args.Append("-c copy -avoid_negative_ts make_zero ");
+        args.Append('"').Append(outputPath).Append('"');
+        RunWithProgress(args.ToString(), durationMs, cancellationToken, onProgress);
+    }
+
+    /// <summary>
+    /// Extract a clip with re-encoding for millisecond precision.
+    /// </summary>
+    public void ExtractClipReencode(
+        string source,
+        TimeSpan inPoint,
+        TimeSpan outPoint,
+        string outputPath,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        if (outPoint <= inPoint)
+            throw new ArgumentException("outPoint must be after inPoint.", nameof(outPoint));
+
+        var durationMs = (outPoint - inPoint).TotalMilliseconds;
+        var args = new StringBuilder();
+        args.Append("-ss ").Append(inPoint.TotalSeconds.ToString("0.###")).Append(' ');
+        args.Append("-to ").Append(outPoint.TotalSeconds.ToString("0.###")).Append(' ');
+        args.Append("-i \"").Append(source).Append("\" ");
+        args.Append("-c:v libx264 -preset fast -crf 18 ");
+        args.Append("-c:a aac -b:a 192k ");
+        args.Append('"').Append(outputPath).Append('"');
+        RunWithProgress(args.ToString(), durationMs, cancellationToken, onProgress);
+    }
+
+    private void RunWithProgress(
+        string arguments,
+        double totalDurationMs,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = _ffmpegPath,
+            Arguments = arguments,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardErrorEncoding = Encoding.UTF8,
+            StandardOutputEncoding = Encoding.UTF8,
+        };
+        using var process = new Process { StartInfo = psi };
+        process.Start();
+        var stderrTask = process.StandardError.ReadLineAsync();
+        while (!process.HasExited)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            // ffmpeg progress reports as "time=HH:MM:SS.ff" on stderr.
+            // We read line-by-line to avoid buffering huge output.
+            var line = ReadLine(process.StandardError);
+            if (line is not null && ParseFfmpegTimeMs(line, out var tMs))
+            {
+                var ratio = totalDurationMs > 0 ? tMs / totalDurationMs : 0;
+                if (ratio > 1) ratio = 1;
+                onProgress?.Invoke(ratio);
+            }
+            System.Threading.Thread.Sleep(50);
+        }
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException($"ffmpeg failed (exit {process.ExitCode}).");
+    }
+
+    private (int exitCode, string stderr) Run(string arguments, CancellationToken cancellationToken)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = _ffmpegPath,
+            Arguments = arguments,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardErrorEncoding = Encoding.UTF8,
+            StandardOutputEncoding = Encoding.UTF8,
+        };
+        using var process = new Process { StartInfo = psi };
+        process.Start();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        while (!process.HasExited)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            System.Threading.Thread.Sleep(20);
+        }
+        var stderr = stderrTask.GetAwaiter().GetResult();
+        return (process.ExitCode, stderr);
+    }
+
+    private static string? ReadLine(System.IO.StreamReader reader)
+    {
+        try { return reader.ReadLine(); }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Parses "time=HH:MM:SS.ff" from a stderr line; returns false on no match.
+    /// </summary>
+    public static bool ParseFfmpegTimeMs(string line, out double totalMs)
+    {
+        totalMs = 0;
+        var idx = line.IndexOf("time=", StringComparison.Ordinal);
+        if (idx < 0) return false;
+        idx += "time=".Length;
+        var end = idx;
+        while (end < line.Length && (char.IsDigit(line[end]) || line[end] is ':' or '.' or '-')) end++;
+        var token = line.Substring(idx, end - idx);
+        // HH:MM:SS.ff or SS.ff
+        if (!TimeSpan.TryParse(token, out var ts)) return false;
+        totalMs = ts.TotalMilliseconds;
+        return true;
+    }
+}

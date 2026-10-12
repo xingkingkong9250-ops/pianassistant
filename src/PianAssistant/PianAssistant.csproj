@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- 版本号唯一来源；脚本与界面均从此读取，禁止在别处硬编码 -->
+    <Version>0.1.0</Version>
+    <AssemblyName>PianAssistant</AssemblyName>
+    <RootNamespace>PianAssistant</RootNamespace>
+    <Product>拉片助手</Product>
+    <AssemblyTitle>拉片助手 (PianAssistant)</AssemblyTitle>
+    <Copyright>Copyright © 2026 PianAssistant. 保留所有权利.</Copyright>
+    <Description>面向编导的视频拉片辅助工具：多格式播放、快速截图、片段截取、专业快捷键</Description>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PianAssistant.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LibVLCSharp" Version="3.8.2" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.8.2" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
+  </ItemGroup>
+
+  <!-- ffmpeg/ffprobe 随包携带：不依赖用户系统 PATH；M0 起即放此目录 -->
+  <ItemGroup>
+    <Content Include="Tools\ffmpeg\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>tools\ffmpeg\%(RecursiveDir)%(FileName)%(Extension)</Link>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
+</Project>

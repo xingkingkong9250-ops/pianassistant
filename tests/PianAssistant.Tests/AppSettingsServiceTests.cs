@@ -1,0 +1,115 @@
+using System.IO;
+using PianAssistant.Models;
+using PianAssistant.Services;
+using Xunit;
+
+namespace PianAssistant.Tests;
+
+public class AppSettingsServiceTests : IDisposable
+{
+    private readonly string _tempDir;
+
+    public AppSettingsServiceTests()
+    {
+        _tempDir = Path.Combine(Path.GetTempPath(), $"pian-assistant-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_tempDir);
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_tempDir, true); } catch { }
+    }
+
+    [Fact]
+    public void Defaults_ScreenshotsDirectory_UnderDataRoot()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        var expected = Path.Combine(_tempDir, "screenshots");
+        Assert.Equal(expected, svc.ScreenshotsDirectory);
+    }
+
+    [Fact]
+    public void Defaults_ClipsDirectory_UnderDataRoot()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        var expected = Path.Combine(_tempDir, "clips");
+        Assert.Equal(expected, svc.ClipsDirectory);
+    }
+
+    [Fact]
+    public void Defaults_SnapshotFormat_IsPng()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        Assert.Equal("png", svc.SnapshotFormat);
+    }
+
+    [Fact]
+    public void AddRecentFile_InsertsAtFront()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        svc.AddRecentFile("a.mp4");
+        svc.AddRecentFile("b.mp4");
+        Assert.Equal("b.mp4", svc.RecentFiles[0]);
+        Assert.Equal("a.mp4", svc.RecentFiles[1]);
+    }
+
+    [Fact]
+    public void AddRecentFile_Deduplicates()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        svc.AddRecentFile("a.mp4");
+        svc.AddRecentFile("b.mp4");
+        svc.AddRecentFile("a.mp4"); // re-add → moves to front, not duplicate
+        Assert.Equal(2, svc.RecentFiles.Count);
+        Assert.Equal("a.mp4", svc.RecentFiles[0]);
+    }
+
+    [Fact]
+    public void AddRecentFile_CapsAt10()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        for (int i = 0; i < 15; i++)
+            svc.AddRecentFile($"file{i}.mp4");
+        Assert.Equal(10, svc.RecentFiles.Count);
+        Assert.Equal("file14.mp4", svc.RecentFiles[0]);
+    }
+
+    [Fact]
+    public void SetHotkeyOverride_PersistsAcrossInstances()
+    {
+        var svc1 = new AppSettingsService(_tempDir);
+        svc1.SetHotkeyOverride(HotkeyAction.PlayPause, "Ctrl+P");
+
+        var svc2 = new AppSettingsService(_tempDir);
+        var overrides = svc2.GetHotkeyOverrides();
+        Assert.True(overrides.ContainsKey(HotkeyAction.PlayPause));
+        Assert.Equal("Ctrl+P", overrides[HotkeyAction.PlayPause]);
+    }
+
+    [Fact]
+    public void ClearHotkeyOverride_RemovesOverride()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        svc.SetHotkeyOverride(HotkeyAction.PlayPause, "Ctrl+P");
+        svc.ClearHotkeyOverride(HotkeyAction.PlayPause);
+        Assert.Empty(svc.GetHotkeyOverrides());
+    }
+
+    [Fact]
+    public void SetSnapshotFormat_InvalidValue_Throws()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        Assert.Throws<ArgumentException>(() => svc.SetSnapshotFormat("gif"));
+    }
+
+    [Fact]
+    public void SetOutputDirectories_Persists()
+    {
+        var svc1 = new AppSettingsService(_tempDir);
+        svc1.SetOutputDirectories("/custom/screens", "/custom/clips");
+
+        var svc2 = new AppSettingsService(_tempDir);
+        Assert.Equal("/custom/screens", svc2.ScreenshotsDirectory);
+        Assert.Equal("/custom/clips", svc2.ClipsDirectory);
+    }
+}
