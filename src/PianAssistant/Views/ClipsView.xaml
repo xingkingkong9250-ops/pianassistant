@@ -1,0 +1,150 @@
+<UserControl x:Class="PianAssistant.Views.ClipsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#161616" Foreground="#E8E8E8">
+
+    <UserControl.Resources>
+        <Style x:Key="PanelButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#606060" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="AccentPanelButton" TargetType="Button" BasedOn="{StaticResource PanelButton}">
+            <Setter Property="Background" Value="#1A6B8A" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2480A0" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- 底部：批量进度 + 导出/拼接/取消 -->
+        <Border DockPanel.Dock="Bottom" Background="#1A1A1A" Padding="10,8"
+                BorderBrush="#2A2A2A" BorderThickness="0,1,0,0">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar Grid.Column="0" Height="6" Minimum="0" Maximum="1"
+                                 Value="{Binding BatchProgress, Mode=OneWay}"
+                                 Foreground="#1A6B8A" Background="#2A2A2A" BorderThickness="0" />
+                    <TextBlock Grid.Column="1" Text="{Binding BatchProgress, StringFormat={}{0:P0}}"
+                               Foreground="#999999" FontFamily="Consolas" FontSize="11"
+                               VerticalAlignment="Center" Margin="8,0,0,0" />
+                </Grid>
+                <DockPanel Margin="0,8,0,0">
+                    <Button DockPanel.Dock="Right" Content="✕ 取消" Style="{StaticResource PanelButton}"
+                            Command="{Binding CancelBatchCommand}" ToolTip="取消当前批量任务" />
+                    <Button DockPanel.Dock="Right" Content="🔗 拼接导出" Style="{StaticResource AccentPanelButton}"
+                            Command="{Binding ConcatSelectedCommand}"
+                            ToolTip="把同源片段按顺序无损拼接为一个文件" />
+                    <Button DockPanel.Dock="Right" Content="▶ 全部导出" Style="{StaticResource PanelButton}"
+                            Command="{Binding ExtractAllCommand}"
+                            ToolTip="批量导出全部完整片段（流复制）" />
+                    <TextBlock Text="" />
+                </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 顶部：搜索框 + 计数 -->
+        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="10,8"
+                BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding FilteredItems.Count, StringFormat={}{0} 个片段}"
+                           Foreground="#999999" FontFamily="Consolas" FontSize="11"
+                           VerticalAlignment="Center" Margin="8,0,0,0" />
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center" Padding="6,4"
+                         Background="#1F1F1F" Foreground="#E8E8E8" BorderBrush="#2A2A2A"
+                         ToolTip="搜索片段标签：支持 #标签（如 #高光）或普通文本" />
+            </DockPanel>
+        </Border>
+
+        <!-- 队列列表：每项 入点→出点 / 时长 / 状态 -->
+        <ListBox ItemsSource="{Binding FilteredQueue}"
+                 SelectedItem="{Binding SelectedQueueItem, Mode=TwoWay}"
+                 Background="Transparent" BorderThickness="0" Margin="0,4"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <Border x:Name="bd" Background="Transparent"
+                                        CornerRadius="4" Padding="0" Margin="4,2">
+                                    <ContentPresenter />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#22384A" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Padding="8,6" Margin="4,2" CornerRadius="4"
+                            Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1">
+                        <StackPanel>
+                            <DockPanel>
+                                <!-- 状态（右） -->
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Status}"
+                                           FontFamily="Consolas" FontSize="11"
+                                           Foreground="#4EC9B0" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                <!-- 入点→出点 -->
+                                <TextBlock Text="{Binding RangeText}" FontFamily="Consolas"
+                                           FontSize="12" Foreground="#CE9178" />
+                            </DockPanel>
+                            <DockPanel Margin="0,3,0,0">
+                                <!-- 时长（右） -->
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding DurationText}"
+                                           FontFamily="Consolas" FontSize="11"
+                                           Foreground="#888888" />
+                                <!-- 标签 -->
+                                <TextBlock Text="{Binding Label}" FontSize="11"
+                                           Foreground="#AAAAAA" TextTrimming="CharacterEllipsis" />
+                            </DockPanel>
+                            <!-- 单项进度（导出中显示） -->
+                            <ProgressBar Height="3" Minimum="0" Maximum="1" Margin="0,5,0,0"
+                                         Value="{Binding Progress, Mode=OneWay}"
+                                         Foreground="#1A6B8A" Background="#2A2A2A" BorderThickness="0" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

@@ -7,6 +7,25 @@
 
 ## [Unreleased]
 
+### v0.6.0 — M4 截图与片段管理（NO.M，2026-10-12）
+
+#### 新增
+
+- **截图画廊**：`GalleryWindow`（WrapPanel 网格 160×90 缩略图），双击放大、
+  ←/→ 翻页、Esc 返回，右键打开文件夹/标注/删除；入口：截图标签「🖼 画廊」+ 顶部工具栏
+- **截图标注**：`AnnotationWindow` 五模式（选择/画笔 InkCanvas/箭头/文字/裁剪）
+  + 四色三粗细，RenderTargetBitmap 合成保存 `原名_annotated.png` 副本，不改原图
+- **片段批量导出 UI**：侧边栏新增「📦 片段」面板（ClipsView），队列状态
+  （等待/导出中 x%/完成/失败/已取消）+ 单项进度条 + 整体进度 + 取消按钮
+- **片段拼接**：`ConcatService`（先流复制导出临时段 → ffmpeg concat demuxer `-c copy`），
+  跨源/不完整片段抛异常；「🔗 拼接导出」按钮
+- **导出目录管理**：`OrganizeByDate`（按 yyyyMMdd 子目录）+ `ProjectSubfolderName`
+  （项目名层级），`OutputDirectoryResolver` 统一解析，设置窗可配
+- **标签与筛选**：画廊/片段面板搜索框，Label 忽略大小写包含匹配（`#标签` 可命中），
+  截图支持日期范围过滤
+- 测试：新增 41 项（Concat/OutputDirectoryResolver/Gallery/ClipList/ScreenshotGallery），
+  共 **150 项全绿**
+
 ### v0.5.0 — M2 笔记与标记增强（NO.M，2026-10-12）
 
 #### 新增

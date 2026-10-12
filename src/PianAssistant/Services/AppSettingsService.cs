@@ -71,6 +71,22 @@ public sealed class AppSettingsService
         set { _settings.GlobalHotkeysEnabled = value; Save(); }
     }
 
+    /// <summary>截图/片段是否按日期（yyyyMMdd）分子目录。</summary>
+    public bool OrganizeByDate => _settings.OrganizeByDate;
+
+    /// <summary>项目名子目录；null/空白表示未启用。</summary>
+    public string? ProjectSubfolderName => _settings.ProjectSubfolderName;
+
+    /// <summary>设置输出目录组织选项（按日期分目录 + 项目名子目录）。</summary>
+    public void SetOrganizationOptions(bool byDate, string? projectName)
+    {
+        _settings.OrganizeByDate = byDate;
+        _settings.ProjectSubfolderName = string.IsNullOrWhiteSpace(projectName)
+            ? null
+            : projectName.Trim();
+        Save();
+    }
+
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
 
     public void AddRecentFile(string path)
@@ -157,6 +173,10 @@ public sealed class AppSettings
     public double RateStep { get; set; } = 0.25;
     /// <summary>是否启用全局热键（应用失焦时 S 键截图；默认关闭）。</summary>
     public bool GlobalHotkeysEnabled { get; set; } = false;
+    /// <summary>输出是否按日期（yyyyMMdd）分子目录（默认关闭）。</summary>
+    public bool OrganizeByDate { get; set; } = false;
+    /// <summary>项目名子目录（非空时在日期层下再建一层；默认 null）。</summary>
+    public string? ProjectSubfolderName { get; set; }
 }
 
 [JsonSerializable(typeof(AppSettings))]

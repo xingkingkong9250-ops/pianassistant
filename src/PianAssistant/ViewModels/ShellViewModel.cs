@@ -27,12 +27,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ScreenshotGalleryViewModel Screenshots { get; }
     public SettingsViewModel Settings { get; }
 
-    /// <summary>Currently visible sidebar panel (Playlist or Notes).</summary>
+    /// <summary>Currently visible sidebar panel (Playlist / Notes / Clips).</summary>
     public SidebarPanel ActivePanel
     {
         get => _activePanel;
-        set => SetProperty(ref _activePanel, value);
+        set
+        {
+            if (SetProperty(ref _activePanel, value))
+                OnPropertyChanged(nameof(ActivePanelTitle));
+        }
     }
+
+    /// <summary>侧边栏面板标题（面板头显示用）。</summary>
+    public string ActivePanelTitle => _activePanel switch
+    {
+        SidebarPanel.Playlist => "播放列表",
+        SidebarPanel.Notes => "笔记",
+        SidebarPanel.Clips => "📦 片段导出",
+        _ => string.Empty,
+    };
 
     public bool IsFullscreen
     {
@@ -47,6 +60,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand ExitCommand { get; }
     public ICommand ShowPlaylistCommand { get; }
     public ICommand ShowNotesCommand { get; }
+    /// <summary>切换到片段批量导出面板。</summary>
+    public ICommand ShowClipsCommand { get; }
+    /// <summary>打开截图画廊窗口（View 层订阅 GalleryRequested 创建窗口）。</summary>
+    public ICommand ShowGalleryCommand { get; }
     public ICommand OpenSettingsCommand { get; }
     /// <summary>跳到上一个活动标记（[ 键）。</summary>
     public ICommand PreviousNoteCommand { get; }
@@ -58,6 +75,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public event EventHandler<string>? OpenFileRequested;
     public event EventHandler? ExitRequested;
     public event EventHandler? SettingsRequested;
+    /// <summary>打开截图画廊窗口（View 层负责创建/聚焦窗口）。</summary>
+    public event EventHandler? GalleryRequested;
 
     public ShellViewModel(ServiceRegistry services, bool ownsServices = true)
     {
@@ -72,7 +91,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Playlist = new PlaylistViewModel();
         // Notes needs the current playback position to timestamp new notes.
         Notes = new NotesViewModel(() => Player.Position);
-        Clips = new ClipListViewModel();
+        // 片段批量导出：抽取走 ffmpeg 服务；拼接走 ConcatService（均经 Task.Run 保持异步）。
+        Clips = new ClipListViewModel(
+            (range, reencode, ct, onProgress) =>
+                System.Threading.Tasks.Task.Run(
+                    () => services.Clips.Extract(range, reencode, ct, onProgress)),
+            (ranges, outputPath, ct, onProgress) =>
+                services.Concats.ConcatAsync(ranges, outputPath, ct, onProgress));
         Screenshots = new ScreenshotGalleryViewModel();
         Settings = new SettingsViewModel(services.Settings, services.Hotkeys);
 
@@ -121,6 +146,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             () => ActivePanel = SidebarPanel.Playlist);
         ShowNotesCommand = new RelayCommand(
             () => ActivePanel = SidebarPanel.Notes);
+        ShowClipsCommand = new RelayCommand(
+            () => ActivePanel = SidebarPanel.Clips);
+        ShowGalleryCommand = new RelayCommand(
+            () => GalleryRequested?.Invoke(this, EventArgs.Empty));
         ExitCommand = new RelayCommand(() => ExitRequested?.Invoke(this, EventArgs.Empty));
         OpenSettingsCommand = new RelayCommand(
             () => SettingsRequested?.Invoke(this, EventArgs.Empty));

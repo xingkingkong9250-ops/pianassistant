@@ -1,0 +1,188 @@
+<Window x:Class="PianAssistant.Views.GalleryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:PianAssistant.Views"
+        Title="截图画廊 — 拉片助手"
+        Width="960" Height="640"
+        WindowStartupLocation="CenterOwner"
+        Background="#0F0F0F" Foreground="#E8E8E8"
+        FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="13">
+
+    <Window.Resources>
+        <!-- 按钮基础样式（与 MainWindow 一致的深色风格） -->
+        <Style x:Key="IconButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="Margin" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3D3D3D" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#505050" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#606060" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Background" Value="#1A6B8A" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2480A0" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- 顶部：搜索框 + 计数 -->
+        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="10,8"
+                BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding CounterText}"
+                           Foreground="#999999" FontFamily="Consolas" FontSize="12"
+                           VerticalAlignment="Center" Margin="10,0,0,0" />
+                <TextBox Text="{Binding Gallery.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         VerticalContentAlignment="Center" Padding="6,4"
+                         Background="#1F1F1F" Foreground="#E8E8E8" BorderBrush="#2A2A2A"
+                         ToolTip="搜索截图标签：支持 #标签（如 #构图）或普通文本" />
+            </DockPanel>
+        </Border>
+
+        <!-- 网格模式：WrapPanel 缩略图（每项 160×90） -->
+        <ScrollViewer x:Name="GridView" VerticalScrollBarVisibility="Auto" Background="#161616">
+            <ScrollViewer.Style>
+                <Style TargetType="ScrollViewer">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsViewerMode}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ScrollViewer.Style>
+            <ListBox ItemsSource="{Binding Items}"
+                     SelectedItem="{Binding Current, Mode=TwoWay}"
+                     Background="Transparent" BorderThickness="0" Margin="4"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     MouseDoubleClick="OnItemDoubleClick">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="bd" Background="Transparent"
+                                            CornerRadius="4" Padding="2">
+                                        <ContentPresenter />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#1A6B8A" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Width="160" Margin="4" CornerRadius="4"
+                                Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1">
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="📂 打开所在文件夹" Click="OnOpenFolder" />
+                                    <MenuItem Header="✏ 标注" Click="OnAnnotate" />
+                                    <MenuItem Header="🗑 删除" Click="OnRemove" />
+                                </ContextMenu>
+                            </Border.ContextMenu>
+                            <StackPanel>
+                                <!-- 160×90 缩略图 -->
+                                <Border Width="160" Height="90" ClipToBounds="True" Background="#000000">
+                                    <Image Source="{Binding OutputPath}" Stretch="UniformToFill"
+                                           RenderOptions.BitmapScalingMode="HighQuality" />
+                                </Border>
+                                <TextBlock Text="{Binding Position, StringFormat='mm\\:ss\\.fff'}"
+                                           HorizontalAlignment="Center" FontFamily="Consolas"
+                                           FontSize="11" Foreground="#4EC9B0" Padding="0,3" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </ScrollViewer>
+
+        <!-- 大图查看模式：全幅图片 + 底部计数/时间码/翻页 -->
+        <Grid x:Name="ViewerPanel" Background="#0F0F0F"
+              MouseRightButtonDown="OnViewerRightClick">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsViewerMode}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+            <Image Source="{Binding Current.OutputPath}" Stretch="Uniform" Margin="8,8,8,52"
+                   RenderOptions.BitmapScalingMode="HighQuality" />
+            <!-- 底部状态栏 -->
+            <Border VerticalAlignment="Bottom" Background="#1A1A1A" Padding="12,7"
+                    BorderBrush="#2A2A2A" BorderThickness="0,1,0,0">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="◀" Style="{StaticResource IconButton}"
+                                Command="{Binding PreviousImageCommand}"
+                                ToolTip="上一张（←）" FontSize="14" />
+                        <Button Content="▶" Style="{StaticResource IconButton}"
+                                Command="{Binding NextImageCommand}"
+                                ToolTip="下一张（→）" FontSize="14" />
+                        <Button Content="📂" Style="{StaticResource IconButton}"
+                                Command="{Binding OpenInExplorerCommand}"
+                                ToolTip="打开所在文件夹" />
+                        <Button Content="✏ 标注" Style="{StaticResource IconButton}"
+                                Command="{Binding AnnotateCommand}" ToolTip="标注此截图" />
+                        <Button Content="🗑 删除" Style="{StaticResource IconButton}"
+                                Command="{Binding RemoveCommand}" ToolTip="从画廊删除" />
+                        <Button Content="返回网格" Style="{StaticResource AccentButton}"
+                                Command="{Binding ExitViewerCommand}"
+                                ToolTip="返回网格（Esc）" Margin="6,0,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CounterText}" Foreground="#CCCCCC"
+                                   FontFamily="Consolas" FontSize="13" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding PositionText}" Foreground="#4EC9B0"
+                                   FontFamily="Consolas" FontSize="13"
+                                   VerticalAlignment="Center" Margin="16,0,0,0" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

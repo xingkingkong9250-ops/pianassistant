@@ -16,12 +16,16 @@ public sealed class ScreenshotService
     private readonly FfmpegRunner _ffmpeg;
     private readonly string _outputDirectory;
     private readonly string _format; // "png" or "jpg"
+    private readonly bool _organizeByDate;
+    private readonly string? _projectSubfolder;
 
     public ScreenshotService(
         IVideoPlayback playback,
         FfmpegRunner ffmpeg,
         string outputDirectory,
-        string format = "png")
+        string format = "png",
+        bool organizeByDate = false,
+        string? projectSubfolder = null)
     {
         ArgumentNullException.ThrowIfNull(playback);
         ArgumentNullException.ThrowIfNull(ffmpeg);
@@ -32,6 +36,8 @@ public sealed class ScreenshotService
         _ffmpeg = ffmpeg;
         _outputDirectory = outputDirectory;
         _format = format;
+        _organizeByDate = organizeByDate;
+        _projectSubfolder = projectSubfolder;
     }
 
     public string OutputDirectory => _outputDirectory;
@@ -45,12 +51,15 @@ public sealed class ScreenshotService
     {
         if (_playback.CurrentPath is null)
             throw new InvalidOperationException("No media is open.");
-        Directory.CreateDirectory(_outputDirectory);
+        // 按组织选项解析本次输出目录（日期/项目子目录），确保存在
+        var outputDir = OutputDirectoryResolver.Resolve(
+            _outputDirectory, _organizeByDate, _projectSubfolder, DateTime.Now);
+        Directory.CreateDirectory(outputDir);
 
         var source = Path.GetFileNameWithoutExtension(_playback.CurrentPath);
         var pos = _playback.Position;
         var stamp = $"{source}_{TimeCodeFormatter.ToFileNameFragment(pos)}_{DateTime.Now:yyyyMMddHHmmss}.{_format}";
-        var outputPath = Path.Combine(_outputDirectory, stamp);
+        var outputPath = Path.Combine(outputDir, stamp);
         outputPath = MakeUnique(outputPath);
 
         try

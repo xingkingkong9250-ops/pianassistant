@@ -11,13 +11,18 @@ public sealed class ClipExtractionService
 {
     private readonly FfmpegRunner _ffmpeg;
     private readonly string _outputDirectory;
+    private readonly bool _organizeByDate;
+    private readonly string? _projectSubfolder;
 
-    public ClipExtractionService(FfmpegRunner ffmpeg, string outputDirectory)
+    public ClipExtractionService(FfmpegRunner ffmpeg, string outputDirectory,
+        bool organizeByDate = false, string? projectSubfolder = null)
     {
         ArgumentNullException.ThrowIfNull(ffmpeg);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);
         _ffmpeg = ffmpeg;
         _outputDirectory = outputDirectory;
+        _organizeByDate = organizeByDate;
+        _projectSubfolder = projectSubfolder;
     }
 
     public string OutputDirectory => _outputDirectory;
@@ -36,13 +41,16 @@ public sealed class ClipExtractionService
         ArgumentNullException.ThrowIfNull(range);
         if (!range.IsComplete)
             throw new InvalidOperationException("ClipRange is incomplete: out point must be set and after in.");
-        Directory.CreateDirectory(_outputDirectory);
+        // 按组织选项解析本次输出目录（日期/项目子目录），确保存在
+        var outputDir = OutputDirectoryResolver.Resolve(
+            _outputDirectory, _organizeByDate, _projectSubfolder, DateTime.Now);
+        Directory.CreateDirectory(outputDir);
 
         var sourceName = Path.GetFileNameWithoutExtension(range.SourcePath);
         var inStamp = TimeCodeFormatter.ToFileNameFragment(range.InPoint);
         var outStamp = TimeCodeFormatter.ToFileNameFragment(range.OutPoint!.Value);
         var outName = $"{sourceName}_{inStamp}-{outStamp}{(reencode ? "_rec" : "")}.mp4";
-        var outputPath = Path.Combine(_outputDirectory, outName);
+        var outputPath = Path.Combine(outputDir, outName);
         outputPath = MakeUnique(outputPath);
 
         if (reencode)

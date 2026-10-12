@@ -13,6 +13,7 @@ public sealed class ServiceRegistry
     public IVideoPlayback Playback { get; }
     public ScreenshotService Screenshots { get; }
     public ClipExtractionService Clips { get; }
+    public ConcatService Concats { get; }
     public FfmpegRunner Ffmpeg { get; }
     public HotkeyService Hotkeys { get; }
     public ProjectDatabase Database { get; }
@@ -24,6 +25,7 @@ public sealed class ServiceRegistry
         IVideoPlayback playback,
         ScreenshotService screenshots,
         ClipExtractionService clips,
+        ConcatService concats,
         FfmpegRunner ffmpeg,
         HotkeyService hotkeys,
         ProjectDatabase database,
@@ -34,6 +36,7 @@ public sealed class ServiceRegistry
         Playback = playback ?? throw new ArgumentNullException(nameof(playback));
         Screenshots = screenshots ?? throw new ArgumentNullException(nameof(screenshots));
         Clips = clips ?? throw new ArgumentNullException(nameof(clips));
+        Concats = concats ?? throw new ArgumentNullException(nameof(concats));
         Ffmpeg = ffmpeg ?? throw new ArgumentNullException(nameof(ffmpeg));
         Hotkeys = hotkeys ?? throw new ArgumentNullException(nameof(hotkeys));
         Database = database ?? throw new ArgumentNullException(nameof(database));
@@ -52,8 +55,11 @@ public sealed class ServiceRegistry
         var ffmpeg = FfmpegRunner.FromBundledTools();
         var playback = new VideoPlaybackService();
         var screenshots = new ScreenshotService(
-            playback, ffmpeg, settings.ScreenshotsDirectory, settings.SnapshotFormat);
-        var clips = new ClipExtractionService(ffmpeg, settings.ClipsDirectory);
+            playback, ffmpeg, settings.ScreenshotsDirectory, settings.SnapshotFormat,
+            settings.OrganizeByDate, settings.ProjectSubfolderName);
+        var clips = new ClipExtractionService(ffmpeg, settings.ClipsDirectory,
+            settings.OrganizeByDate, settings.ProjectSubfolderName);
+        var concats = new ConcatService(ffmpeg);
         var hotkeys = new HotkeyService();
         foreach (var kv in settings.GetHotkeyOverrides())
             hotkeys.SetCustom(kv.Key, kv.Value);
@@ -65,7 +71,7 @@ public sealed class ServiceRegistry
         var repository = new ProjectRepository(database);
         var projects = new ProjectService(database, repository, settings);
 
-        return new ServiceRegistry(settings, playback, screenshots, clips, ffmpeg, hotkeys,
-            database, repository, projects);
+        return new ServiceRegistry(settings, playback, screenshots, clips, concats, ffmpeg,
+            hotkeys, database, repository, projects);
     }
 }

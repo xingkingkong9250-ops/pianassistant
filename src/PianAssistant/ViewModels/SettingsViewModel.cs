@@ -20,6 +20,8 @@ public sealed class SettingsViewModel : ObservableObject
     private HotkeyAction _selectedAction;
     private string _editingGesture = string.Empty;
     private bool _globalHotkeysEnabled;
+    private bool _organizeByDate;
+    private string? _projectSubfolderName;
 
     public SettingsViewModel(AppSettingsService settings, HotkeyService hotkeys)
     {
@@ -33,6 +35,8 @@ public sealed class SettingsViewModel : ObservableObject
         _snapshotFormat = settings.SnapshotFormat;
         _selectedAction = HotkeyAction.PlayPause;
         _globalHotkeysEnabled = settings.GlobalHotkeysEnabled;
+        _organizeByDate = settings.OrganizeByDate;
+        _projectSubfolderName = settings.ProjectSubfolderName;
 
         BrowseScreenshotsCommand = new RelayCommand(BrowseScreenshots);
         BrowseClipsCommand = new RelayCommand(BrowseClips);
@@ -69,6 +73,20 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _globalHotkeysEnabled;
         set => SetProperty(ref _globalHotkeysEnabled, value);
+    }
+
+    /// <summary>输出是否按日期（yyyyMMdd）分子目录。</summary>
+    public bool OrganizeByDate
+    {
+        get => _organizeByDate;
+        set => SetProperty(ref _organizeByDate, value);
+    }
+
+    /// <summary>项目名子目录（空视为不启用）。</summary>
+    public string? ProjectSubfolderName
+    {
+        get => _projectSubfolderName;
+        set => SetProperty(ref _projectSubfolderName, value);
     }
 
     /// <summary>Currently selected hotkey action for inline editing.</summary>
@@ -158,6 +176,7 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.SetOutputDirectories(_screenshotsDirectory, _clipsDirectory);
         _settings.SetSnapshotFormat(_snapshotFormat);
         _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
+        _settings.SetOrganizationOptions(_organizeByDate, _projectSubfolderName);
         Saved?.Invoke(this, EventArgs.Empty);
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }

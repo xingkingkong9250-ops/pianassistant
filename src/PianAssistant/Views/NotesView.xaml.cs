@@ -79,6 +79,45 @@ public partial class NotesView : UserControl
             Vm.JumpTo(entry.Position);
     }
 
+    // --- 截图右键菜单（画廊入口/标注/删除）---
+
+    /// <summary>打开截图画廊窗口。</summary>
+    private void OnOpenGallery(object sender, RoutedEventArgs e)
+    {
+        (Window.GetWindow(this) as MainWindow)?.OpenGallery();
+    }
+
+    /// <summary>在资源管理器中定位截图文件。</summary>
+    private void OnScreenshotOpenFolder(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is ScreenshotEntry entry &&
+            Window.GetWindow(this) is MainWindow main)
+            main.Shell?.Screenshots.OpenInExplorer(entry);
+    }
+
+    /// <summary>打开标注编辑器（保存后副本自动加回画廊）。</summary>
+    private void OnScreenshotAnnotate(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is ScreenshotEntry entry &&
+            Window.GetWindow(this) is MainWindow main)
+            main.OpenAnnotation(entry);
+    }
+
+    /// <summary>从画廊与笔记面板删除该截图。</summary>
+    private void OnScreenshotDelete(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem mi && mi.DataContext is ScreenshotEntry entry &&
+            Window.GetWindow(this) is MainWindow main)
+            main.RemoveScreenshot(entry);
+    }
+
+    // --- 片段面板：跳到批量导出面板 ---
+
+    private void OnOpenClipsPanel(object sender, RoutedEventArgs e)
+    {
+        (Window.GetWindow(this) as MainWindow)?.ShowClipsPanel();
+    }
+
     private void OnSegmentClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is FrameworkElement fe && fe.DataContext is TimelineSegment seg && Vm is not null)

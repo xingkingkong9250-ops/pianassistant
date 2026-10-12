@@ -130,6 +130,79 @@ public sealed class FfmpegRunner
         RunWithProgress(args.ToString(), durationMs, cancellationToken, onProgress);
     }
 
+    /// <summary>
+    /// 使用 concat demuxer 无损拼接已导出的片段文件。
+    /// listPath 为 UTF-8（无 BOM）清单文件，每行 file '路径'。
+    /// totalDurationMs 用于把 stderr 的 time= 进度折算到 0..1。
+    /// </summary>
+    public void ConcatFiles(
+        string listPath,
+        string outputPath,
+        double totalDurationMs,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(listPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+
+        var args = new StringBuilder();
+        args.Append("-f concat -safe 0 -i \"").Append(listPath).Append("\" ");
+        args.Append("-c copy ");
+        args.Append('"').Append(outputPath).Append('"');
+        RunWithProgressParsing(args.ToString(), totalDurationMs, cancellationToken, onProgress);
+    }
+
+    /// <summary>
+    /// 运行 ffmpeg 并逐行解析 stderr 的 time= 进度（取每个数据块中最后一次
+    /// 状态行，避免 \r 分隔的状态更新被合并时进度停滞）。
+    /// </summary>
+    private void RunWithProgressParsing(
+        string arguments,
+        double totalDurationMs,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = _ffmpegPath,
+            Arguments = arguments,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardErrorEncoding = Encoding.UTF8,
+            StandardOutputEncoding = Encoding.UTF8,
+        };
+        using var process = new Process { StartInfo = psi };
+        process.Start();
+        // 后台线程逐行读取 stderr 并解析进度，避免缓冲区满导致死锁
+        var stderrTask = Task.Run(() =>
+        {
+            string? line;
+            while ((line = process.StandardError.ReadLine()) is not null)
+            {
+                if (onProgress is null || totalDurationMs <= 0) continue;
+                // \r 分隔的状态行会被合并为一行，取最后一个 time= 才是最新进度
+                var idx = line.LastIndexOf("time=", StringComparison.Ordinal);
+                if (idx >= 0 && ParseFfmpegTimeMs(line[idx..], out var ms) && ms > 0)
+                    onProgress(Math.Min(1.0, ms / totalDurationMs));
+            }
+        });
+        while (!process.HasExited)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            System.Threading.Thread.Sleep(100);
+        }
+        stderrTask.GetAwaiter().GetResult(); // 等待 stderr 排空
+        if (process.ExitCode != 0)
+            throw new InvalidOperationException(
+                $"ffmpeg concat failed (exit {process.ExitCode}).");
+    }
+
     private void RunWithProgress(
         string arguments,
         double totalDurationMs,

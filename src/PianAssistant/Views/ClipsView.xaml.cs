@@ -1,0 +1,55 @@
+using System.Windows;
+using System.Windows.Controls;
+using Microsoft.Win32;
+using PianAssistant.ViewModels;
+
+namespace PianAssistant.Views;
+
+/// <summary>
+/// 片段批量导出面板：队列（入点→出点/时长/状态）、整体进度条、
+/// 全部导出 / 拼接导出 / 取消。拼接输出路径由本视图弹 SaveFileDialog 选定。
+/// </summary>
+public partial class ClipsView : UserControl
+{
+    private ClipListViewModel? Vm => DataContext as ClipListViewModel;
+
+    public ClipsView()
+    {
+        InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (e.OldValue is ClipListViewModel oldVm)
+        {
+            oldVm.ConcatRequested -= OnConcatRequested;
+            oldVm.ConcatError -= OnConcatError;
+        }
+        if (e.NewValue is ClipListViewModel newVm)
+        {
+            newVm.ConcatRequested += OnConcatRequested;
+            newVm.ConcatError += OnConcatError;
+        }
+    }
+
+    /// <summary>拼接请求：弹出保存对话框后调用 VM 的拼接任务。</summary>
+    private void OnConcatRequested(object? sender, EventArgs e)
+    {
+        var vm = Vm;
+        if (vm is null) return;
+        var dlg = new SaveFileDialog
+        {
+            Title = "拼接导出片段",
+            FileName = $"{vm.ConcatSourceName}_拼接.mp4",
+            Filter = "视频文件|*.mp4|所有文件|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+        _ = vm.ConcatSelectedAsync(dlg.FileName);
+    }
+
+    private void OnConcatError(object? sender, string message)
+    {
+        MessageBox.Show(message, "拼接导出", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+}

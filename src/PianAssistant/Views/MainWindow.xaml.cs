@@ -40,6 +40,9 @@ public partial class MainWindow : Window
     private DispatcherTimer? _mouseHideTimer;
     private static readonly TimeSpan MouseHideDelay = TimeSpan.FromSeconds(3);
 
+    // 截图画廊窗口（单例：已打开则聚焦）
+    private GalleryWindow? _galleryWindow;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -52,7 +55,8 @@ public partial class MainWindow : Window
         PreviewMouseMove += OnWindowPreviewMouseMove;
     }
 
-    private ShellViewModel? Shell => DataContext as ShellViewModel;
+    // 供子视图（NotesView 等）访问 Shell；外部只读
+    public ShellViewModel? Shell => DataContext as ShellViewModel;
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -81,6 +85,9 @@ public partial class MainWindow : Window
         // 订阅全屏切换/退出事件（由 PlayerViewModel 的 F / Esc 快捷键触发）
         shell.Player.FullscreenToggleRequested += OnFullscreenToggle;
         shell.Player.FullscreenExitRequested += OnFullscreenExit;
+
+        // 截图画廊入口（顶部 🖼 按钮）
+        shell.GalleryRequested += (_, _) => OpenGallery();
 
         // 鼠标静止隐藏定时器
         _mouseHideTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -232,6 +239,53 @@ public partial class MainWindow : Window
     }
 
     // --- 字幕拖拽到视频窗口 ---
+
+    // --- 截图画廊 / 标注（供 NotesView 等子视图调用）---
+
+    /// <summary>打开截图画廊窗口（已打开则激活）。</summary>
+    public void OpenGallery()
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        if (_galleryWindow is { IsLoaded: true })
+        {
+            _galleryWindow.Activate();
+            return;
+        }
+        _galleryWindow = new GalleryWindow
+        {
+            Owner = this,
+            DataContext = new GalleryViewModel(shell.Screenshots),
+        };
+        _galleryWindow.Closed += (_, _) => _galleryWindow = null;
+        _galleryWindow.Show();
+    }
+
+    /// <summary>打开截图标注编辑器；保存成功后把标注副本加回画廊。</summary>
+    public void OpenAnnotation(ScreenshotEntry entry)
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        var win = new AnnotationWindow(entry) { Owner = this };
+        if (win.ShowDialog() == true && win.SavedPath is not null)
+            shell.Screenshots.AddAnnotatedCopy(entry, win.SavedPath);
+    }
+
+    /// <summary>切换侧边栏到片段批量导出面板。</summary>
+    public void ShowClipsPanel()
+    {
+        if (Shell is not null)
+            Shell.ActivePanel = ViewModels.SidebarPanel.Clips;
+    }
+
+    /// <summary>从画廊与笔记面板同时移除一张截图。</summary>
+    public void RemoveScreenshot(ScreenshotEntry entry)
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        shell.Screenshots.Remove(entry);
+        shell.Notes.RemoveScreenshot(entry);
+    }
 
     // 支持的字幕扩展名
     private static readonly HashSet<string> SubtitleExtensions = new(StringComparer.OrdinalIgnoreCase)

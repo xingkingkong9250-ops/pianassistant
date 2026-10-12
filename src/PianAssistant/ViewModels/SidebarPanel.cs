@@ -1,10 +1,12 @@
 namespace PianAssistant.ViewModels;
 
 /// <summary>
-/// Sidebar panel selector: Playlist or Notes. Toggled via Tab hotkey or top button.
+/// Sidebar panel selector: Playlist, Notes or Clips (batch export).
+/// Toggled via top buttons / hotkeys.
 /// </summary>
 public enum SidebarPanel
 {
     Playlist,
     Notes,
+    Clips,
 }
