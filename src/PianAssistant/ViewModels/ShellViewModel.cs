@@ -61,7 +61,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _services = services;
         _ownsServices = ownsServices;
 
-        Player = new PlayerViewModel(services.Playback, services.Screenshots, services.Clips);
+        Player = new PlayerViewModel(
+            services.Playback, services.Screenshots, services.Clips,
+            () => services.Settings.SeekStepFrames,
+            () => services.Settings.RateStep);
         Playlist = new PlaylistViewModel();
         // Notes needs the current playback position to timestamp new notes.
         Notes = new NotesViewModel(() => Player.Position);

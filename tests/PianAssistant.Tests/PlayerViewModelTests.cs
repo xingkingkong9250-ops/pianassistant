@@ -28,7 +28,7 @@ public class PlayerViewModelTests : IDisposable
         _playback = new StubVideoPlayback { Length = TimeSpan.FromMinutes(3) };
         _screenshots = new ScreenshotService(_playback, _ffmpeg, _tempDir, "png");
         _clips = new ClipExtractionService(_ffmpeg, _tempDir);
-        _vm = new PlayerViewModel(_playback, _screenshots, _clips);
+        _vm = new PlayerViewModel(_playback, _screenshots, _clips, () => 5, () => 0.25);
     }
 
     public void Dispose()

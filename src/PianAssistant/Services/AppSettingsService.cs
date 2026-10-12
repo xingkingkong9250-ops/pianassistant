@@ -50,6 +50,20 @@ public sealed class AppSettingsService
             ? "png"
             : _settings.SnapshotFormat!;
 
+    /// <summary>方向键左右移动帧数（1~600）。</summary>
+    public int SeekStepFrames
+    {
+        get => Math.Clamp(_settings.SeekStepFrames, 1, 600);
+        set { _settings.SeekStepFrames = Math.Clamp(value, 1, 600); Save(); }
+    }
+
+    /// <summary>方向键上下倍速步长（0.05~1.0）。</summary>
+    public double RateStep
+    {
+        get => Math.Clamp(_settings.RateStep, 0.05, 1.0);
+        set { _settings.RateStep = Math.Clamp(value, 0.05, 1.0); Save(); }
+    }
+
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
 
     public void AddRecentFile(string path)
@@ -130,6 +144,10 @@ public sealed class AppSettings
     public string? SnapshotFormat { get; set; }
     public List<string> RecentFiles { get; set; } = new();
     public Dictionary<HotkeyAction, string> HotkeyOverrides { get; set; } = new();
+    /// <summary>方向键左右每次移动帧数（1~600，默认5）。</summary>
+    public int SeekStepFrames { get; set; } = 5;
+    /// <summary>方向键上下每次倍速变化量（0.05~1.0，默认0.25）。</summary>
+    public double RateStep { get; set; } = 0.25;
 }
 
 [JsonSerializable(typeof(AppSettings))]

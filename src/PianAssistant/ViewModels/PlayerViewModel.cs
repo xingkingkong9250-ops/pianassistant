@@ -16,6 +16,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private readonly IVideoPlayback _playback;
     private readonly ScreenshotService _screenshots;
     private readonly ClipExtractionService _clips;
+    private readonly Func<int> _getSeekStepFrames;
+    private readonly Func<double> _getRateStep;
     private bool _disposed;
 
     // Position binding state:
@@ -42,7 +44,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public PlayerViewModel(
         IVideoPlayback playback,
         ScreenshotService screenshots,
-        ClipExtractionService clips)
+        ClipExtractionService clips,
+        Func<int> getSeekStepFrames,
+        Func<double> getRateStep)
     {
         ArgumentNullException.ThrowIfNull(playback);
         ArgumentNullException.ThrowIfNull(screenshots);
@@ -50,6 +54,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _playback = playback;
         _screenshots = screenshots;
         _clips = clips;
+        _getSeekStepFrames = getSeekStepFrames ?? (() => 5);
+        _getRateStep = getRateStep ?? (() => 0.25);
 
         // Wire playback events.
         _playback.PositionChanged += OnPositionChanged;
@@ -98,6 +104,12 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         ClearCutPointsCommand = new RelayCommand(ClearCutPoints);
         ExportSelectedSegmentCommand = new AsyncRelayCommand(
             ExportSelectedSegmentAsync, () => !_isExtracting && HasSelectedSegment);
+
+        // 方向键自定义步长命令（支持长按连续触发）
+        SeekBackwardCustomCommand = new RelayCommand(SeekBackwardCustom, () => HasMedia);
+        SeekForwardCustomCommand = new RelayCommand(SeekForwardCustom, () => HasMedia);
+        IncreaseRateCustomCommand = new RelayCommand(IncreaseRateCustom);
+        DecreaseRateCustomCommand = new RelayCommand(DecreaseRateCustom);
     }
 
     // --- Properties ---
@@ -270,6 +282,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         TimeCodeFormatter.FormatFrames(_length, _playback.Fps);
 
     public double Fps => _playback.Fps;
+    /// <summary>当前帧步长（从设置读取）。</summary>
+    public int SeekStepFrames => _getSeekStepFrames();
+    /// <summary>当前倍速步长（从设置读取）。</summary>
+    public double RateStep => _getRateStep();
     public int VideoWidth => _playback.Width;
     public int VideoHeight => _playback.Height;
     public string? CurrentPath => _playback.CurrentPath;
@@ -303,6 +319,11 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand RemoveLastCutPointCommand { get; }
     public ICommand ClearCutPointsCommand { get; }
     public AsyncRelayCommand ExportSelectedSegmentCommand { get; }
+    // 方向键自定义步长命令
+    public ICommand SeekBackwardCustomCommand { get; }
+    public ICommand SeekForwardCustomCommand { get; }
+    public ICommand IncreaseRateCustomCommand { get; }
+    public ICommand DecreaseRateCustomCommand { get; }
 
     // --- Events ---
 
@@ -369,6 +390,38 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             }
         }
         Rate = RateSteps[0];
+    }
+
+    /// <summary>方向键左：按自定义帧数×倍率后退（长按连续触发）。</summary>
+    private void SeekBackwardCustom()
+    {
+        var fps = Math.Max(_playback.Fps, 1.0);
+        var frames = _getSeekStepFrames() * Math.Max(_rate, 1.0);
+        var delta = TimeSpan.FromSeconds(-frames / fps);
+        _playback.SeekRelative(delta);
+    }
+
+    /// <summary>方向键右：按自定义帧数×倍率快进（长按连续触发）。</summary>
+    private void SeekForwardCustom()
+    {
+        var fps = Math.Max(_playback.Fps, 1.0);
+        var frames = _getSeekStepFrames() * Math.Max(_rate, 1.0);
+        var delta = TimeSpan.FromSeconds(frames / fps);
+        _playback.SeekRelative(delta);
+    }
+
+    /// <summary>方向键上：按自定义步长增加倍速（长按连续触发）。</summary>
+    private void IncreaseRateCustom()
+    {
+        var step = _getRateStep();
+        Rate = Math.Clamp(_rate + step, 0.25, 4.0);
+    }
+
+    /// <summary>方向键下：按自定义步长降低倍速（长按连续触发）。</summary>
+    private void DecreaseRateCustom()
+    {
+        var step = _getRateStep();
+        Rate = Math.Clamp(_rate - step, 0.25, 4.0);
     }
 
     private void MarkIn() => InPoint = _position;

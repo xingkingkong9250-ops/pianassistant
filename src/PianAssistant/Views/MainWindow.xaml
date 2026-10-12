@@ -100,12 +100,7 @@
 
     <Window.InputBindings>
         <KeyBinding Key="Space" Command="{Binding Player.PlayPauseCommand}" />
-        <KeyBinding Key="Right" Command="{Binding Player.NextFrameCommand}" />
-        <KeyBinding Key="Left" Command="{Binding Player.PreviousFrameCommand}" />
-        <KeyBinding Gesture="Shift+Left" Command="{Binding Player.SeekBackward1SecondCommand}" />
-        <KeyBinding Gesture="Shift+Right" Command="{Binding Player.SeekForward1SecondCommand}" />
-        <KeyBinding Gesture="Ctrl+Left" Command="{Binding Player.SeekBackward10SecondsCommand}" />
-        <KeyBinding Gesture="Ctrl+Right" Command="{Binding Player.SeekForward10SecondsCommand}" />
+        <!-- 方向键由 PreviewKeyDown/PreviewKeyUp 处理（支持长按连续触发） -->
         <KeyBinding Key="Home" Command="{Binding Player.SeekToStartCommand}" />
         <KeyBinding Key="End" Command="{Binding Player.SeekToEndCommand}" />
         <KeyBinding Key="OemPlus" Command="{Binding Player.IncreaseRateCommand}" />
@@ -197,6 +192,28 @@
             <!-- 视频区 -->
             <Grid Grid.Column="0" Background="#000000">
                 <vlc:VideoView x:Name="VideoView" />
+
+                <!-- 方向键视觉反馈叠加层 -->
+                <Border x:Name="ArrowFeedbackOverlay" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" IsHitTestVisible="False"
+                        Visibility="Collapsed" Opacity="0">
+                    <Border.Background>
+                        <SolidColorBrush Color="Black" Opacity="0.75" />
+                    </Border.Background>
+                    <Border.RenderTransform>
+                        <ScaleTransform x:Name="ArrowFeedbackScale" ScaleX="1" ScaleY="1" />
+                    </Border.RenderTransform>
+                    <Border.RenderTransformOrigin>
+                        <Point X="0.5" Y="0.5" />
+                    </Border.RenderTransformOrigin>
+                    <StackPanel Margin="20,12" HorizontalAlignment="Center">
+                        <TextBlock x:Name="ArrowFeedbackIcon" FontSize="36" Foreground="White"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock x:Name="ArrowFeedbackText" FontFamily="Consolas" FontSize="18"
+                                   Foreground="#4EC9B0" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
                 <!-- 无视频时的大播放按钮叠加层 -->
                 <Border x:Name="EmptyStateOverlay" Background="#000000" Opacity="0.85"
                         Visibility="{Binding Player.HasMedia, Converter={x:Static views:InverseBoolToVisibilityConverter.Instance}}">
