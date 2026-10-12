@@ -48,6 +48,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand ShowPlaylistCommand { get; }
     public ICommand ShowNotesCommand { get; }
     public ICommand OpenSettingsCommand { get; }
+    /// <summary>跳到上一个活动标记（[ 键）。</summary>
+    public ICommand PreviousNoteCommand { get; }
+    /// <summary>跳到下一个活动标记（] 键）。</summary>
+    public ICommand NextNoteCommand { get; }
 
     // --- Events ---
 
@@ -120,6 +124,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         ExitCommand = new RelayCommand(() => ExitRequested?.Invoke(this, EventArgs.Empty));
         OpenSettingsCommand = new RelayCommand(
             () => SettingsRequested?.Invoke(this, EventArgs.Empty));
+        // 上/下一个活动标记跳转（转发到 Notes）
+        PreviousNoteCommand = new RelayCommand(Notes.JumpToPrevious);
+        NextNoteCommand = new RelayCommand(Notes.JumpToNext);
     }
 
     /// <summary>

@@ -1,9 +1,12 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
+using PianAssistant.Interop;
+using PianAssistant.Models;
 using PianAssistant.Services;
 using PianAssistant.ViewModels;
 using PianAssistant.Views.Controls;
@@ -18,6 +21,9 @@ public partial class MainWindow : Window
     private bool _isArrowRepeating;
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan RepeatInterval = TimeSpan.FromMilliseconds(50);
+
+    // 全局热键（可选开关：设置中启用后，应用失焦时按 S 截图）
+    private GlobalHotkeyService? _globalHotkeys;
 
     // 全屏状态
     private bool _isFullscreen;
@@ -48,6 +54,21 @@ public partial class MainWindow : Window
 
     private ShellViewModel? Shell => DataContext as ShellViewModel;
 
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        // 挂 WndProc 钩子转发 WM_HOTKEY 给全局热键服务
+        var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        source?.AddHook(WndProc);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == Win32Hotkey.WM_HOTKEY && _globalHotkeys?.HandleHotkey(wParam) == true)
+            handled = true;
+        return IntPtr.Zero;
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         var shell = Shell;
@@ -67,6 +88,43 @@ public partial class MainWindow : Window
             Interval = MouseHideDelay
         };
         _mouseHideTimer.Tick += OnMouseHideTimerTick;
+
+        // 全局热键服务（按设置决定是否注册）
+        if (_globalHotkeys is null)
+        {
+            _globalHotkeys = new GlobalHotkeyService();
+            // WndProc 回调线程触发，切回 UI 线程执行截图命令
+            _globalHotkeys.ScreenshotRequested += (_, _) =>
+                Dispatcher.BeginInvoke(() => Shell?.Player.CaptureScreenshotCommand.Execute(null));
+        }
+        ApplyGlobalHotkeySetting();
+    }
+
+    /// <summary>
+    /// 根据设置注册/注销全局热键（启动与设置窗口保存后调用）。
+    /// 仅注册截图键（手势跟随应用内快捷键映射）；不注册 Space，理由见 GlobalHotkeyService。
+    /// </summary>
+    public void ApplyGlobalHotkeySetting()
+    {
+        if (_globalHotkeys is null) return;
+        var enabled = Shell?.Services.Settings.GlobalHotkeysEnabled == true;
+        if (!enabled)
+        {
+            _globalHotkeys.Unregister();
+            return;
+        }
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var gesture = Shell!.Services.Hotkeys.Active[HotkeyAction.CaptureScreenshot];
+        if (!_globalHotkeys.TryRegisterScreenshot(hwnd, gesture))
+            System.Diagnostics.Debug.WriteLine("[MainWindow] 全局热键注册失败（可能被其他应用占用）");
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // 窗口关闭时注销全局热键
+        _globalHotkeys?.Dispose();
+        _globalHotkeys = null;
+        base.OnClosed(e);
     }
 
     // --- 全屏模式 ---

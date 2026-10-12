@@ -40,3 +40,18 @@ public sealed class InverseBoolToVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Binding.DoNothing;
 }
+
+/// <summary>
+/// 布尔转可见性：true→Visible, false→Collapsed。
+/// 用于活动条目内联编辑框等场景。
+/// </summary>
+public sealed class BoolToVisibilityConverter : IValueConverter
+{
+    public static readonly BoolToVisibilityConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is bool b && b ? Visibility.Visible : Visibility.Collapsed;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => Binding.DoNothing;
+}

@@ -35,6 +35,14 @@ public sealed class ActivityEntry : ObservableObject
         set => SetProperty(ref _label, value);
     }
 
+    private bool _isEditing;
+    /// <summary>是否处于内联编辑状态（笔记重命名用）。</summary>
+    public bool IsEditing
+    {
+        get => _isEditing;
+        set => SetProperty(ref _isEditing, value);
+    }
+
     public ActivityEntry(ActivityType type, TimeSpan position, string label,
         string? filePath = null, TimeSpan? duration = null)
     {

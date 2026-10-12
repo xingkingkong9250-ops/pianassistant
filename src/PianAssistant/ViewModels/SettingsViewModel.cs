@@ -19,6 +19,7 @@ public sealed class SettingsViewModel : ObservableObject
     private string _snapshotFormat;
     private HotkeyAction _selectedAction;
     private string _editingGesture = string.Empty;
+    private bool _globalHotkeysEnabled;
 
     public SettingsViewModel(AppSettingsService settings, HotkeyService hotkeys)
     {
@@ -31,6 +32,7 @@ public sealed class SettingsViewModel : ObservableObject
         _clipsDirectory = settings.ClipsDirectory;
         _snapshotFormat = settings.SnapshotFormat;
         _selectedAction = HotkeyAction.PlayPause;
+        _globalHotkeysEnabled = settings.GlobalHotkeysEnabled;
 
         BrowseScreenshotsCommand = new RelayCommand(BrowseScreenshots);
         BrowseClipsCommand = new RelayCommand(BrowseClips);
@@ -60,6 +62,13 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _snapshotFormat;
         set => SetProperty(ref _snapshotFormat, value);
+    }
+
+    /// <summary>是否启用全局热键（应用失焦时按 S 截图）。</summary>
+    public bool GlobalHotkeysEnabled
+    {
+        get => _globalHotkeysEnabled;
+        set => SetProperty(ref _globalHotkeysEnabled, value);
     }
 
     /// <summary>Currently selected hotkey action for inline editing.</summary>
@@ -148,6 +157,7 @@ public sealed class SettingsViewModel : ObservableObject
     {
         _settings.SetOutputDirectories(_screenshotsDirectory, _clipsDirectory);
         _settings.SetSnapshotFormat(_snapshotFormat);
+        _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
         Saved?.Invoke(this, EventArgs.Empty);
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }

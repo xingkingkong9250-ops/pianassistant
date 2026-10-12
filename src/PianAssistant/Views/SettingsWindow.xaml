@@ -72,6 +72,11 @@
             <!-- A2: Hotkey settings -->
             <TabItem Header="快捷键">
                 <DockPanel Margin="8">
+                    <!-- 全局热键开关（仅注册截图键；Space 全局拦截风险大，不提供） -->
+                    <CheckBox DockPanel.Dock="Top" Content="启用全局热键（应用失焦时按 S 截图）"
+                              IsChecked="{Binding GlobalHotkeysEnabled, Mode=TwoWay}"
+                              Margin="0,0,0,8" Foreground="#E0E0E0"
+                              ToolTip="应用未获得焦点时按 S 也可截图；仅在应用有焦点外生效" />
                     <!-- Editor for selected action -->
                     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
                         <Button DockPanel.Dock="Right" Content="应用" Click="OnApplyHotkey" />

@@ -75,9 +75,12 @@ public partial class App : Application
 
     private void ShowSettings()
     {
-        if (_services is null) return;
-        var win = new SettingsWindow { Owner = MainWindow };
+        if (_services is null || _shell is null) return;
+        // 设置窗绑定 Shell.Settings（否则所有绑定落空）
+        var win = new SettingsWindow { Owner = MainWindow, DataContext = _shell.Settings };
         win.ShowDialog();
+        // 设置保存后应用全局热键开关（注册/注销在 MainWindow）
+        (MainWindow as MainWindow)?.ApplyGlobalHotkeySetting();
     }
 
     private static void TrySignalExistingInstance()

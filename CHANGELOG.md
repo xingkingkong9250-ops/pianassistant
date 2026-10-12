@@ -7,6 +7,68 @@
 
 ## [Unreleased]
 
+### v0.5.0 — M2 笔记与标记增强（NO.M，2026-10-12）
+
+#### 新增
+
+- **笔记编辑/删除/搜索**：活动流新增「📝 活动」子标签，文本搜索（大小写不敏感）
+  + 时间范围筛选（mm:ss 解析）；笔记右键编辑（内联 TextBox，Enter 提交/Esc 取消）与删除
+- **笔记导出**：`NotesExportService`（Markdown/TXT，含时间码，截图/片段带路径），
+  活动流 📤 按钮触发 SaveFileDialog
+- **时间轴标记可视化**：`TimelineMarker` 模型 + TimelineControl `Markers` 依赖属性，
+  顶部绘制小色块（笔记=蓝/截图=青/片段=橙），与裁切红三角不冲突
+- **笔记跳转**：`[`/`]` 键跳转上/下一个活动条目（含首尾边界处理）
+- **笔记模板**：6 个拉片预设（构图/灯光/节奏/转场/表演/剪辑），AddNote 自动拼前缀，
+  输入区 ComboBox 切换
+- **全局热键**：`GlobalHotkeyService`（Win32 RegisterHotKey，仅注册截图键 S，
+  Space 因全局拦截风险不注册），设置窗开关，默认关闭
+- 测试：新增 21 项（NotesViewModel/NotesExportService），共 109 项全绿
+
+#### 修复
+
+- 设置窗缺 DataContext 导致绑定落空
+
+### v0.4.0 — M1 播放增强 + M3 项目持久化（NO.M，2026-10-12）
+
+#### M1 播放增强
+
+- **全屏模式**：F 键切换/Esc 退出，隐藏导航栏/侧边栏/时间轴/控制栏，
+  鼠标静止 3 秒自动隐藏指针
+- **播放列表增强**：拖拽重排序 + 右键菜单（删除/复制路径/资源管理器打开）
+- **多文件连续播放**：EndReached → MoveNext → 自动播放下一曲（非循环时）
+- **播放速度记忆**：每文件独立保存 Rate，Open 时自动恢复
+- **字幕加载**：拖拽 .srt/.ass/.ssa/.vtt/.sub 到视频窗口，
+  LibVLC `AddSlave(MediaSlaveType.Subtitle)` 实现
+
+#### M3 项目持久化
+
+- **SQLite 数据库**：`ProjectDatabase`（projects/screenshots/clips/notes 四表
+  + schema_version 迁移 + 索引），路径 `%APPDATA%\Qianlan_App\PianAssistant\pianassistant.db`
+- **ProjectRepository**：完整 CRUD + 级联删除 + 参数化 SQL
+- **ProjectService**：SaveProject/LoadProject/ExportProject/ImportProject（zip 打包）
+- **.paproj 项目文件**：JSON 源生成
+- **模型**：ScreenshotEntry/ClipRange/NoteEntry 新增只读 Id 属性（DB 回填）
+- 测试：新增 18 项 DB 测试，共 88 项全绿
+
+### v0.3.3 — 倍速标记（NO.P，2026-10-12）
+
+- 底部控制栏新增倍速蓝色标签（非 1.0× 时显示），`RateText`/`IsRateNormal` 属性
+- 倍速播放时方向键帧步长乘以倍率
+
+### v0.3.2 — 方向键重新设计（NO.P，2026-10-12）
+
+- 左右键：自定义帧数后退/快进（默认 5 帧，可配 1~600），长按连续触发
+  （300ms 初始延迟 + 50ms 重复间隔）
+- 上下键：自定义步长变速（默认 0.25，可配 0.05~1.0）
+- 视觉反馈：视频中央叠加图标+文字面板（600ms 淡出）
+- AppSettings 新增 SeekStepFrames/RateStep 持久化
+
+### v0.3.1 — 时间轴缩放 + 笔记面板拆分（NO.P，2026-10-12）
+
+- TimelineControl：鼠标滚轮缩放（0.5~50×）+ 自适应刻度时间标签 + PR 风格白色播放头
+- NotesView：📷截图标签（缩略图列表）/ ✂片段标签（裁切点自动分段+编号+时长）
+- ActivityEntry/TimelineSegment 新模型
+
 ### v0.3.0 — PR 风格时间轴裁切 + UI 重设计（NO.M，2026-10-12）
 
 #### 新增

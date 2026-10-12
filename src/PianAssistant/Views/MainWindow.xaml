@@ -120,6 +120,9 @@
         <KeyBinding Gesture="Ctrl+Up" Command="{Binding Player.VolumeUpCommand}" />
         <KeyBinding Gesture="Ctrl+Down" Command="{Binding Player.VolumeDownCommand}" />
         <KeyBinding Key="Tab" Command="{Binding ToggleSidebarPanelCommand}" />
+        <!-- 上/下一个活动标记跳转：[ / ]（Oem 括号键，达芬奇风格单手操作） -->
+        <KeyBinding Key="OemOpenBrackets" Command="{Binding PreviousNoteCommand}" />
+        <KeyBinding Key="OemCloseBrackets" Command="{Binding NextNoteCommand}" />
     </Window.InputBindings>
 
     <Grid x:Name="RootGrid">
@@ -285,6 +288,7 @@
                         InPoint="{Binding Player.InPoint}"
                         OutPoint="{Binding Player.OutPoint}"
                         CutPoints="{Binding Player.CutPoints}"
+                        Markers="{Binding Notes.Markers}"
                         SelectedSegmentStart="{Binding Player.SelectedSegmentStart, Mode=OneWay}"
                         SelectedSegmentEnd="{Binding Player.SelectedSegmentEnd, Mode=OneWay}"
                         SeekRequested="OnTimelineSeek"

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using PianAssistant.Models;
 
 namespace PianAssistant.Views.Controls;
 
@@ -65,6 +66,13 @@ public sealed class TimelineControl : Control
             new FrameworkPropertyMetadata(null,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>笔记/截图/片段标记点（活动流同步生成），绘制为顶部小色块。</summary>
+    public static readonly DependencyProperty MarkersProperty =
+        DependencyProperty.Register(
+            nameof(Markers), typeof(IEnumerable<TimelineMarker>), typeof(TimelineControl),
+            new FrameworkPropertyMetadata(null,
+                FrameworkPropertyMetadataOptions.AffectsRender));
+
     public static readonly DependencyProperty ScaleProperty =
         DependencyProperty.Register(
             nameof(Scale), typeof(double), typeof(TimelineControl),
@@ -116,6 +124,13 @@ public sealed class TimelineControl : Control
         set => SetValue(SelectedSegmentEndProperty, value);
     }
 
+    /// <summary>笔记/截图/片段标记点集合（模型层时间码）。</summary>
+    public IEnumerable<TimelineMarker> Markers
+    {
+        get => (IEnumerable<TimelineMarker>)GetValue(MarkersProperty);
+        set => SetValue(MarkersProperty, value);
+    }
+
     /// <summary>缩放比例：1.0=适应宽度，越大越放大。范围 0.5~50。</summary>
     public double Scale
     {
@@ -136,6 +151,27 @@ public sealed class TimelineControl : Control
 
     private bool _isDragging;
     private double _viewportWidth; // ScrollViewer 可见宽度
+    // 标记颜色画笔缓存（ColorHex → 冻结画笔）
+    private readonly Dictionary<string, SolidColorBrush> _markerBrushCache = new();
+
+    /// <summary>按十六进制颜色取冻结画笔（带缓存与兜底）。</summary>
+    private SolidColorBrush GetMarkerBrush(string colorHex)
+    {
+        if (_markerBrushCache.TryGetValue(colorHex, out var cached))
+            return cached;
+        SolidColorBrush brush;
+        try
+        {
+            brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorHex));
+        }
+        catch (FormatException)
+        {
+            brush = new SolidColorBrush(Color.FromRgb(0x80, 0x80, 0x80));
+        }
+        brush.Freeze();
+        _markerBrushCache[colorHex] = brush;
+        return brush;
+    }
 
     private static void OnScaleChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
@@ -279,6 +315,18 @@ public sealed class TimelineControl : Control
                 }
                 tri.Freeze();
                 dc.DrawGeometry(cutCapBrush, null, tri);
+            }
+        }
+
+        // --- 标记（笔记/截图/片段小色块）---
+        // 位于播放头三角下方一行（y 10~16），不与裁切点红三角（y 0~8）冲突
+        if (Markers is not null)
+        {
+            foreach (var marker in Markers)
+            {
+                var x = marker.Position.TotalMilliseconds / lenMs * w;
+                dc.DrawRectangle(GetMarkerBrush(marker.ColorHex), null,
+                    new Rect(x - 1.5, 10, 3, 6));
             }
         }
 
