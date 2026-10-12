@@ -296,13 +296,20 @@
         <!-- ═══ 底部控制栏 ═══ -->
         <Border Grid.Row="3" Background="#1A1A1A">
             <DockPanel LastChildFill="True" Margin="16,0">
-                <!-- 左侧：时间码 -->
+                <!-- 左侧：时间码 + 倍速标记 -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Player.TimeCodeDisplayString}" Foreground="#E8E8E8"
                                FontFamily="Consolas" FontSize="13" />
                     <TextBlock Text=" / " Foreground="#666666" FontFamily="Consolas" FontSize="13" Margin="2,0" />
                     <TextBlock Text="{Binding Player.LengthDisplayString}" Foreground="#999999"
                                FontFamily="Consolas" FontSize="13" />
+                    <!-- 倍速标记（非1.0×时显示） -->
+                    <Border Margin="10,0,0,0" Padding="6,2" CornerRadius="3"
+                            Background="#1A6B8A"
+                            Visibility="{Binding Player.IsRateNormal, Converter={x:Static views:InverseBoolToVisibilityConverter.Instance}}">
+                        <TextBlock Text="{Binding Player.RateText}" Foreground="White"
+                                   FontFamily="Consolas" FontSize="12" FontWeight="SemiBold" />
+                    </Border>
                 </StackPanel>
 
                 <!-- 右侧：音量 + 倍速 -->

@@ -167,9 +167,19 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         {
             var clamped = Math.Clamp(value, 0.25, 4.0);
             if (SetProperty(ref _rate, clamped))
+            {
                 _playback.SetRate(clamped);
+                OnPropertyChanged(nameof(RateText));
+                OnPropertyChanged(nameof(IsRateNormal));
+            }
         }
     }
+
+    /// <summary>倍速显示文本（如 "2.00×"）。</summary>
+    public string RateText => $"{_rate:F2}×";
+
+    /// <summary>是否为正常倍速（1.0×）。</summary>
+    public bool IsRateNormal => Math.Abs(_rate - 1.0) < 0.001;
 
     public TimeSpan? InPoint
     {
