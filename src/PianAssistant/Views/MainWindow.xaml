@@ -165,6 +165,9 @@
                             Command="{Binding Player.CaptureScreenshotCommand}" ToolTip="截图 (S)" />
                     <Button Content="🖼" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding ShowGalleryCommand}" ToolTip="截图画廊" />
+                    <Button Content="📋" Style="{StaticResource IconButton}" Padding="8,6" FontSize="15"
+                            Command="{Binding ShowBatchCommand}"
+                            ToolTip="批量文本操作（截图/片段/标记/裁切点清单）" />
                     <Button Content="✂" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.ExtractClipCommand}" ToolTip="截取片段 (Ctrl+Shift+E)" />
                     <Separator Width="1" Height="20" Background="#2A2A2A" Margin="4,0" />

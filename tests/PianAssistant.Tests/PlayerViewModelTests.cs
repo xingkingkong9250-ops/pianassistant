@@ -212,4 +212,37 @@ public class PlayerViewModelTests : IDisposable
         _playback.SimulateEndReached();
         Assert.True(_playback.IsPlaying); // auto-restarted
     }
+
+    // --- 裁切点批量重设（M5 导入/批量指令） ---
+
+    [Fact]
+    public void SetCutPoints_ReplacesCollectionSortedAndDeduped()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        // 乱序 + 列表内重复（SetCutPoints 先清空集合，重复点彼此去重）
+        var points = new[]
+        {
+            TimeSpan.FromSeconds(260),
+            TimeSpan.FromSeconds(90),
+            TimeSpan.FromSeconds(260),
+            TimeSpan.FromSeconds(10.05),
+        };
+        _vm.SetCutPoints(points);
+
+        Assert.Equal(3, _vm.CutPoints.Count); // 列表内重复的 260s 只保留一次
+        Assert.Equal(TimeSpan.FromSeconds(10.05), _vm.CutPoints[0]);
+        Assert.Equal(TimeSpan.FromSeconds(90), _vm.CutPoints[1]);
+        Assert.Equal(TimeSpan.FromSeconds(260), _vm.CutPoints[2]);
+    }
+
+    [Fact]
+    public void AddCutPointAt_InsertsInOrder()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(30));
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(20));
+        Assert.Equal(
+            new double[] { 10, 20, 30 },
+            _vm.CutPoints.Select(c => c.TotalSeconds));
+    }
 }

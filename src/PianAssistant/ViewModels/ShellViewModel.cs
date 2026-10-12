@@ -26,6 +26,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ClipListViewModel Clips { get; }
     public ScreenshotGalleryViewModel Screenshots { get; }
     public SettingsViewModel Settings { get; }
+    /// <summary>批量文本操作预览窗 VM（M5）。</summary>
+    public BatchPreviewViewModel Batch { get; }
 
     /// <summary>Currently visible sidebar panel (Playlist / Notes / Clips).</summary>
     public SidebarPanel ActivePanel
@@ -69,6 +71,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand PreviousNoteCommand { get; }
     /// <summary>跳到下一个活动标记（] 键）。</summary>
     public ICommand NextNoteCommand { get; }
+    /// <summary>打开批量文本操作窗口（View 层订阅事件创建窗口）。</summary>
+    public ICommand ShowBatchCommand { get; }
 
     // --- Events ---
 
@@ -77,6 +81,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public event EventHandler? SettingsRequested;
     /// <summary>打开截图画廊窗口（View 层负责创建/聚焦窗口）。</summary>
     public event EventHandler? GalleryRequested;
+    /// <summary>打开批量文本操作窗口（App 层负责创建窗口）。</summary>
+    public event EventHandler? ShowBatchRequested;
 
     public ShellViewModel(ServiceRegistry services, bool ownsServices = true)
     {
@@ -139,6 +145,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 非循环模式播放结束 → 自动推进播放列表
         Player.EndReached += OnPlayerEnded;
 
+        // 批量文本操作（M5）：标记/裁切点经回调分发到笔记与播放器；视频路径取当前媒体。
+        Batch = new BatchPreviewViewModel(
+            new BatchTextParser(),
+            services.Batches,
+            (text, position) => Notes.AddMarkerAt(text, position),
+            position => Player.AddCutPointAt(position),
+            () => Player.CurrentPath);
+
         // Commands.
         OpenFileCommand = new RelayCommand(RequestOpenFile);
         ToggleSidebarPanelCommand = new RelayCommand(
@@ -159,6 +173,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 上/下一个活动标记跳转（转发到 Notes）
         PreviousNoteCommand = new RelayCommand(Notes.JumpToPrevious);
         NextNoteCommand = new RelayCommand(Notes.JumpToNext);
+        // 批量文本操作窗口入口
+        ShowBatchCommand = new RelayCommand(() => ShowBatchRequested?.Invoke(this, EventArgs.Empty));
     }
 
     /// <summary>
@@ -225,6 +241,24 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         // 重新计算段
         Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
+    }
+
+    // --- 裁切点导入/导出（M5，路径由 View 层对话框确定）---
+
+    /// <summary>导出裁切点清单：每行一个裁切点，并自动生成片段行（片段 #N）。</summary>
+    public void ExportCutPoints(string path) =>
+        ClipExportService.ExportCutPoints(path, Player.CutPoints.ToList(), Player.Length);
+
+    /// <summary>
+    /// 从文本文件导入裁切点（替换现有集合；集合变化自动同步时间轴与分段列表）；
+    /// 文件中的片段行加入片段批量导出队列。
+    /// </summary>
+    public void ImportCutPoints(string path)
+    {
+        var (points, segments) = ClipExportService.ImportCutPoints(path, Player.CurrentPath);
+        Player.SetCutPoints(points);
+        foreach (var segment in segments)
+            Clips.Add(segment);
     }
 
     public void Dispose()

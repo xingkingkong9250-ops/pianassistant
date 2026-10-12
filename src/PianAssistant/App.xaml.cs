@@ -47,6 +47,7 @@ public partial class App : Application
         _shell.OpenFileRequested += (_, _) => OpenFileViaDialog();
         _shell.ExitRequested += (_, _) => Shutdown();
         _shell.SettingsRequested += (_, _) => ShowSettings();
+        _shell.ShowBatchRequested += (_, _) => ShowBatch();
 
         // Create main window manually (no StartupUri) so that DataContext
         // is set BEFORE Loaded fires — VideoView.MediaPlayer binding in
@@ -81,6 +82,14 @@ public partial class App : Application
         win.ShowDialog();
         // 设置保存后应用全局热键开关（注册/注销在 MainWindow）
         (MainWindow as MainWindow)?.ApplyGlobalHotkeySetting();
+    }
+
+    /// <summary>打开批量文本操作窗口（绑定 Shell.Batch）。</summary>
+    private void ShowBatch()
+    {
+        if (_shell is null) return;
+        var win = new BatchWindow { Owner = MainWindow, DataContext = _shell.Batch };
+        win.Show();
     }
 
     private static void TrySignalExistingInstance()

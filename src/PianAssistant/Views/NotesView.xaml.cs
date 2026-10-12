@@ -29,8 +29,16 @@ public partial class NotesView : UserControl
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.OldValue is NotesViewModel oldVm) oldVm.ExportRequested -= OnExportRequested;
-        if (e.NewValue is NotesViewModel newVm) newVm.ExportRequested += OnExportRequested;
+        if (e.OldValue is NotesViewModel oldVm)
+        {
+            oldVm.ExportRequested -= OnExportRequested;
+            oldVm.ExportReportRequested -= OnExportReportRequested;
+        }
+        if (e.NewValue is NotesViewModel newVm)
+        {
+            newVm.ExportRequested += OnExportRequested;
+            newVm.ExportReportRequested += OnExportReportRequested;
+        }
     }
 
     // --- 子标签切换 ---
@@ -254,6 +262,105 @@ public partial class NotesView : UserControl
         catch (Exception ex)
         {
             MessageBox.Show($"导出失败：{ex.Message}", "导出活动流",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // --- 整理导出（结构化 Markdown 报告，M5） ---
+
+    private void OnExportReportRequested(object? sender, EventArgs e)
+    {
+        if (Vm is null) return;
+        var main = Window.GetWindow(this) as MainWindow;
+        var currentPath = main?.Shell?.Player.CurrentPath;
+        var title = string.IsNullOrEmpty(currentPath)
+            ? "未命名视频"
+            : System.IO.Path.GetFileNameWithoutExtension(currentPath);
+        var dlg = new SaveFileDialog
+        {
+            Title = "整理导出",
+            FileName = $"拉片笔记_{DateTime.Now:yyyyMMdd_HHmm}",
+            Filter = "Markdown 文件|*.md",
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            Vm.ExportActivityReport(dlg.FileName, title);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"整理导出失败：{ex.Message}", "整理导出",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // --- 裁切点导入/导出（片段标签页，M5） ---
+
+    /// <summary>导入裁切点：View 弹对话框 → 解析预览 → 确认替换 → Shell 应用。</summary>
+    private void OnImportCutPoints(object sender, RoutedEventArgs e)
+    {
+        var shell = (Window.GetWindow(this) as MainWindow)?.Shell;
+        if (shell is null) return;
+        var dlg = new OpenFileDialog
+        {
+            Title = "导入裁切点",
+            Filter = "文本文件|*.txt|所有文件|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            // 先解析出数量供用户确认（片段行需要源视频，无打开视频时只导入裁切点）
+            var (points, segments) = ClipExportService.ImportCutPoints(
+                dlg.FileName, shell.Player.CurrentPath);
+            if (points.Count == 0 && segments.Count == 0)
+            {
+                MessageBox.Show("文件中没有可导入的裁切点/片段行。", "导入裁切点",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var summary = segments.Count > 0
+                ? $"（导入 {points.Count} 个裁切点、{segments.Count} 条片段）"
+                : $"（导入 {points.Count} 个裁切点）";
+            var confirm = MessageBox.Show(
+                $"将替换现有 {shell.Player.CutPoints.Count} 个裁切点{summary}，是否继续？",
+                "导入裁切点", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+            shell.ImportCutPoints(dlg.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"导入失败：{ex.Message}", "导入裁切点",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>导出裁切点：View 弹保存对话框 → Shell 写入清单文件。</summary>
+    private void OnExportCutPoints(object sender, RoutedEventArgs e)
+    {
+        var shell = (Window.GetWindow(this) as MainWindow)?.Shell;
+        if (shell is null) return;
+        if (shell.Player.CutPoints.Count == 0)
+        {
+            MessageBox.Show("当前没有裁切点可导出。", "导出裁切点",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dlg = new SaveFileDialog
+        {
+            Title = "导出裁切点",
+            FileName = "裁切点",
+            Filter = "文本文件|*.txt",
+        };
+        if (dlg.ShowDialog() != true) return;
+        try
+        {
+            shell.ExportCutPoints(dlg.FileName);
+            MessageBox.Show($"已导出 {shell.Player.CutPoints.Count} 个裁切点。", "导出裁切点",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"导出失败：{ex.Message}", "导出裁切点",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

@@ -584,15 +584,31 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
 
     // --- PR 风格裁切 ---
 
-    private void AddCutPoint()
+    /// <summary>在当前播放位置添加裁切点。</summary>
+    private void AddCutPoint() => AddCutPointAt(_position);
+
+    /// <summary>
+    /// 在指定位置添加裁切点（批量指令/导入共用）：
+    /// 距现有点 &lt;100ms 时忽略重复，并保持按时间有序插入。
+    /// </summary>
+    public void AddCutPointAt(TimeSpan pos)
     {
-        var pos = _position;
-        // 避免重复添加极接近的点（<100ms）
         if (CutPoints.Any(c => Math.Abs((c - pos).TotalMilliseconds) < 100))
             return;
-        // 保持有序
         var index = CutPoints.TakeWhile(c => c < pos).Count();
         CutPoints.Insert(index, pos);
+    }
+
+    /// <summary>
+    /// 重设全部裁切点：清空后按时间升序逐个加入。
+    /// 集合变化经 CollectionChanged 自动同步时间轴与笔记面板分段列表。
+    /// </summary>
+    public void SetCutPoints(IEnumerable<TimeSpan> points)
+    {
+        ArgumentNullException.ThrowIfNull(points);
+        ClearCutPoints();
+        foreach (var p in points.OrderBy(p => p))
+            AddCutPointAt(p);
     }
 
     private void RemoveLastCutPoint()

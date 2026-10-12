@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
+using PianAssistant.Services;
 
 namespace PianAssistant.ViewModels;
 
@@ -126,6 +127,8 @@ public sealed class NotesViewModel : ObservableObject
         RefreshFilter();
         // 导出由 View 弹文件对话框，VM 只发请求
         ExportCommand = new RelayCommand(() => ExportRequested?.Invoke(this, EventArgs.Empty));
+        // 整理导出（结构化 Markdown 报告）同样由 View 弹对话框
+        ExportReportCommand = new RelayCommand(() => ExportReportRequested?.Invoke(this, EventArgs.Empty));
     }
 
     // --- 截图 ---
@@ -225,6 +228,28 @@ public sealed class NotesViewModel : ObservableObject
     public event EventHandler? ExportRequested;
 
     public ICommand ExportCommand { get; }
+
+    /// <summary>
+    /// 整理导出请求（M5）：View 层弹出 SaveFileDialog 选路径后调用
+    /// <see cref="ExportActivityReport"/> 输出结构化 Markdown 报告。
+    /// </summary>
+    public event EventHandler? ExportReportRequested;
+
+    public ICommand ExportReportCommand { get; }
+
+    /// <summary>
+    /// 整理导出：把全部活动流（按位置排序）与分段汇总写成结构化 Markdown 报告。
+    /// </summary>
+    public void ExportActivityReport(string path, string videoTitle) =>
+        NotesExportService.ExportActivityReport(Activities, Segments, path, videoTitle);
+
+    /// <summary>批量指令分发：在指定时间位置直接添加一条笔记活动条目。</summary>
+    public void AddMarkerAt(string text, TimeSpan position)
+    {
+        var label = string.IsNullOrWhiteSpace(text) ? "标记" : text.Trim();
+        var entry = new ActivityEntry(ActivityType.Note, position, label);
+        InsertActivitySorted(entry);
+    }
 
     public void AddClip(ClipRange clip, string? outputPath)
     {

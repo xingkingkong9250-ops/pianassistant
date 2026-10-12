@@ -19,6 +19,7 @@ public sealed class ServiceRegistry
     public ProjectDatabase Database { get; }
     public ProjectRepository Repository { get; }
     public ProjectService Projects { get; }
+    public BatchExecutionService Batches { get; }
 
     public ServiceRegistry(
         AppSettingsService settings,
@@ -30,7 +31,8 @@ public sealed class ServiceRegistry
         HotkeyService hotkeys,
         ProjectDatabase database,
         ProjectRepository repository,
-        ProjectService projects)
+        ProjectService projects,
+        BatchExecutionService batches)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         Playback = playback ?? throw new ArgumentNullException(nameof(playback));
@@ -42,6 +44,7 @@ public sealed class ServiceRegistry
         Database = database ?? throw new ArgumentNullException(nameof(database));
         Repository = repository ?? throw new ArgumentNullException(nameof(repository));
         Projects = projects ?? throw new ArgumentNullException(nameof(projects));
+        Batches = batches ?? throw new ArgumentNullException(nameof(batches));
     }
 
     /// <summary>
@@ -60,6 +63,7 @@ public sealed class ServiceRegistry
         var clips = new ClipExtractionService(ffmpeg, settings.ClipsDirectory,
             settings.OrganizeByDate, settings.ProjectSubfolderName);
         var concats = new ConcatService(ffmpeg);
+        var batches = new BatchExecutionService(ffmpeg, clips, settings);
         var hotkeys = new HotkeyService();
         foreach (var kv in settings.GetHotkeyOverrides())
             hotkeys.SetCustom(kv.Key, kv.Value);
@@ -72,6 +76,6 @@ public sealed class ServiceRegistry
         var projects = new ProjectService(database, repository, settings);
 
         return new ServiceRegistry(settings, playback, screenshots, clips, concats, ffmpeg,
-            hotkeys, database, repository, projects);
+            hotkeys, database, repository, projects, batches);
     }
 }
