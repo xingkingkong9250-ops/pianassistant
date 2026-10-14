@@ -5,6 +5,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
+using Microsoft.Win32;
 using PianAssistant.Interop;
 using PianAssistant.Models;
 using PianAssistant.Services;
@@ -89,6 +90,17 @@ public partial class MainWindow : Window
         // 截图画廊入口（顶部 🖼 按钮）
         shell.GalleryRequested += (_, _) => OpenGallery();
 
+        // 项目文件入口（M6；IO/对话框在 View 层）
+        shell.SaveProjectRequested += (_, _) => HandleSaveProject();
+        shell.OpenProjectRequested += (_, _) => HandleOpenProjectPackage();
+        shell.ExportProjectRequested += (_, _) => HandleExportProject();
+        shell.ImportProjectRequested += (_, _) => HandleOpenProjectPackage();
+
+        // 设置保存后重建键盘绑定（让自定义快捷键即时生效）
+        shell.Settings.Saved += (_, _) => RebuildInputBindings();
+        // 启动时按当前 HotkeyService 映射重建键盘绑定（替代原静态 XAML InputBindings）
+        RebuildInputBindings();
+
         // 鼠标静止隐藏定时器
         _mouseHideTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
@@ -124,6 +136,106 @@ public partial class MainWindow : Window
         var gesture = Shell!.Services.Hotkeys.Active[HotkeyAction.CaptureScreenshot];
         if (!_globalHotkeys.TryRegisterScreenshot(hwnd, gesture))
             System.Diagnostics.Debug.WriteLine("[MainWindow] 全局热键注册失败（可能被其他应用占用）");
+    }
+
+    // --- 动态键盘绑定（M6：让设置窗自定义快捷键真正生效）---
+
+    /// <summary>
+    /// 清空并按 <see cref="HotkeyService.Active"/> 当前映射重建键盘绑定。
+    /// 启动时调用一次；设置窗保存后再次调用。手势字符串经 TryParseKeyModifiers
+    /// 解析为 (Key, ModifierKeys)，再以直接赋值方式写入 KeyBinding——这样可支持
+    /// WPF KeyGesture 无修饰键时拒绝的裸字母/数字键（S、F、D1~D9）。带参数的动作
+    /// （D1~D9）携带 CommandParameter。
+    /// </summary>
+    private void RebuildInputBindings()
+    {
+        InputBindings.Clear();
+        var shell = Shell;
+        if (shell is null) return;
+
+        foreach (var kv in shell.Services.Hotkeys.Active)
+        {
+            var binding = shell.ResolveHotkey(kv.Key);
+            if (binding is null) continue;
+            if (!HotkeyService.TryParseKeyModifiers(kv.Value, out var key, out var modifiers)) continue;
+            InputBindings.Add(new KeyBinding
+            {
+                Command = binding.Value.Command,
+                CommandParameter = binding.Value.Parameter,
+                Key = key,
+                Modifiers = modifiers,
+            });
+        }
+    }
+
+    // --- 项目文件（IO/对话框在 View 层，VM 返回 ProjectOperationResult）---
+
+    private void HandleSaveProject()
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        ShowProjectResult(shell.SaveCurrentProject(), "项目已保存到数据库。");
+    }
+
+    private void HandleOpenProjectPackage()
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        var dlg = new OpenFileDialog
+        {
+            Title = "打开项目包",
+            Filter = "拉片项目 (*.paproj)|*.paproj|所有文件 (*.*)|*.*",
+            Multiselect = false,
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        ShowProjectResult(shell.ImportAndLoadProject(dlg.FileName), "项目已导入并加载。");
+    }
+
+    private void HandleExportProject()
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        var dlg = new SaveFileDialog
+        {
+            Title = "打包导出项目",
+            Filter = "拉片项目 (*.paproj)|*.paproj|所有文件 (*.*)|*.*",
+            DefaultExt = ".paproj",
+            FileName = "项目.paproj",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        ShowProjectResult(shell.ExportCurrentProject(dlg.FileName), "项目已打包导出。");
+    }
+
+    /// <summary>统一展示项目操作结果：成功用信息框，失败用警告框。</summary>
+    private void ShowProjectResult(ProjectOperationResult result, string successMessage)
+    {
+        if (result.Success)
+            MessageBox.Show(this, successMessage, "项目", MessageBoxButton.OK, MessageBoxImage.Information);
+        else
+            MessageBox.Show(this, result.Error ?? "项目操作失败。", "项目", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    // --- 最近文件菜单（右键「打开文件」按钮）---
+
+    private void OnRecentFilesMenuOpened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu) return;
+        menu.Items.Clear();
+        var shell = Shell;
+        foreach (var item in RecentFilesPresenter.Build(shell?.Services.Settings.RecentFiles))
+        {
+            var menuItem = new MenuItem { Header = item.Header, ToolTip = item.ToolTip };
+            if (item.Path is null)
+            {
+                menuItem.IsEnabled = false; // 空列表占位「（无最近文件）」
+            }
+            else
+            {
+                var path = item.Path;
+                menuItem.Click += (_, _) => shell?.OpenMedia(path);
+            }
+            menu.Items.Add(menuItem);
+        }
     }
 
     protected override void OnClosed(EventArgs e)
@@ -339,6 +451,11 @@ public partial class MainWindow : Window
     {
         var key = e.Key;
         if (key != Key.Left && key != Key.Right && key != Key.Up && key != Key.Down)
+            return;
+
+        // 带 Ctrl/Shift 的方向键交给 InputBindings（Shift+←/→ 1秒、Ctrl+←/→ 10秒、Ctrl+↑/↓ 音量），
+        // 不参与长按帧步进，避免与额外绑定冲突。
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0)
             return;
 
         // 如果已有同方向的定时器在跑，忽略重复 KeyDown（系统自动重复）

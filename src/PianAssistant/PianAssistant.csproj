@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- 版本号唯一来源；脚本与界面均从此读取，禁止在别处硬编码 -->
-    <Version>0.7.0</Version>
+    <Version>0.8.0</Version>
     <AssemblyName>PianAssistant</AssemblyName>
     <RootNamespace>PianAssistant</RootNamespace>
     <Product>拉片助手</Product>

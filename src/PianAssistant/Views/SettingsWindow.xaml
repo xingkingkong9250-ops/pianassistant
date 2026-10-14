@@ -48,6 +48,9 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Label Grid.Row="0" Content="截图目录：" />
@@ -86,6 +89,16 @@
                               ItemsSource="{Binding MaxRateOptions}"
                               SelectedItem="{Binding MaxRate, Mode=TwoWay}"
                               ToolTip="倍速上限（2×~32×）。超过约4×后音频会静音，仅视频快放" />
+
+                    <!-- 方向键步长（M6）：帧步进 + 倍速步长 -->
+                    <Label Grid.Row="6" Content="后退/快进步长：" />
+                    <TextBox Grid.Row="6" Grid.Column="1"
+                             Text="{Binding SeekStepFrames, Mode=TwoWay}" Margin="0,2"
+                             ToolTip="方向键左右每次移动的帧数（1~600，默认 5）" />
+                    <Label Grid.Row="7" Content="倍速步长：" />
+                    <TextBox Grid.Row="7" Grid.Column="1"
+                             Text="{Binding RateStep, Mode=TwoWay}" Margin="0,2"
+                             ToolTip="方向键上下调整倍速的步长（0.05~1.0，默认 0.25）" />
                 </Grid>
             </TabItem>
 

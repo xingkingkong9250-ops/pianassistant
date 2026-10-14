@@ -25,11 +25,13 @@ public partial class ClipsView : UserControl
         {
             oldVm.ConcatRequested -= OnConcatRequested;
             oldVm.ConcatError -= OnConcatError;
+            oldVm.BatchError -= OnBatchError;
         }
         if (e.NewValue is ClipListViewModel newVm)
         {
             newVm.ConcatRequested += OnConcatRequested;
             newVm.ConcatError += OnConcatError;
+            newVm.BatchError += OnBatchError;
         }
     }
 
@@ -51,5 +53,11 @@ public partial class ClipsView : UserControl
     private void OnConcatError(object? sender, string message)
     {
         MessageBox.Show(message, "拼接导出", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    /// <summary>批量导出失败（如 ffmpeg.exe 缺失）：弹中文提示，不静默失败。</summary>
+    private void OnBatchError(object? sender, string message)
+    {
+        MessageBox.Show(message, "批量导出", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 }

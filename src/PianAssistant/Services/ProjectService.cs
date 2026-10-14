@@ -63,11 +63,24 @@ public sealed class ProjectService
 
     /// <summary>
     /// 保存当前会话的所有截图/片段/笔记到数据库。
-    /// 返回新创建的项目 ID；失败返回 null。
+    /// 返回新创建的项目 ID；失败返回 null（不抛出到 UI）。
     /// </summary>
     public string? SaveProject(string name)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        try
+        {
+            return SaveProjectCore(name);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("[ProjectService] 保存项目失败", ex);
+            return null;
+        }
+    }
+
+    private string? SaveProjectCore(string name)
+    {
         var sourcePath = ResolveSourcePath?.Invoke();
         var project = _repository.CreateProject(name, sourcePath ?? string.Empty);
         if (project is null) return null;
@@ -91,17 +104,28 @@ public sealed class ProjectService
 
     /// <summary>
     /// 从数据库加载项目的全部数据到 VM（通过 Apply* 委托）。
+    /// 任何异常都被捕获为友好失败结果，绝不抛到 UI 崩溃，也不覆盖/删除原始文件。
     /// </summary>
-    public void LoadProject(string projectId)
+    public ProjectOperationResult LoadProject(string projectId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectId);
-        var project = _repository.GetProject(projectId)
-            ?? throw new InvalidOperationException($"项目 {projectId} 不存在。");
+        try
+        {
+            var project = _repository.GetProject(projectId);
+            if (project is null)
+                return ProjectOperationResult.Fail("项目不存在或已被删除。");
 
-        ApplySourcePath?.Invoke(project.SourcePath);
-        ApplyScreenshots?.Invoke(_repository.GetScreenshots(projectId));
-        ApplyClips?.Invoke(_repository.GetClipsWithOutput(projectId));
-        ApplyNotes?.Invoke(_repository.GetNotes(projectId));
+            ApplySourcePath?.Invoke(project.SourcePath);
+            ApplyScreenshots?.Invoke(_repository.GetScreenshots(projectId));
+            ApplyClips?.Invoke(_repository.GetClipsWithOutput(projectId));
+            ApplyNotes?.Invoke(_repository.GetNotes(projectId));
+            return ProjectOperationResult.Ok(projectId);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error($"[ProjectService] 加载项目 {projectId} 失败", ex);
+            return ProjectOperationResult.Fail("项目文件已损坏，无法加载；原始文件未被修改。");
+        }
     }
 
     // ==================== 导出 ====================
@@ -171,13 +195,32 @@ public sealed class ProjectService
 
     /// <summary>
     /// 解压并导入项目：读取清单，复制截图/片段文件到应用输出目录，
-    /// 在 DB 中创建新项目及全部记录。返回新项目 ID；失败返回 null。
+    /// 在 DB 中创建新项目及全部记录。返回结果（含新项目 ID）；
+    /// 项目包损坏/格式非法时返回友好失败，不抛到 UI，也不修改任何现有数据。
     /// </summary>
-    public string? ImportProject(string zipPath)
+    public ProjectOperationResult ImportProject(string zipPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(zipPath);
+        try
+        {
+            return ImportProjectCore(zipPath);
+        }
+        catch (InvalidDataException ex)
+        {
+            AppLog.Error("[ProjectService] 项目包损坏", ex);
+            return ProjectOperationResult.Fail("项目包已损坏或格式不正确，无法导入。");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("[ProjectService] 导入项目失败", ex);
+            return ProjectOperationResult.Fail("导入项目失败：" + ex.Message);
+        }
+    }
+
+    private ProjectOperationResult ImportProjectCore(string zipPath)
+    {
         if (!File.Exists(zipPath))
-            throw new FileNotFoundException("项目包文件不存在。", zipPath);
+            return ProjectOperationResult.Fail("项目包文件不存在。");
 
         using var zip = ZipFile.OpenRead(zipPath);
         var manifestEntry = zip.GetEntry(ManifestEntry)
@@ -193,7 +236,8 @@ public sealed class ProjectService
 
         // 创建新项目。
         var project = _repository.CreateProject(manifest.Project.Name, manifest.Project.SourcePath ?? string.Empty);
-        if (project is null) return null;
+        if (project is null)
+            return ProjectOperationResult.Fail("数据库写入失败，导入中止。");
 
         // 导入截图。
         foreach (var s in manifest.Screenshots)
@@ -230,7 +274,7 @@ public sealed class ProjectService
             _repository.AddNote(note, project.Id.ToString());
         }
 
-        return project.Id.ToString();
+        return ProjectOperationResult.Ok(project.Id.ToString());
     }
 
     // ==================== 内部辅助 ====================
@@ -288,6 +332,16 @@ public sealed class ProjectService
         }
         return path + ".unique";
     }
+}
+
+/// <summary>
+/// 项目操作结果：成功标志 + 友好错误消息（失败时）+ 关联项目 ID。
+/// 供 ViewModel 层据此弹出友好提示，避免异常直接冒泡到 UI。
+/// </summary>
+public readonly record struct ProjectOperationResult(bool Success, string? Error, string? ProjectId)
+{
+    public static ProjectOperationResult Ok(string? projectId = null) => new(true, null, projectId);
+    public static ProjectOperationResult Fail(string message) => new(false, message, null);
 }
 
 // ==================== 导出/导入清单 DTO ====================

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
@@ -117,6 +118,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         DecreaseRateCustomCommand = new RelayCommand(DecreaseRateCustom);
         // 字幕加载命令（接收文件路径参数）
         LoadSubtitleCommand = new AsyncRelayCommand<string>(LoadSubtitleAsync);
+        // 百分比跳转命令（D1~D9）：参数为 0..1 的比例
+        SeekPercentCommand = new RelayCommand(ExecuteSeekPercent);
     }
 
     // --- Properties ---
@@ -391,12 +394,16 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand DecreaseRateCustomCommand { get; }
     // 字幕加载命令（参数为字幕文件路径）
     public AsyncRelayCommand<string> LoadSubtitleCommand { get; }
+    /// <summary>百分比跳转命令（D1~D9，参数为 0..1 的比例）。</summary>
+    public ICommand SeekPercentCommand { get; }
 
     // --- Events ---
 
     public event EventHandler<ScreenshotEntry>? ScreenshotCaptured;
     public event EventHandler<ClipExtractedEventArgs>? ClipExtracted;
     public event EventHandler<ClipExtractedEventArgs>? SegmentExported;
+    /// <summary>操作失败时的友好中文提示（由 View/App 层订阅弹窗），避免静默失败。</summary>
+    public event EventHandler<string>? ErrorOccurred;
     public event EventHandler? FullscreenToggleRequested;
     public event EventHandler? FullscreenExitRequested;
     /// <summary>
@@ -461,6 +468,21 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public void SeekPercent(double percent)
     {
         _playback.SeekPercent(percent);
+    }
+
+    /// <summary>百分比跳转命令执行体：解析 CommandParameter 为 0..1 比例。</summary>
+    private void ExecuteSeekPercent(object? parameter)
+    {
+        switch (parameter)
+        {
+            case double d:
+                SeekPercent(d);
+                break;
+            case string s when double.TryParse(
+                s, NumberStyles.Float, CultureInfo.InvariantCulture, out var v):
+                SeekPercent(v);
+                break;
+        }
     }
 
     private void PreviousFrame()
@@ -549,7 +571,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PlayerVM] CaptureScreenshot failed: {ex.Message}");
+            AppLog.Error("[PlayerVM] 截图失败", ex);
+            ErrorOccurred?.Invoke(this, $"截图失败：{ex.Message}");
         }
     }
 
@@ -573,7 +596,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PlayerVM] ExtractClip failed: {ex.Message}");
+            AppLog.Error("[PlayerVM] 截取片段失败", ex);
+            ErrorOccurred?.Invoke(this, $"截取片段失败：{ex.Message}");
         }
         finally
         {
@@ -677,7 +701,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[PlayerVM] ExportSegment failed: {ex.Message}");
+            AppLog.Error("[PlayerVM] 导出选中片段失败", ex);
+            ErrorOccurred?.Invoke(this, $"导出选中片段失败：{ex.Message}");
         }
         finally
         {

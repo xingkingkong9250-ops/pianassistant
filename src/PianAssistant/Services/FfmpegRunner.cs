@@ -47,6 +47,17 @@ public sealed class FfmpegRunner
     public string FfprobePath => _ffprobePath;
 
     /// <summary>
+    /// 运行前校验 ffmpeg.exe 是否存在：缺失时抛出带中文提示与脚本指引的
+    /// <see cref="FileNotFoundException"/>，避免静默失败或裸 Win32Exception。
+    /// </summary>
+    private void EnsureBinariesPresent()
+    {
+        if (!File.Exists(_ffmpegPath))
+            throw new FileNotFoundException(
+                "未找到 ffmpeg.exe，请运行 tools\\download-ffmpeg.ps1 下载后再试。", _ffmpegPath);
+    }
+
+    /// <summary>
     /// Capture a single still frame at the given position using ffmpeg.
     /// Used as a fallback when LibVLC TakeSnapshot fails.
     /// </summary>
@@ -162,6 +173,7 @@ public sealed class FfmpegRunner
         CancellationToken cancellationToken,
         Action<double>? onProgress)
     {
+        EnsureBinariesPresent();
         var psi = new ProcessStartInfo
         {
             FileName = _ffmpegPath,
@@ -209,6 +221,7 @@ public sealed class FfmpegRunner
         CancellationToken cancellationToken,
         Action<double>? onProgress)
     {
+        EnsureBinariesPresent();
         var psi = new ProcessStartInfo
         {
             FileName = _ffmpegPath,
@@ -241,6 +254,7 @@ public sealed class FfmpegRunner
 
     private (int exitCode, string stderr) Run(string arguments, CancellationToken cancellationToken)
     {
+        EnsureBinariesPresent();
         var psi = new ProcessStartInfo
         {
             FileName = _ffmpegPath,

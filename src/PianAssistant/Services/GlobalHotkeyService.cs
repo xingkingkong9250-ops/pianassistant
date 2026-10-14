@@ -35,17 +35,16 @@ public sealed class GlobalHotkeyService : IDisposable
         if (_registered)
             Unregister();
 
-        if (!HotkeyService.TryParseGesture(gesture, out var kg) || kg.Key == Key.None)
+        if (!HotkeyService.TryParseKeyModifiers(gesture, out var key, out var m))
             return false;
 
         uint modifiers = 0;
-        var m = kg.Modifiers;
         if (m.HasFlag(ModifierKeys.Control)) modifiers |= Win32Hotkey.MOD_CONTROL;
         if (m.HasFlag(ModifierKeys.Shift)) modifiers |= Win32Hotkey.MOD_SHIFT;
         if (m.HasFlag(ModifierKeys.Alt)) modifiers |= Win32Hotkey.MOD_ALT;
         if (m.HasFlag(ModifierKeys.Windows)) modifiers |= Win32Hotkey.MOD_WIN;
 
-        var vk = (uint)KeyInterop.VirtualKeyFromKey(kg.Key);
+        var vk = (uint)KeyInterop.VirtualKeyFromKey(key);
         if (!Win32Hotkey.RegisterHotKey(hwnd, IdScreenshot, modifiers | Win32Hotkey.MOD_NOREPEAT, vk))
             return false;
 

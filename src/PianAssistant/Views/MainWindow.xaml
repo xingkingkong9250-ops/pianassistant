@@ -98,32 +98,8 @@
         </Style>
     </Window.Resources>
 
-    <Window.InputBindings>
-        <KeyBinding Key="Space" Command="{Binding Player.PlayPauseCommand}" />
-        <!-- 方向键由 PreviewKeyDown/PreviewKeyUp 处理（支持长按连续触发） -->
-        <KeyBinding Key="Home" Command="{Binding Player.SeekToStartCommand}" />
-        <KeyBinding Key="End" Command="{Binding Player.SeekToEndCommand}" />
-        <KeyBinding Key="OemPlus" Command="{Binding Player.IncreaseRateCommand}" />
-        <KeyBinding Key="OemMinus" Command="{Binding Player.DecreaseRateCommand}" />
-        <KeyBinding Key="I" Command="{Binding Player.MarkInCommand}" />
-        <KeyBinding Key="O" Command="{Binding Player.MarkOutCommand}" />
-        <KeyBinding Gesture="Ctrl+Shift+I" Command="{Binding Player.ClearInOutCommand}" />
-        <KeyBinding Key="S" Command="{Binding Player.CaptureScreenshotCommand}" />
-        <KeyBinding Key="C" Command="{Binding Player.AddCutPointCommand}" />
-        <KeyBinding Key="Back" Command="{Binding Player.RemoveLastCutPointCommand}" />
-        <KeyBinding Gesture="Ctrl+Shift+C" Command="{Binding Player.ClearCutPointsCommand}" />
-        <KeyBinding Gesture="Ctrl+E" Command="{Binding Player.ExportSelectedSegmentCommand}" />
-        <KeyBinding Key="F" Command="{Binding Player.ToggleFullscreenCommand}" />
-        <KeyBinding Key="Escape" Command="{Binding Player.ExitFullscreenCommand}" />
-        <KeyBinding Key="L" Command="{Binding Player.ToggleLoopCommand}" />
-        <KeyBinding Key="M" Command="{Binding Player.ToggleMuteCommand}" />
-        <KeyBinding Gesture="Ctrl+Up" Command="{Binding Player.VolumeUpCommand}" />
-        <KeyBinding Gesture="Ctrl+Down" Command="{Binding Player.VolumeDownCommand}" />
-        <KeyBinding Key="Tab" Command="{Binding ToggleSidebarPanelCommand}" />
-        <!-- 上/下一个活动标记跳转：[ / ]（Oem 括号键，达芬奇风格单手操作） -->
-        <KeyBinding Key="OemOpenBrackets" Command="{Binding PreviousNoteCommand}" />
-        <KeyBinding Key="OemCloseBrackets" Command="{Binding NextNoteCommand}" />
-    </Window.InputBindings>
+    <!-- 键盘绑定改由 HotkeyService 动态构建（见 MainWindow.xaml.cs RebuildInputBindings），
+         以便设置窗的自定义快捷键真正生效；方向键长按仍由 PreviewKeyDown/Up 处理。 -->
 
     <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
@@ -149,7 +125,21 @@
                 <!-- 右侧操作按钮 -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                     <Button Content="📂 打开文件" Style="{StaticResource AccentButton}" Padding="12,6"
-                            Command="{Binding OpenFileCommand}" />
+                            Command="{Binding OpenFileCommand}"
+                            ToolTip="打开视频文件（右键查看最近文件）">
+                        <Button.ContextMenu>
+                            <!-- 最近文件列表（打开时动态填充，见 OnRecentFilesMenuOpened） -->
+                            <ContextMenu x:Name="RecentFilesMenu" Opened="OnRecentFilesMenuOpened" />
+                        </Button.ContextMenu>
+                    </Button>
+                    <Button Content="💾 保存项目" Style="{StaticResource IconButton}" Padding="8,6" FontSize="13"
+                            Command="{Binding SaveProjectCommand}" ToolTip="保存当前项目到数据库" />
+                    <Button Content="📁 打开项目" Style="{StaticResource IconButton}" Padding="8,6" FontSize="13"
+                            Command="{Binding OpenProjectCommand}" ToolTip="打开项目包（*.paproj）并加载" />
+                    <Button Content="📦 打包导出" Style="{StaticResource IconButton}" Padding="8,6" FontSize="13"
+                            Command="{Binding ExportProjectCommand}" ToolTip="把当前项目打包导出为 *.paproj" />
+                    <Button Content="📥 导入项目" Style="{StaticResource IconButton}" Padding="8,6" FontSize="13"
+                            Command="{Binding ImportProjectCommand}" ToolTip="导入项目包（*.paproj）并加载" />
                     <Button Content="⚙" Style="{StaticResource IconButton}" Padding="10,6"
                             Command="{Binding OpenSettingsCommand}" FontSize="16" />
                 </StackPanel>

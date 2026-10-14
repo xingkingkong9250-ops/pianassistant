@@ -93,7 +93,9 @@
         <ListBox ItemsSource="{Binding FilteredQueue}"
                  SelectedItem="{Binding SelectedQueueItem, Mode=TwoWay}"
                  Background="Transparent" BorderThickness="0" Margin="0,4"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />

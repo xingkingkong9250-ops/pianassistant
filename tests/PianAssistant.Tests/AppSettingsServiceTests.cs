@@ -112,4 +112,47 @@ public class AppSettingsServiceTests : IDisposable
         Assert.Equal("/custom/screens", svc2.ScreenshotsDirectory);
         Assert.Equal("/custom/clips", svc2.ClipsDirectory);
     }
+
+    // --- 配置损坏/备份恢复（M6 韧性加固）---
+
+    [Fact]
+    public void CorruptConfig_FallsBackToDefaults_AndKeepsFile()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        File.WriteAllText(configPath, "{ this is not valid json ");
+
+        var svc = new AppSettingsService(_tempDir);
+
+        Assert.Equal(5, svc.SeekStepFrames); // 回退默认值
+        Assert.True(File.Exists(configPath));
+        Assert.Equal("{ this is not valid json ", File.ReadAllText(configPath)); // 不覆盖用户文件
+    }
+
+    [Fact]
+    public void MissingConfig_WithBackup_RestoresFromBackup()
+    {
+        var svc1 = new AppSettingsService(_tempDir);
+        svc1.SeekStepFrames = 42; // 触发保存 → 生成主文件 + 备份快照
+        var configPath = Path.Combine(_tempDir, "config.json");
+        Assert.True(File.Exists(configPath));
+        File.Delete(configPath);
+
+        var svc2 = new AppSettingsService(_tempDir);
+
+        Assert.Equal(42, svc2.SeekStepFrames);
+        Assert.True(File.Exists(configPath), "应从备份恢复主配置文件");
+    }
+
+    [Fact]
+    public void ValidConfig_IsLoadedAndNotOverwritten()
+    {
+        var configPath = Path.Combine(_tempDir, "config.json");
+        var json = "{\"SeekStepFrames\":7}";
+        File.WriteAllText(configPath, json);
+
+        var svc = new AppSettingsService(_tempDir);
+
+        Assert.Equal(7, svc.SeekStepFrames);
+        Assert.Equal(json, File.ReadAllText(configPath)); // 合法配置不被改写
+    }
 }

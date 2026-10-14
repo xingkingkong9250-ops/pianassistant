@@ -29,8 +29,29 @@ public sealed class AppSettingsService
         var root = dataRootOverride ?? GetEffectiveRoot();
         Directory.CreateDirectory(root);
         _configPath = Path.Combine(root, "config.json");
+        // 启动自愈：恢复上次崩溃残留的 .backup 快照（仅当主配置缺失时）。
+        TryRestoreMissingConfig();
         _settings = Load();
         Root = _settings;
+    }
+
+    /// <summary>
+    /// 原子写自愈：若 config.json 缺失但存在上次写入残留的 <c>.backup</c> 快照，
+    /// 则从快照恢复主文件。绝不覆盖仍存在的（可能非法的）用户配置文件。
+    /// </summary>
+    private void TryRestoreMissingConfig()
+    {
+        if (File.Exists(_configPath)) return;
+        var backup = AtomicTextFile.GetBackupPath(_configPath);
+        if (!File.Exists(backup)) return;
+        try
+        {
+            AtomicTextFile.RestoreBackup(_configPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AppSettings] 备份恢复失败: {ex.Message}");
+        }
     }
 
     public string DataRoot => Path.GetDirectoryName(_configPath)!;

@@ -9,9 +9,10 @@ namespace PianAssistant.ViewModels;
 /// 提供网格/大图两种浏览模式（双击进入大图、Esc 返回网格）、
 /// 左右翻页、「第 N / M 张」计数与位置时间码、右键操作（打开所在文件夹/标注/删除）。
 /// </summary>
-public sealed class GalleryViewModel : ObservableObject
+public sealed class GalleryViewModel : ObservableObject, IDisposable
 {
     private readonly ScreenshotGalleryViewModel _gallery;
+    private readonly System.ComponentModel.PropertyChangedEventHandler _onGalleryPropertyChanged;
     private ScreenshotEntry? _current;
     private bool _isViewerMode;
 
@@ -19,13 +20,14 @@ public sealed class GalleryViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(gallery);
         _gallery = gallery;
-        // 过滤结果或选中变化时同步当前项
-        _gallery.PropertyChanged += (_, e) =>
+        // 过滤结果或选中变化时同步当前项（保存处理器引用以便 Dispose 退订，避免泄漏）
+        _onGalleryPropertyChanged = (_, e) =>
         {
             if (e.PropertyName is nameof(ScreenshotGalleryViewModel.FilteredItems)
                 or nameof(ScreenshotGalleryViewModel.Selected))
                 RefreshCurrent();
         };
+        _gallery.PropertyChanged += _onGalleryPropertyChanged;
         RefreshCurrent();
 
         EnterViewerCommand = new RelayCommand(
@@ -161,4 +163,7 @@ public sealed class GalleryViewModel : ObservableObject
         if (_current is not null && !IsCurrentInItems())
             IsViewerMode = false;
     }
+
+    /// <summary>窗口关闭时退订底层集合事件，避免画廊 VM 长期被引用（事件泄漏）。</summary>
+    public void Dispose() => _gallery.PropertyChanged -= _onGalleryPropertyChanged;
 }

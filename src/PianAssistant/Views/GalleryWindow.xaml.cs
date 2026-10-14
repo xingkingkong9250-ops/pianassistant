@@ -25,6 +25,13 @@ public partial class GalleryWindow : Window
         PreviewKeyDown += OnWindowKeyDown;
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        // 关闭时释放画廊 VM（退订底层集合事件，避免事件泄漏）
+        (DataContext as GalleryViewModel)?.Dispose();
+        base.OnClosed(e);
+    }
+
     // --- 键盘导航 ---
 
     private void OnWindowKeyDown(object sender, KeyEventArgs e)

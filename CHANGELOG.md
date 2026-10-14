@@ -7,6 +7,64 @@
 
 ## [Unreleased]
 
+### v0.8.0 — M6 交付版本（开发版，NO.M，2026-10-14）
+
+> 本轮为**非正式版本**：完成 M6 除安装程序外的全部内容，待用户测试无误后
+> 再以 NO.V 发布 **1.0.0**（含安装程序）。
+
+#### 新增（全功能整合）
+
+- **项目文件 UI 入口**：顶部工具栏新增「💾 保存 / 📁 打开 / 📦 打包 / 📥 导入」
+  （`W1-R1-18~21`），打通 `ProjectService` 的 `.paproj` 保存/加载与 zip 导出/导入
+- **最近文件菜单**：`📂 打开文件` 右键菜单列出最近文件（`W1-R1-22`），空时禁用占位
+- **元数据入库**：保存项目时把截图/片段/笔记写入 SQLite，加载时读回
+- **设置项补全**：设置窗新增「后退/快进步长」（1~600 帧）与「倍速步长」（0.05~1.0）
+  （`W2-A-09`/`W2-A-10`）
+- **快捷键自定义真实生效**：`Window.InputBindings` 改为按 `HotkeyService` 运行时重建，
+  设置保存后即刻生效（此前为静态 XAML，改键无效）
+- **快捷键修复**：新增 `Ctrl+Shift+E`（截取片段）、`D1~D9`（跳 10%~90%）、
+  `Shift+←/→`（±1s）、`Ctrl+←/→`（±10s）、`M`（静音）、`Ctrl+↑/↓`（音量）、`[`/`]`（活动跳转）；
+  `HotkeyService.Defaults` 与运行时绑定完全一致（38 条，无"假快捷键"）
+- **裸键绑定修复**：WPF `KeyGesture` 会静默丢弃无修饰键的裸键（`S`/`F`/`I`/`O`/`C`/`L`/`M`/`D1~D9`
+  共 16 个），改用 `KeyBinding` 直接赋值 `Key`/`Modifiers` 绕过；同步修复全局热键与设置改键
+
+#### 优化
+
+- **缩略图按需解码 + LRU 缓存** `ThumbnailImageCache`/`ThumbnailConverter`：
+  截图列表（120×68）与画廊网格（160×90）改用低分辨率解码（`DecodePixelWidth`），
+  替代原先整张全分辨率 PNG 载入，显著降低内存占用；`OnLoad` 立即释放文件流
+- **列表虚拟化**：截图/分段/活动列表由 `ItemsControl` 改为 `ListBox`（`Recycling`），
+  播放列表与片段队列显式开启虚拟化
+- **资源释放**：`GalleryViewModel` 实现 `IDisposable` 退订 `PropertyChanged`，避免长时运行事件泄漏
+
+#### 加固（破坏性测试对应）
+
+- **项目文件损坏**：`ProjectOperationResult` 友好中文报错，不抛 UI、不破坏原文件
+- **数据库损坏**：损坏库隔离为 `*.corrupt`（保留时间戳）并重建空库，启动提示数据库状态
+- **配置恢复**：`AtomicTextFile.RestoreBackup` 首次接入启动路径，崩溃残留自动恢复；
+  非法 JSON 回退默认值且不覆盖用户文件
+- **依赖/文件缺失**：ffmpeg 缺失给出中文提示（指向 `tools/download-ffmpeg.ps1`）；
+  缺失视频源项标灰 + 提示，不崩溃
+- **全局异常兜底**：`DispatcherUnhandledException` 记日志 + 提示 + `Handled`；
+  `AppDomain`/`UnobservedTaskException` 仅记日志；日志落 `%APPDATA%\Qianlan_App\PianAssistant\logs\`
+
+#### 文档
+
+- **`docs/USER_GUIDE.md`**：12 章用户手册（简介/安装/界面总览/快捷键总表/工作流示例/
+  批量文本/裁切导入导出/画廊标注/片段管理/设置详解/FAQ/目录结构）
+- **`docs/UI_NUMBERING.md`**：界面编号体系（`W{窗口}-{区域}-{序号}`）+ 变更核对清单
+- **`docs/REGRESSION_CHECKLIST.md`**：全功能回归（A~H）+ 破坏性测试（I~M）+ 结果记录模板
+
+#### 验证
+
+- `dotnet build -c Release` **0 警告 0 错误**
+- `dotnet test` **252 项全绿**（新增 55 项：性能 8 / 加固 21 / 整合 26）
+
+#### 未完成（推迟至正式版）
+
+- 打包安装程序（MSIX / Inno Setup）
+- 正式发布 1.0.0（NO.V，须用户确认）
+
 ### v0.7.0 — M5 文本驱动批量操作（NO.M，2026-10-12）
 
 #### 新增

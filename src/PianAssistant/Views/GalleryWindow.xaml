@@ -121,9 +121,10 @@
                                 </ContextMenu>
                             </Border.ContextMenu>
                             <StackPanel>
-                                <!-- 160×90 缩略图 -->
+                                <!-- 160×90 缩略图：低分辨率按需解码，避免全分辨率入内存 -->
                                 <Border Width="160" Height="90" ClipToBounds="True" Background="#000000">
-                                    <Image Source="{Binding OutputPath}" Stretch="UniformToFill"
+                                    <Image Source="{Binding OutputPath, Converter={x:Static views:ThumbnailConverter.Instance}}"
+                                           Stretch="UniformToFill"
                                            RenderOptions.BitmapScalingMode="HighQuality" />
                                 </Border>
                                 <TextBlock Text="{Binding Position, StringFormat='mm\\:ss\\.fff'}"
@@ -149,7 +150,9 @@
                     </Style.Triggers>
                 </Style>
             </Grid.Style>
-            <Image Source="{Binding Current.OutputPath}" Stretch="Uniform" Margin="8,8,8,52"
+            <!-- 大图查看：保持全分辨率解码（清晰度优先），OnLoad 立即释放文件流 -->
+            <Image Source="{Binding Current.OutputPath, Converter={x:Static views:ThumbnailConverter.Instance}, ConverterParameter=0}"
+                   Stretch="Uniform" Margin="8,8,8,52"
                    RenderOptions.BitmapScalingMode="HighQuality" />
             <!-- 底部状态栏 -->
             <Border VerticalAlignment="Bottom" Background="#1A1A1A" Padding="12,7"

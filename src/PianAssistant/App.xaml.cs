@@ -18,6 +18,9 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 全局异常兜底：必须在任何业务逻辑前注册（含单实例守卫路径）。
+        RegisterGlobalExceptionHandlers();
+
         // Single-instance guard: request graceful shutdown of any prior instance.
         if (!SingleInstanceMutex.WaitOne(0, false))
         {
@@ -41,6 +44,16 @@ public partial class App : Application
             return;
         }
 
+        // 数据库损坏自愈/失败时给用户明确提示（不静默丢数据）。
+        if (_services.DatabaseStatus is { Message: not null } dbStatus)
+        {
+            MessageBox.Show(
+                dbStatus.Message,
+                dbStatus.Success ? "数据库已恢复" : "数据库不可用",
+                MessageBoxButton.OK,
+                dbStatus.Success ? MessageBoxImage.Warning : MessageBoxImage.Error);
+        }
+
         _shell = new ShellViewModel(_services);
 
         // Wire view-level events.
@@ -48,6 +61,12 @@ public partial class App : Application
         _shell.ExitRequested += (_, _) => Shutdown();
         _shell.SettingsRequested += (_, _) => ShowSettings();
         _shell.ShowBatchRequested += (_, _) => ShowBatch();
+        // 视频缺失/打开失败等提示
+        _shell.NotificationRequested += (_, msg) =>
+            MessageBox.Show(msg, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+        // 播放器操作失败（截图/截取片段等）提示
+        _shell.Player.ErrorOccurred += (_, msg) =>
+            MessageBox.Show(msg, "操作失败", MessageBoxButton.OK, MessageBoxImage.Warning);
 
         // Create main window manually (no StartupUri) so that DataContext
         // is set BEFORE Loaded fires — VideoView.MediaPlayer binding in
@@ -100,6 +119,37 @@ public partial class App : Application
             grip.Set();
         }
         catch { }
+    }
+
+    /// <summary>
+    /// 全局异常兜底：
+    /// UI 线程未处理异常 → 记录日志 + 弹窗提示 + 标记已处理（不直接崩溃应用）；
+    /// 后台线程异常与未观察的任务异常 → 仅记录日志（无法安全恢复 UI）。
+    /// </summary>
+    private void RegisterGlobalExceptionHandlers()
+    {
+        DispatcherUnhandledException += (_, args) =>
+        {
+            AppLog.Error("[App] 未处理的 UI 线程异常", args.Exception);
+            MessageBox.Show(
+                "发生未处理错误，已记录日志。应用可能仍可继续使用。",
+                "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            args.Handled = true;
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex)
+                AppLog.Error("[App] 未处理的后台线程异常", ex);
+            else
+                AppLog.Info($"[App] 未处理的后台异常：{args.ExceptionObject}");
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            AppLog.Error("[App] 未观察的任务异常", args.Exception);
+            args.SetObserved();
+        };
     }
 
     protected override void OnExit(ExitEventArgs e)

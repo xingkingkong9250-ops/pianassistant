@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows.Input;
 using PianAssistant.Models;
 
@@ -52,6 +51,11 @@ public sealed class HotkeyService
             [HotkeyAction.SeekPercent80] = "D8",
             [HotkeyAction.SeekPercent90] = "D9",
             [HotkeyAction.ToggleSidebarPanel] = "Tab",
+            [HotkeyAction.ToggleMute] = "M",
+            [HotkeyAction.VolumeUp] = "Ctrl+Up",
+            [HotkeyAction.VolumeDown] = "Ctrl+Down",
+            [HotkeyAction.PreviousNote] = "OemOpenBrackets",
+            [HotkeyAction.NextNote] = "OemCloseBrackets",
         };
 
     private readonly Dictionary<HotkeyAction, string> _active;
@@ -86,12 +90,11 @@ public sealed class HotkeyService
     public HotkeyAction? ResolveAction(KeyGesture gesture)
     {
         ArgumentNullException.ThrowIfNull(gesture);
-        var displayString = gesture.GetDisplayStringForCulture(CultureInfo.InvariantCulture);
         foreach (var kv in _active)
         {
-            if (TryParseGesture(kv.Value, out var g) &&
-                g.Key == gesture.Key &&
-                g.Modifiers == gesture.Modifiers)
+            if (TryParseKeyModifiers(kv.Value, out var key, out var modifiers) &&
+                key == gesture.Key &&
+                modifiers == gesture.Modifiers)
             {
                 return kv.Key;
             }
@@ -111,6 +114,38 @@ public sealed class HotkeyService
         catch (Exception)
         {
             gesture = new KeyGesture(Key.None);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 解析手势字符串为 (Key, ModifierKeys)。相比 <see cref="KeyGestureConverter"/>，
+    /// 本方法额外支持「无修饰键的裸字母/数字键」（如 S、F、D1~D9）——WPF 的
+    /// KeyGesture 构造器/转换器会以 "key and modifier combination is not supported"
+    /// 拒绝它们，但 <see cref="KeyBinding"/> 直接赋值 Key/Modifiers 不受该限制，
+    /// 因此运行时重建 InputBindings 必须走本方法。
+    /// </summary>
+    public static bool TryParseKeyModifiers(string text, out Key key, out ModifierKeys modifiers)
+    {
+        key = Key.None;
+        modifiers = ModifierKeys.None;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        try
+        {
+            var tokens = text.Trim().Split('+', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length == 0) return false;
+            // 末段是键名，其余是修饰键（可多个，如 Ctrl+Shift+E）
+            key = (Key)new KeyConverter().ConvertFromInvariantString(tokens[^1].Trim())!;
+            if (key == Key.None) return false;
+            for (var i = 0; i < tokens.Length - 1; i++)
+                modifiers |= (ModifierKeys)new ModifierKeysConverter()
+                    .ConvertFromInvariantString(tokens[i].Trim())!;
+            return true;
+        }
+        catch (Exception)
+        {
+            key = Key.None;
+            modifiers = ModifierKeys.None;
             return false;
         }
     }

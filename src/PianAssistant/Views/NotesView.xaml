@@ -7,6 +7,25 @@
              Foreground="#E8E8E8">
 
     <UserControl.Resources>
+        <!-- ListBox 项容器：透明背景、无选中高亮，保持项模板原外观 -->
+        <Style x:Key="PlainListBoxItem" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="Transparent" Padding="0">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- 截图缩略图模板 -->
         <DataTemplate x:Key="ScreenshotTemplate" DataType="{x:Type models:ScreenshotEntry}">
             <Border Margin="8,3" Padding="0" CornerRadius="4"
@@ -23,7 +42,8 @@
                     <!-- 缩略图 -->
                     <Border DockPanel.Dock="Left" Width="120" Height="68" Margin="0" ClipToBounds="True"
                             Background="#000000">
-                        <Image Source="{Binding OutputPath}" Stretch="UniformToFill"
+                        <Image Source="{Binding OutputPath, Converter={x:Static views:ThumbnailConverter.Instance}}"
+                               Stretch="UniformToFill"
                                RenderOptions.BitmapScalingMode="HighQuality" />
                     </Border>
                     <!-- 信息 -->
@@ -158,11 +178,14 @@
                                VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Screenshots}"
-                              ItemTemplate="{StaticResource ScreenshotTemplate}"
-                              Margin="0,4" />
-            </ScrollViewer>
+            <!-- 截图列表：ListBox 默认启用 VirtualizingStackPanel，避免全量实例化 -->
+            <ListBox ItemsSource="{Binding Screenshots}"
+                     ItemTemplate="{StaticResource ScreenshotTemplate}"
+                     ItemContainerStyle="{StaticResource PlainListBoxItem}"
+                     Background="Transparent" BorderThickness="0" Margin="0,4"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling" />
         </DockPanel>
 
         <!-- 片段面板（默认隐藏） -->
@@ -189,11 +212,14 @@
                     </StackPanel>
                 </DockPanel>
             </Border>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Segments}"
-                              ItemTemplate="{StaticResource SegmentTemplate}"
-                              Margin="0,4" />
-            </ScrollViewer>
+            <!-- 分段列表：虚拟化 -->
+            <ListBox ItemsSource="{Binding Segments}"
+                     ItemTemplate="{StaticResource SegmentTemplate}"
+                     ItemContainerStyle="{StaticResource PlainListBoxItem}"
+                     Background="Transparent" BorderThickness="0" Margin="0,4"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling" />
         </DockPanel>
 
         <!-- 活动流面板（默认隐藏） -->
@@ -260,11 +286,16 @@
             </Border>
 
             <!-- 活动列表（按搜索/范围过滤） -->
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding FilteredActivities}"
-                              ItemTemplate="{StaticResource ActivityTemplate}"
-                              Margin="0,4" />
-            </ScrollViewer>
+            <!-- 活动流列表（按搜索/范围过滤）：虚拟化。
+                 模板含内联编辑 TextBox（Explicit 提交），用 Standard 模式避免
+                 回收容器时丢弃未提交的编辑内容。 -->
+            <ListBox ItemsSource="{Binding FilteredActivities}"
+                     ItemTemplate="{StaticResource ActivityTemplate}"
+                     ItemContainerStyle="{StaticResource PlainListBoxItem}"
+                     Background="Transparent" BorderThickness="0" Margin="0,4"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Standard" />
         </DockPanel>
     </DockPanel>
 </UserControl>

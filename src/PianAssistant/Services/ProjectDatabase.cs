@@ -46,6 +46,68 @@ public sealed class ProjectDatabase
     }
 
     /// <summary>
+    /// 初始化数据库并在打开失败（文件损坏）时自愈：
+    /// 把损坏的库重命名为 <c>*.corrupt</c>（保留数据、不删除）后重建空库。
+    /// 返回结果供启动层记录日志 / 友好提示。绝不静默丢弃原文件。
+    /// </summary>
+    public DatabaseOpenResult EnsureInitialized()
+    {
+        try
+        {
+            Initialize();
+            MigrateIfNeeded();
+            return new DatabaseOpenResult(true, false, null);
+        }
+        catch (SqliteException ex)
+        {
+            AppLog.Error($"[ProjectDatabase] 打开数据库失败：{_dbPath}", ex);
+            var quarantined = QuarantineCorruptDatabase();
+            try
+            {
+                Initialize();
+                MigrateIfNeeded();
+                var detail = quarantined is null
+                    ? "已重建空库。"
+                    : $"原库已保留为 {quarantined}，并重建了空库。";
+                return new DatabaseOpenResult(true, true, $"数据库文件损坏，{detail}");
+            }
+            catch (SqliteException ex2)
+            {
+                AppLog.Error("[ProjectDatabase] 重建数据库仍失败", ex2);
+                return new DatabaseOpenResult(false, true,
+                    "数据库已损坏且无法重建，项目持久化功能暂不可用。");
+            }
+        }
+    }
+
+    /// <summary>把损坏的库文件重命名为 <c>*.corrupt</c>（保留数据），返回新路径。</summary>
+    private string? QuarantineCorruptDatabase()
+    {
+        try
+        {
+            if (!File.Exists(_dbPath)) return null;
+            // 释放连接池以解除文件锁
+            SqliteConnection.ClearAllPools();
+            var target = _dbPath + ".corrupt";
+            if (File.Exists(target))
+                target = $"{_dbPath}.corrupt.{DateTime.Now:yyyyMMddHHmmss}";
+            File.Move(_dbPath, target, overwrite: true);
+            // 清理可能残留的 WAL/SHM 旁文件
+            foreach (var sidecar in new[] { _dbPath + "-wal", _dbPath + "-shm" })
+            {
+                if (File.Exists(sidecar))
+                    File.Delete(sidecar);
+            }
+            return target;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("[ProjectDatabase] 隔离损坏数据库失败", ex);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// 初始化数据库：创建所有表并写入 schema_version=1。
     /// 幂等——重复调用不会重建已有表。
     /// </summary>
@@ -158,3 +220,8 @@ public sealed class ProjectDatabase
         cmd.ExecuteNonQuery();
     }
 }
+
+/// <summary>
+/// 数据库打开结果：是否成功、是否发生损坏自愈、以及可展示给用户的说明。
+/// </summary>
+public readonly record struct DatabaseOpenResult(bool Success, bool Recovered, string? Message);

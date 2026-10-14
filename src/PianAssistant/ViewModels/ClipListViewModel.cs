@@ -120,6 +120,9 @@ public sealed class ClipListViewModel : ObservableObject
     /// <summary>拼接失败（含不同源等校验错误）：View 层弹提示。</summary>
     public event EventHandler<string>? ConcatError;
 
+    /// <summary>批量导出出现失败（如 ffmpeg.exe 缺失）：View 层弹提示，避免静默失败。</summary>
+    public event EventHandler<string>? BatchError;
+
     private readonly Func<ClipRange, bool, CancellationToken, Action<double>?, Task<string>>? _extractFn;
     private readonly Func<IReadOnlyList<ClipRange>, string, CancellationToken, Action<double>?, Task<string>>? _concatFn;
 
@@ -192,6 +195,7 @@ public sealed class ClipListViewModel : ObservableObject
         BatchProgress = 0;
         _batchCts = new CancellationTokenSource();
         var cancelled = false;
+        var errorReported = false;
         try
         {
             var token = _batchCts.Token;
@@ -219,9 +223,14 @@ public sealed class ClipListViewModel : ObservableObject
                     cancelled = true;
                     item.Status = "已取消";
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     item.Status = "失败";
+                    if (!errorReported)
+                    {
+                        errorReported = true;
+                        BatchError?.Invoke(this, ex.Message);
+                    }
                 }
             }
             if (cancelled)

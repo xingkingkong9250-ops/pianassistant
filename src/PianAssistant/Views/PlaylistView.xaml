@@ -16,6 +16,9 @@
                      Background="Transparent"
                      BorderThickness="0"
                      Foreground="#E0E0E0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
                      AllowDrop="True"
                      DragOver="OnListDragOver"
                      Drop="OnListDrop"
@@ -45,6 +48,10 @@
                                 <Setter Property="Background" Value="#007ACC" />
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
+                            <!-- 文件被移动/删除：标灰提示不可播放 -->
+                            <DataTrigger Binding="{Binding IsAvailable}" Value="False">
+                                <Setter Property="Foreground" Value="#666666" />
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </ListBox.ItemContainerStyle>

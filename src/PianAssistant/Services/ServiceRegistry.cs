@@ -21,6 +21,9 @@ public sealed class ServiceRegistry
     public ProjectService Projects { get; }
     public BatchExecutionService Batches { get; }
 
+    /// <summary>数据库初始化结果（损坏自愈 / 失败时非 null），供启动层友好提示。</summary>
+    public DatabaseOpenResult? DatabaseStatus { get; private set; }
+
     public ServiceRegistry(
         AppSettingsService settings,
         IVideoPlayback playback,
@@ -69,13 +72,16 @@ public sealed class ServiceRegistry
             hotkeys.SetCustom(kv.Key, kv.Value);
 
         // 初始化 SQLite 数据库与仓储（M3 持久化）。
+        // 使用 EnsureInitialized：损坏库文件会被隔离为 *.corrupt 并重建空库。
         var database = new ProjectDatabase();
-        database.Initialize();
-        database.MigrateIfNeeded();
+        var dbStatus = database.EnsureInitialized();
         var repository = new ProjectRepository(database);
         var projects = new ProjectService(database, repository, settings);
 
         return new ServiceRegistry(settings, playback, screenshots, clips, concats, ffmpeg,
-            hotkeys, database, repository, projects, batches);
+            hotkeys, database, repository, projects, batches)
+        {
+            DatabaseStatus = dbStatus,
+        };
     }
 }

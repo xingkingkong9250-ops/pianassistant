@@ -23,6 +23,9 @@ public sealed class MediaFile
         SizeBytes = sizeBytes ?? TryGetFileSize(path);
     }
 
+    /// <summary>文件当前是否存在于磁盘（被移动/删除时返回 false，供列表标灰）。</summary>
+    public bool IsAvailable => File.Exists(Path);
+
     private static long TryGetFileSize(string path)
     {
         try

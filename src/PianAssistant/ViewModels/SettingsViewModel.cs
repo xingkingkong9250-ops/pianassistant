@@ -23,6 +23,8 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _organizeByDate;
     private string? _projectSubfolderName;
     private double _maxRate;
+    private int _seekStepFrames;
+    private double _rateStep;
 
     public SettingsViewModel(AppSettingsService settings, HotkeyService hotkeys)
     {
@@ -39,6 +41,8 @@ public sealed class SettingsViewModel : ObservableObject
         _organizeByDate = settings.OrganizeByDate;
         _projectSubfolderName = settings.ProjectSubfolderName;
         _maxRate = settings.MaxRate;
+        _seekStepFrames = settings.SeekStepFrames;
+        _rateStep = settings.RateStep;
 
         BrowseScreenshotsCommand = new RelayCommand(BrowseScreenshots);
         BrowseClipsCommand = new RelayCommand(BrowseClips);
@@ -102,6 +106,20 @@ public sealed class SettingsViewModel : ObservableObject
     public IReadOnlyList<double> MaxRateOptions { get; } =
         new[] { 2.0, 4.0, 8.0, 12.0, 16.0, 20.0, 32.0 };
 
+    /// <summary>方向键左右移动帧数（1~600，默认 5）。</summary>
+    public int SeekStepFrames
+    {
+        get => _seekStepFrames;
+        set => SetProperty(ref _seekStepFrames, Math.Clamp(value, 1, 600));
+    }
+
+    /// <summary>方向键上下倍速步长（0.05~1.0，默认 0.25）。</summary>
+    public double RateStep
+    {
+        get => _rateStep;
+        set => SetProperty(ref _rateStep, Math.Clamp(value, 0.05, 1.0));
+    }
+
     /// <summary>Currently selected hotkey action for inline editing.</summary>
     public HotkeyAction SelectedAction
     {
@@ -156,7 +174,7 @@ public sealed class SettingsViewModel : ObservableObject
     public void CommitHotkey()
     {
         if (string.IsNullOrWhiteSpace(_editingGesture)) return;
-        if (!HotkeyService.TryParseGesture(_editingGesture, out _))
+        if (!HotkeyService.TryParseKeyModifiers(_editingGesture, out _, out _))
             return; // invalid gesture; keep old binding
         _hotkeys.SetCustom(_selectedAction, _editingGesture);
         _settings.SetHotkeyOverride(_selectedAction, _editingGesture);
@@ -191,6 +209,8 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
         _settings.SetOrganizationOptions(_organizeByDate, _projectSubfolderName);
         _settings.MaxRate = MaxRate;
+        _settings.SeekStepFrames = SeekStepFrames;
+        _settings.RateStep = RateStep;
         Saved?.Invoke(this, EventArgs.Empty);
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
