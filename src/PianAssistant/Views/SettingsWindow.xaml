@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="设置 — 拉片助手"
-        Width="560" Height="600"
+        Width="560" Height="660"
         WindowStartupLocation="CenterOwner"
         Background="#1E1E1E" Foreground="#E0E0E0"
         FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="13">
@@ -43,6 +43,9 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -99,6 +102,26 @@
                     <TextBox Grid.Row="7" Grid.Column="1"
                              Text="{Binding RateStep, Mode=TwoWay}" Margin="0,2"
                              ToolTip="方向键上下调整倍速的步长（0.05~1.0，默认 0.25）" />
+
+                    <!-- 数据便携（M7）：数据路径 + 会话恢复开关 -->
+                    <Label Grid.Row="8" Content="数据路径：" Margin="0,8,0,0" />
+                    <TextBox Grid.Row="8" Grid.Column="1" Margin="0,8,0,2"
+                             Text="{Binding DataRoot, Mode=TwoWay}"
+                             ToolTip="所有运行数据（数据库/截图/片段/日志）的存放位置；修改后需重启生效，不自动搬迁旧数据" />
+                    <Button Grid.Row="8" Grid.Column="2" Content="浏览…" Margin="0,8,0,0"
+                            Command="{Binding BrowseDataRootCommand}" />
+
+                    <CheckBox Grid.Row="9" Grid.Column="1" Margin="0,8,0,2"
+                              Content="恢复上次拉片记录"
+                              IsChecked="{Binding RestoreSession, Mode=TwoWay}"
+                              Foreground="#E0E0E0"
+                              ToolTip="再次打开同一素材时自动还原裁切点/截图/笔记；默认开启" />
+
+                    <CheckBox Grid.Row="10" Grid.Column="1" Margin="0,2,0,2"
+                              Content="恢复播放位置与倍速"
+                              IsChecked="{Binding RestorePlaybackPosition, Mode=TwoWay}"
+                              Foreground="#E0E0E0"
+                              ToolTip="恢复上次播放的位置与倍速；仅在「恢复上次拉片记录」开启时生效" />
                 </Grid>
             </TabItem>
 

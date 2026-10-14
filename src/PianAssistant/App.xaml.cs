@@ -15,6 +15,7 @@ public partial class App : Application
 
     private ServiceRegistry? _services;
     private ShellViewModel? _shell;
+    private MainWindow? _mainWindow;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -61,9 +62,14 @@ public partial class App : Application
         _shell.ExitRequested += (_, _) => Shutdown();
         _shell.SettingsRequested += (_, _) => ShowSettings();
         _shell.ShowBatchRequested += (_, _) => ShowBatch();
-        // 视频缺失/打开失败等提示
+        // 视频缺失/打开失败/会话还原等提示：走右下角提示条，不弹窗打断（M7）。
         _shell.NotificationRequested += (_, msg) =>
-            MessageBox.Show(msg, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+        {
+            if (_mainWindow is not null)
+                _mainWindow.ShowToast(msg);
+            else
+                MessageBox.Show(msg, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+        };
         // 播放器操作失败（截图/截取片段等）提示
         _shell.Player.ErrorOccurred += (_, msg) =>
             MessageBox.Show(msg, "操作失败", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -71,12 +77,12 @@ public partial class App : Application
         // Create main window manually (no StartupUri) so that DataContext
         // is set BEFORE Loaded fires — VideoView.MediaPlayer binding in
         // OnLoaded needs Shell to be available.
-        var mainWindow = new MainWindow
+        _mainWindow = new MainWindow
         {
             DataContext = _shell
         };
-        mainWindow.Closing += (_, _) => _shell.Dispose();
-        mainWindow.Show();
+        _mainWindow.Closing += (_, _) => _shell.Dispose();
+        _mainWindow.Show();
     }
 
     private void OpenFileViaDialog()
@@ -131,6 +137,8 @@ public partial class App : Application
         DispatcherUnhandledException += (_, args) =>
         {
             AppLog.Error("[App] 未处理的 UI 线程异常", args.Exception);
+            // 尽力把当前素材会话落库，降低异常退出时的数据损失（M7）。
+            TryFlushSessions();
             MessageBox.Show(
                 "发生未处理错误，已记录日志。应用可能仍可继续使用。",
                 "错误", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -143,6 +151,7 @@ public partial class App : Application
                 AppLog.Error("[App] 未处理的后台线程异常", ex);
             else
                 AppLog.Info($"[App] 未处理的后台异常：{args.ExceptionObject}");
+            TryFlushSessions();
         };
 
         TaskScheduler.UnobservedTaskException += (_, args) =>
@@ -152,8 +161,16 @@ public partial class App : Application
         };
     }
 
+    /// <summary>退出/异常路径的尽力落库：把当前素材会话立即写入数据库（M7）。</summary>
+    private void TryFlushSessions()
+    {
+        try { _services?.Sessions.EndSession(); }
+        catch (Exception ex) { AppLog.Error("[App] 退出前会话落库失败", ex); }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        TryFlushSessions();
         _services?.Playback.Dispose();
         base.OnExit(e);
     }

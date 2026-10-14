@@ -7,6 +7,52 @@
 
 ## [Unreleased]
 
+### v0.9.0 — M7 数据便携与会话恢复（NO.M，2026-10-14）
+
+> 由用户提出的新功能：自动记录每个素材的拉片数据，再次打开同一视频时自动调取；
+> 全部运行数据集中一处，更换设备后指认数据路径即可还原使用状态。
+
+#### 新增（数据根便携化）
+
+- **`DataRootResolver`**：唯一路径解析入口，优先级
+  `PIAN_ASSISTANT_DATA_ROOT`(环境变量，测试隔离) > `config.DataRoot` > 引导目录
+  `%APPDATA%\Qianlan_App\PianAssistant\`
+- `config.json` 仍固定在引导位置（否则无法定位配置）；`AppSettingsService` /
+  `ProjectDatabase` / `AppLog` / `OutputDirectoryResolver` 一律改为从解析器取值，
+  不再各自拼路径
+- 设置窗新增「数据路径」+「浏览…」（`W2-A-11`/`W2-A-12`）；保存时校验（非法字符 /
+  可写探针），仅在路径**实际变化**时提示「需重启生效」，**不搬迁旧数据**
+
+#### 新增（素材会话，内容哈希身份）
+
+- **`ContentFingerprint` 两级键**（性能刚需，避免大文件每次全量哈希卡顿）：
+  - 快速键 `路径|大小|mtime(UTC)` → 打开瞬间**立即**定位并还原
+  - 规范键 SHA-256（流式 1MB 分块、`CancellationToken` 贯穿、**后台线程**）
+    → 跨设备 / 改名后仍可识别；算完回写升级会话记录；同哈希冲突保留旧行不删除
+- **数据库升级 `schema_version` → 2**：新增 `media_sessions`（快速键主键、哈希部分唯一索引、
+  位置 / 倍速 / 入出点 / 更新时间）+ 明细表 `session_cut_points` / `session_screenshots` /
+  `session_notes`；**v1 老库幂等迁移，不丢原有 projects/screenshots/clips/notes 数据**
+- **`MediaSessionService`**：两级键还原、后台哈希升级、**~2s 防抖落库**、
+  `Flush()` 兜底（退出 / 窗口关闭 / 全局异常兜底路径均 flush）
+- **自动恢复**：打开视频静默还原裁切点 / 入出点 / 截图清单 / 笔记 / 播放位置 / 倍速，
+  右下角提示条「已恢复上次拉片记录：N 处裁切 / M 张截图 / K 条笔记」（不弹窗打断）；
+  空会话**不创建记录、不弹提示**
+- 设置项 `RestoreSession` / `RestorePlaybackPosition`（默认开启，`W2-A-13`/`W2-A-14`）
+- 提示条：`MainWindow` 右下角 `ToastBorder` + `ShowToast`（`W1-E-01`）
+
+#### 说明
+
+- 与 `.paproj` 手动项目**分工并存**：自动会话 = 单素材随用随存；
+  `.paproj` = 跨素材 / 跨机打包
+- 位置变更采用按秒节流写库，避免高频 IO
+
+#### 验证
+
+- `dotnet build -c Release` **0 警告 0 错误**
+- `dotnet test` **296 项全绿**（新增 44 项：指纹 9 / 数据根 6 / 迁移 5 / 会话仓储 7 /
+  会话服务 10 / 设置 7）
+- self-contained win-x64 发布包 `artifacts/staging/PianAssistant_v0.9.0`
+
 ### v0.8.0 — M6 交付版本（开发版，NO.M，2026-10-14）
 
 > 本轮为**非正式版本**：完成 M6 除安装程序外的全部内容，待用户测试无误后

@@ -81,4 +81,81 @@ public class SettingsViewModelTests : IDisposable
         Assert.Equal(5, vm.SeekStepFrames);
         Assert.Equal(0.25, vm.RateStep, 3);
     }
+
+    // --- M7：数据路径与恢复开关 ---
+
+    [Fact]
+    public void DataRoot_InitializedFromService()
+    {
+        var vm = CreateVm(out var settings);
+        Assert.Equal(settings.DataRoot, vm.DataRoot);
+    }
+
+    [Fact]
+    public void ValidateDataRoot_Blank_ReturnsNull()
+    {
+        var vm = CreateVm(out _);
+        vm.DataRoot = "   ";
+        Assert.Null(vm.ValidateDataRoot());
+    }
+
+    [Fact]
+    public void Save_WithChangedDataRoot_RaisesEventAndPersists()
+    {
+        var vm = CreateVm(out _);
+        var raised = false;
+        vm.DataRootChanged += (_, _) => raised = true;
+
+        var newRoot = Path.Combine(_tempDir, "customroot");
+        vm.DataRoot = newRoot;
+        vm.SaveCommand.Execute(null);
+
+        Assert.True(raised);
+        var reloaded = new AppSettingsService(_tempDir);
+        Assert.Equal(newRoot, reloaded.DataRoot);
+    }
+
+    [Fact]
+    public void Save_WithUnchangedDataRoot_DoesNotRaiseEvent()
+    {
+        var vm = CreateVm(out var settings);
+        var raised = false;
+        vm.DataRootChanged += (_, _) => raised = true;
+
+        vm.DataRoot = settings.DataRoot;
+        vm.SaveCommand.Execute(null);
+
+        Assert.False(raised);
+    }
+
+    [Fact]
+    public void Save_WithInvalidDataRoot_RaisesValidationFailedAndBlocks()
+    {
+        var vm = CreateVm(out _);
+        string? error = null;
+        var saved = false;
+        vm.ValidationFailed += (_, msg) => error = msg;
+        vm.Saved += (_, _) => saved = true;
+
+        vm.DataRoot = "C:\\bad\0path"; // 含非法字符（NUL）
+        vm.SaveCommand.Execute(null);
+
+        Assert.NotNull(error);
+        Assert.False(saved); // 校验失败时阻断保存
+        var reloaded = new AppSettingsService(_tempDir);
+        Assert.Null(reloaded.Root.DataRoot); // 未写回
+    }
+
+    [Fact]
+    public void Save_PersistsRestoreToggles()
+    {
+        var vm = CreateVm(out _);
+        vm.RestoreSession = false;
+        vm.RestorePlaybackPosition = false;
+        vm.SaveCommand.Execute(null);
+
+        var reloaded = new AppSettingsService(_tempDir);
+        Assert.False(reloaded.RestoreSession);
+        Assert.False(reloaded.RestorePlaybackPosition);
+    }
 }

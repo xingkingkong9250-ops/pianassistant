@@ -44,6 +44,9 @@ public partial class MainWindow : Window
     // 截图画廊窗口（单例：已打开则聚焦）
     private GalleryWindow? _galleryWindow;
 
+    // 右下角提示条自动隐藏定时器（M7）
+    private DispatcherTimer? _toastTimer;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -244,6 +247,35 @@ public partial class MainWindow : Window
         _globalHotkeys?.Dispose();
         _globalHotkeys = null;
         base.OnClosed(e);
+    }
+
+    /// <summary>
+    /// 在右下角显示一条临时提示（M7 静默恢复等），数秒后自动隐藏，不弹窗打断操作。
+    /// </summary>
+    public void ShowToast(string message, int seconds = 5)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(() => ShowToast(message, seconds));
+            return;
+        }
+        ToastText.Text = message;
+        ToastBorder.Visibility = Visibility.Visible;
+        ToastBorder.Opacity = 1;
+        if (_toastTimer is null)
+        {
+            _toastTimer = new DispatcherTimer(DispatcherPriority.Background);
+            _toastTimer.Tick += (_, _) =>
+            {
+                _toastTimer!.Stop();
+                ToastBorder.Visibility = Visibility.Collapsed;
+                ToastBorder.Opacity = 0;
+            };
+        }
+        _toastTimer.Stop();
+        _toastTimer.Interval = TimeSpan.FromSeconds(seconds);
+        _toastTimer.Start();
     }
 
     // --- 全屏模式 ---

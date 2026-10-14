@@ -114,6 +114,11 @@ public sealed class NotesViewModel : ObservableObject
     public int SegmentCount => Segments.Count;
     public int CutPointCount => Activities.Count(a => a.Type == ActivityType.CutPoint);
 
+    /// <summary>活动流/截图数据发生变更（供会话自动保存触发 MarkDirty）。</summary>
+    public event EventHandler? Changed;
+
+    private void RaiseChanged() => Changed?.Invoke(this, EventArgs.Empty);
+
     public NotesViewModel(Func<TimeSpan> getPosition)
     {
         ArgumentNullException.ThrowIfNull(getPosition);
@@ -143,6 +148,7 @@ public sealed class NotesViewModel : ObservableObject
             screenshot.OutputPath);
         InsertActivitySorted(entry);
         NotifyCountsChanged();
+        RaiseChanged();
     }
 
     /// <summary>清空所有数据（打开新视频时调用）。</summary>
@@ -152,6 +158,7 @@ public sealed class NotesViewModel : ObservableObject
         Segments.Clear();
         Activities.Clear();
         NotifyCountsChanged();
+        RaiseChanged();
     }
 
     private void NotifyCountsChanged()
@@ -165,6 +172,7 @@ public sealed class NotesViewModel : ObservableObject
     {
         Screenshots.Remove(entry);
         OnPropertyChanged(nameof(ScreenshotCount));
+        RaiseChanged();
     }
 
     // --- 片段（自动分段）---
@@ -197,6 +205,7 @@ public sealed class NotesViewModel : ObservableObject
         var entry = new ActivityEntry(ActivityType.Note, _getPosition(), label);
         InsertActivitySorted(entry);
         NewNoteText = string.Empty;
+        RaiseChanged();
     }
 
     /// <summary>重命名笔记条目（活动流内联编辑）；仅对 Note 类型生效。</summary>
@@ -210,6 +219,7 @@ public sealed class NotesViewModel : ObservableObject
         entry.IsEditing = false;
         // 标签变化不影响 CollectionChanged，需手动刷新过滤结果
         RefreshFilter();
+        RaiseChanged();
     }
 
     /// <summary>删除活动条目（笔记/截图/片段记录均可删除）。</summary>
@@ -219,6 +229,7 @@ public sealed class NotesViewModel : ObservableObject
         // CollectionChanged 会自动同步过滤结果与时间轴标记
         Activities.Remove(entry);
         NotifyCountsChanged();
+        RaiseChanged();
     }
 
     /// <summary>
@@ -249,6 +260,7 @@ public sealed class NotesViewModel : ObservableObject
         var label = string.IsNullOrWhiteSpace(text) ? "标记" : text.Trim();
         var entry = new ActivityEntry(ActivityType.Note, position, label);
         InsertActivitySorted(entry);
+        RaiseChanged();
     }
 
     public void AddClip(ClipRange clip, string? outputPath)
@@ -258,6 +270,7 @@ public sealed class NotesViewModel : ObservableObject
         var entry = new ActivityEntry(ActivityType.Clip, clip.InPoint, label,
             outputPath, clip.Duration);
         InsertActivitySorted(entry);
+        RaiseChanged();
     }
 
     public void AddCutPoint(TimeSpan position)
@@ -266,6 +279,7 @@ public sealed class NotesViewModel : ObservableObject
         var entry = new ActivityEntry(ActivityType.CutPoint, position, label);
         InsertActivitySorted(entry);
         OnPropertyChanged(nameof(CutPointCount));
+        RaiseChanged();
     }
 
     // --- 跳转 ---

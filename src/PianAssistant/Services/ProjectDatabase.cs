@@ -10,8 +10,11 @@ namespace PianAssistant.Services;
 /// </summary>
 public sealed class ProjectDatabase
 {
-    /// <summary>当前 schema 版本号。</summary>
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>当前 schema 版本号（M7 起为 2）。</summary>
+    public const int CurrentSchemaVersion = 2;
+
+    /// <summary>v1 初始版本号。</summary>
+    public const int BaseSchemaVersion = 1;
 
     private readonly string _dbPath;
 
@@ -20,21 +23,11 @@ public sealed class ProjectDatabase
 
     public ProjectDatabase(string? dbPath = null)
     {
-        _dbPath = dbPath ?? DefaultDbPath();
+        // 默认路径统一由 DataRootResolver 解析（env > config.DataRoot > 引导目录）。
+        _dbPath = dbPath ?? DataRootResolver.DatabasePath;
         var dir = Path.GetDirectoryName(_dbPath);
         if (!string.IsNullOrEmpty(dir))
             Directory.CreateDirectory(dir);
-    }
-
-    /// <summary>计算默认数据库路径（遵循 AppSettingsService 的数据根约定）。</summary>
-    private static string DefaultDbPath()
-    {
-        var envOverride = Environment.GetEnvironmentVariable("PIAN_ASSISTANT_DATA_ROOT");
-        var root = string.IsNullOrWhiteSpace(envOverride)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Qianlan_App", "PianAssistant")
-            : envOverride!;
-        return Path.Combine(root, "pianassistant.db");
     }
 
     /// <summary>创建并打开一个 SQLite 连接（调用方负责 Dispose）。</summary>
@@ -108,8 +101,8 @@ public sealed class ProjectDatabase
     }
 
     /// <summary>
-    /// 初始化数据库：创建所有表并写入 schema_version=1。
-    /// 幂等——重复调用不会重建已有表。
+    /// 初始化数据库：创建 v1 基础表并写入 schema_version=1。
+    /// 幂等——重复调用不会重建已有表。v2 表由 <see cref="MigrateIfNeeded"/> 增量迁移创建。
     /// </summary>
     public void Initialize()
     {
@@ -170,7 +163,7 @@ public sealed class ProjectDatabase
         using var versionCmd = conn.CreateCommand();
         versionCmd.CommandText =
             "INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (@version, @applied_at)";
-        versionCmd.Parameters.AddWithValue("@version", CurrentSchemaVersion);
+        versionCmd.Parameters.AddWithValue("@version", BaseSchemaVersion);
         versionCmd.Parameters.AddWithValue("@applied_at", DateTime.Now.ToString("o"));
         versionCmd.ExecuteNonQuery();
     }
@@ -188,8 +181,9 @@ public sealed class ProjectDatabase
     }
 
     /// <summary>
-    /// 检查当前 schema 版本并执行增量迁移。
-    /// v1 为初始版本，无需迁移；后续新增版本时在此追加迁移逻辑。
+    /// 检查当前 schema 版本并执行增量迁移（幂等）。
+    /// v1 → v2：新增素材会话表（media_sessions 及明细），全部为
+    /// <c>CREATE TABLE IF NOT EXISTS</c>，不修改/删除任何既有数据，老用户升级不丢数据。
     /// </summary>
     public void MigrateIfNeeded()
     {
@@ -197,22 +191,75 @@ public sealed class ProjectDatabase
         if (current >= CurrentSchemaVersion)
             return;
 
-        // 占位：后续版本迁移在此按 current+1 → CurrentSchemaVersion 逐步执行。
-        // 示例（v2 迁移）：
-        // if (current < 2)
-        // {
-        //     using var conn = CreateConnection();
-        //     using var cmd = conn.CreateCommand();
-        //     cmd.CommandText = "ALTER TABLE projects ADD COLUMN extra TEXT";
-        //     cmd.ExecuteNonQuery();
-        //     RecordMigration(conn, 2);
-        // }
+        if (current < 2)
+            MigrateToV2();
+    }
+
+    /// <summary>v1 → v2 迁移：新增 media_sessions 会话表与明细表（幂等，不动旧数据）。</summary>
+    private void MigrateToV2()
+    {
+        using var conn = CreateConnection();
+        using var tx = conn.BeginTransaction();
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                CREATE TABLE IF NOT EXISTS media_sessions (
+                    fast_key TEXT PRIMARY KEY,
+                    content_hash TEXT,
+                    path TEXT NOT NULL,
+                    size INTEGER NOT NULL,
+                    mtime_utc INTEGER NOT NULL,
+                    last_position_ms INTEGER NOT NULL DEFAULT 0,
+                    rate REAL NOT NULL DEFAULT 1.0,
+                    in_point_ms INTEGER,
+                    out_point_ms INTEGER,
+                    updated_at TEXT NOT NULL,
+                    project_name TEXT
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_media_sessions_hash
+                    ON media_sessions(content_hash) WHERE content_hash IS NOT NULL;
+
+                CREATE TABLE IF NOT EXISTS session_cut_points (
+                    session_id TEXT NOT NULL,
+                    position_ms INTEGER NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS session_screenshots (
+                    session_id TEXT NOT NULL,
+                    file_path TEXT NOT NULL,
+                    position_ms INTEGER NOT NULL,
+                    captured_at TEXT NOT NULL,
+                    label TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS session_notes (
+                    session_id TEXT NOT NULL,
+                    position_ms INTEGER NOT NULL,
+                    text TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_session_cut_points ON session_cut_points(session_id);
+                CREATE INDEX IF NOT EXISTS idx_session_screenshots ON session_screenshots(session_id);
+                CREATE INDEX IF NOT EXISTS idx_session_notes ON session_notes(session_id);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+        RecordMigration(conn, 2, tx);
+        tx.Commit();
     }
 
     /// <summary>在迁移完成后记录版本号。</summary>
-    internal void RecordMigration(SqliteConnection conn, int version)
+    internal void RecordMigration(SqliteConnection conn, int version) =>
+        RecordMigration(conn, version, null);
+
+    /// <summary>在迁移完成后记录版本号（可复用事务）。</summary>
+    internal void RecordMigration(SqliteConnection conn, int version, SqliteTransaction? tx)
     {
         using var cmd = conn.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText =
             "INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (@version, @applied_at)";
         cmd.Parameters.AddWithValue("@version", version);

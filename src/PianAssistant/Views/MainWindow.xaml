@@ -358,5 +358,14 @@
                 </StackPanel>
             </DockPanel>
         </Border>
+
+        <!-- ═══ 右下角提示条（M7 静默恢复提示，不弹窗打断）═══ -->
+        <Border x:Name="ToastBorder" Grid.RowSpan="4"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,20,20" Padding="14,10" CornerRadius="6" MaxWidth="420"
+                Background="#E01A6B8A" BorderBrush="#2480A0" BorderThickness="1"
+                IsHitTestVisible="False" Visibility="Collapsed" Opacity="0">
+            <TextBlock x:Name="ToastText" Foreground="White" FontSize="13" TextWrapping="Wrap" />
+        </Border>
     </Grid>
 </Window>

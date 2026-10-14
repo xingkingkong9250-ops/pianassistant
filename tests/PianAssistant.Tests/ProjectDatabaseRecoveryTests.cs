@@ -37,7 +37,8 @@ public class ProjectDatabaseRecoveryTests : IDisposable
         Assert.True(result.Success);
         Assert.False(result.Recovered);
         Assert.Null(result.Message);
-        Assert.Equal(1, db.GetSchemaVersion());
+        // EnsureInitialized 完成全量迁移（M7 起为 v2）。
+        Assert.Equal(ProjectDatabase.CurrentSchemaVersion, db.GetSchemaVersion());
     }
 
     [Fact]
@@ -53,8 +54,8 @@ public class ProjectDatabaseRecoveryTests : IDisposable
         Assert.True(result.Success);
         Assert.True(result.Recovered);
         Assert.NotNull(result.Message);
-        // 空库已重建并可用。
-        Assert.Equal(1, db.GetSchemaVersion());
+        // 空库已重建并可用（含 M7 会话表迁移）。
+        Assert.Equal(ProjectDatabase.CurrentSchemaVersion, db.GetSchemaVersion());
     }
 
     [Fact]

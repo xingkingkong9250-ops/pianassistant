@@ -555,6 +555,13 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
 
     private void MarkOut() => OutPoint = _position;
 
+    /// <summary>直接设置入/出点（会话还原用；不依赖当前播放位置）。</summary>
+    public void SetInOut(TimeSpan? inPoint, TimeSpan? outPoint)
+    {
+        InPoint = inPoint;
+        OutPoint = outPoint;
+    }
+
     private void ClearInOut()
     {
         InPoint = null;

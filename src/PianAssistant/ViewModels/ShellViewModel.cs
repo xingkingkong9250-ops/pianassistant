@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Windows.Input;
 using PianAssistant.Helpers;
@@ -20,6 +21,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private SidebarPanel _activePanel = SidebarPanel.Playlist;
     private bool _isFullscreen;
     private bool _disposed;
+    // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。
+    private bool _isRestoring;
+    // 播放位置按秒节流落库，避免高频写库（M7）。
+    private long _lastMarkedSecond = -1;
 
     public ServiceRegistry Services => _services;
     public PlayerViewModel Player { get; }
@@ -181,6 +186,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 项目服务会话钩子（M6）：保存时把会话数据桥接到持久化层；加载时反向应用到会话。
         WireProjectService(services);
 
+        // 素材会话自动保存/恢复钩子（M7）。
+        WireMediaSession(services);
+
         // Commands.
         OpenFileCommand = new RelayCommand(RequestOpenFile);
         ToggleSidebarPanelCommand = new RelayCommand(
@@ -245,10 +253,29 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         try
         {
-            Player.Open(media.Path);
-            _services.Settings.AddRecentFile(media.Path);
-            // 打开新视频时清空截图和段
-            Notes.ClearAll();
+            // 切换前先把上一个素材的会话落库（M7）。
+            _services.Sessions.EndSession();
+            // 重载过程中抑制变更上报，避免把清空动作本身写回数据库（M7）。
+            _isRestoring = true;
+            try
+            {
+                Player.Open(media.Path);
+                _services.Settings.AddRecentFile(media.Path);
+                // 打开新视频时清空截图和段
+                Notes.ClearAll();
+            }
+            finally
+            {
+                _isRestoring = false;
+                _lastMarkedSecond = -1;
+            }
+            // 开始跟踪新素材：无论是否开启自动恢复，发生变更都应能保存（M7）。
+            _services.Sessions.BeginSession(media);
+            if (_services.Settings.RestoreSession)
+            {
+                // 静默恢复：先按快速键同步还原，后台算完内容哈希后再按需升级（M7）。
+                _ = _services.Sessions.LoadAsync(media);
+            }
         }
         catch (FileNotFoundException ex)
         {
@@ -312,6 +339,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        // 退出前把当前素材会话落库（M7）；须在释放播放器之前采集快照。
+        try { _services.Sessions.EndSession(); }
+        catch (Exception ex) { AppLog.Error("[ShellVM] 会话落库失败", ex); }
         _disposed = true;
         Player.Dispose();
         if (_ownsServices)
@@ -369,6 +399,117 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             foreach (var note in list)
                 Notes.AddMarkerAt(note.Text, note.Position);
         };
+    }
+
+    // --- 素材会话自动保存/恢复（M7）---
+
+    /// <summary>
+    /// 把会话服务的采集/应用委托接上当前 VM，并订阅各变更源触发防抖落库：
+    /// 裁切点、截图、片段、笔记活动流、入出点、倍速与播放位置。
+    /// </summary>
+    private void WireMediaSession(ServiceRegistry services)
+    {
+        var sessions = services.Sessions;
+
+        // 采集当前会话快照供落库。
+        sessions.CaptureSnapshot = () => new MediaSessionSnapshot
+        {
+            Path = Player.CurrentPath ?? string.Empty,
+            Position = Player.Position,
+            Rate = Player.Rate,
+            InPoint = Player.InPoint,
+            OutPoint = Player.OutPoint,
+            CutPoints = Player.CutPoints.ToList(),
+            Screenshots = Screenshots.Items.ToList(),
+            Notes = Notes.Activities
+                .Where(a => a.Type == ActivityType.Note)
+                .Select(a => new NoteEntry(Player.CurrentPath ?? "unknown", a.Position, a.Label))
+                .ToList(),
+        };
+
+        // 把读回的会话应用到当前会话（服务保证在 UI 线程回调）。
+        sessions.ApplySession = ApplySession;
+
+        // 成功还原后以提示条展示统计（不弹窗打断）。
+        sessions.SessionRestored += (_, r) => NotificationRequested?.Invoke(this, r.Summary);
+
+        // 各类变更 → 防抖落库。
+        Player.CutPoints.CollectionChanged += (_, _) => MarkSessionDirty();
+        Player.ScreenshotCaptured += (_, _) => MarkSessionDirty();
+        Player.ClipExtracted += (_, _) => MarkSessionDirty();
+        Player.SegmentExported += (_, _) => MarkSessionDirty();
+        Notes.Changed += (_, _) => MarkSessionDirty();
+        Player.PropertyChanged += OnPlayerPropertyChangedForSession;
+    }
+
+    /// <summary>把读回的会话数据还原到播放器、画廊与笔记活动流。</summary>
+    private void ApplySession(MediaSession session)
+    {
+        _isRestoring = true;
+        try
+        {
+            // 先清空，再还原——否则清空会把刚由 SetCutPoints 重建的分段/裁切点活动一并抹掉。
+            Screenshots.Clear();
+            Notes.ClearAll();
+
+            Player.SetCutPoints(session.CutPointsMs.Select(ms => TimeSpan.FromMilliseconds(ms)));
+            Player.SetInOut(
+                session.InPointMs is { } inMs ? TimeSpan.FromMilliseconds(inMs) : null,
+                session.OutPointMs is { } outMs ? TimeSpan.FromMilliseconds(outMs) : null);
+
+            foreach (var s in session.Screenshots)
+            {
+                if (string.IsNullOrWhiteSpace(s.FilePath)) continue;
+                var entry = new ScreenshotEntry(
+                    session.Path, s.FilePath, TimeSpan.FromMilliseconds(s.PositionMs),
+                    s.CapturedAt, s.Label);
+                Screenshots.Add(entry);
+                Notes.AddScreenshot(entry);
+            }
+            foreach (var n in session.Notes)
+                Notes.AddMarkerAt(n.Text, TimeSpan.FromMilliseconds(n.PositionMs));
+
+            // 还原播放位置与倍速（位置为 0/倍速 1.0 时即等同不还原）。
+            Player.Position = TimeSpan.FromMilliseconds(session.LastPositionMs);
+            Player.Rate = session.Rate;
+            _lastMarkedSecond = (long)Player.Position.TotalSeconds;
+        }
+        finally
+        {
+            _isRestoring = false;
+        }
+    }
+
+    /// <summary>响播放器属性变化：倍速/入出点即时落库，位置按秒节流。</summary>
+    private void OnPlayerPropertyChangedForSession(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(PlayerViewModel.Rate):
+            case nameof(PlayerViewModel.InPoint):
+            case nameof(PlayerViewModel.OutPoint):
+                MarkSessionDirty();
+                break;
+            case nameof(PlayerViewModel.Position):
+                MarkSessionDirtyThrottled();
+                break;
+        }
+    }
+
+    /// <summary>播放位置按秒节流：同一秒内的多次位置变化只上报一次。</summary>
+    private void MarkSessionDirtyThrottled()
+    {
+        var second = (long)Player.Position.TotalSeconds;
+        if (second == _lastMarkedSecond) return;
+        _lastMarkedSecond = second;
+        MarkSessionDirty();
+    }
+
+    /// <summary>标记会话已变更（还原过程中与已释放时不上报）。</summary>
+    private void MarkSessionDirty()
+    {
+        if (_isRestoring || _disposed) return;
+        _services.Sessions.MarkDirty();
     }
 
     /// <summary>按片段入点从活动流中回查其输出路径（活动流片段条目位置=入点）。</summary>

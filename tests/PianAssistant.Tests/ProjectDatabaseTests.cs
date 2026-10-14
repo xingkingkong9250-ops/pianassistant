@@ -70,7 +70,10 @@ public class ProjectDatabaseTests : IDisposable
     [Fact]
     public void Initialize_WritesSchemaVersion1()
     {
-        var (db, _) = CreateDb();
+        // Initialize 仅建立 v1 基础表并写入 schema_version=1；
+        // v2 表由 MigrateIfNeeded 增量迁移（见 MigrateIfNeeded_* 测试）。
+        var db = new ProjectDatabase(_dbPath);
+        db.Initialize();
         Assert.Equal(1, db.GetSchemaVersion());
     }
 
@@ -85,11 +88,12 @@ public class ProjectDatabaseTests : IDisposable
     }
 
     [Fact]
-    public void MigrateIfNeeded_AtVersion1_DoesNothing()
+    public void MigrateIfNeeded_AtLatest_DoesNothing()
     {
         var (db, _) = CreateDb();
+        // CreateDb 已完成迁移（当前 schema 版本），再次迁移应保持不变。
         db.MigrateIfNeeded();
-        Assert.Equal(1, db.GetSchemaVersion());
+        Assert.Equal(ProjectDatabase.CurrentSchemaVersion, db.GetSchemaVersion());
     }
 
     // -------- 项目 CRUD 测试 --------

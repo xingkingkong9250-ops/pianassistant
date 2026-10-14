@@ -12,10 +12,7 @@ namespace PianAssistant.Services;
 /// </summary>
 public sealed class AppSettingsService
 {
-    private static readonly string DefaultRoot =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Qianlan_App", "PianAssistant");
-
+    private readonly string _bootstrapRoot;
     private readonly string _configPath;
     private readonly AppSettings _settings;
 
@@ -26,14 +23,18 @@ public sealed class AppSettingsService
 
     public AppSettingsService(string? dataRootOverride = null)
     {
-        var root = dataRootOverride ?? GetEffectiveRoot();
-        Directory.CreateDirectory(root);
-        _configPath = Path.Combine(root, "config.json");
+        // 引导根：config.json 固定放在这里，不随数据根迁移。
+        _bootstrapRoot = dataRootOverride ?? DataRootResolver.BootstrapRoot;
+        Directory.CreateDirectory(_bootstrapRoot);
+        _configPath = Path.Combine(_bootstrapRoot, "config.json");
         // 启动自愈：恢复上次崩溃残留的 .backup 快照（仅当主配置缺失时）。
         TryRestoreMissingConfig();
         _settings = Load();
         Root = _settings;
     }
+
+    /// <summary>固定引导根（config.json 所在）。供配置读写使用。</summary>
+    public string BootstrapRoot => _bootstrapRoot;
 
     /// <summary>
     /// 原子写自愈：若 config.json 缺失但存在上次写入残留的 <c>.backup</c> 快照，
@@ -54,7 +55,14 @@ public sealed class AppSettingsService
         }
     }
 
-    public string DataRoot => Path.GetDirectoryName(_configPath)!;
+    /// <summary>解析后的数据根（env &gt; config.DataRoot &gt; 引导根）。</summary>
+    public string DataRoot => DataRootResolver.ResolveDataRoot(_settings.DataRoot, _bootstrapRoot);
+
+    /// <summary>日志目录（数据根下 logs）。</summary>
+    public string LogsDirectory => Path.Combine(DataRoot, "logs");
+
+    /// <summary>数据库文件路径（数据根下 pianassistant.db）。</summary>
+    public string DatabasePath => Path.Combine(DataRoot, "pianassistant.db");
 
     public string ScreenshotsDirectory =>
         string.IsNullOrWhiteSpace(_settings.ScreenshotsDirectory)
@@ -134,6 +142,30 @@ public sealed class AppSettingsService
         Save();
     }
 
+    /// <summary>是否自动恢复上次拉片记录（素材会话）；默认开。</summary>
+    public bool RestoreSession
+    {
+        get => _settings.RestoreSession;
+        set { _settings.RestoreSession = value; Save(); }
+    }
+
+    /// <summary>恢复播放位置与倍速；默认开（仅在 RestoreSession 开启时生效）。</summary>
+    public bool RestorePlaybackPosition
+    {
+        get => _settings.RestorePlaybackPosition;
+        set { _settings.RestorePlaybackPosition = value; Save(); }
+    }
+
+    /// <summary>
+    /// 设置数据根（写回 config.json，config.json 本身仍在引导目录）。
+    /// 仅切换路径、不搬迁任何文件；生效需重启。
+    /// </summary>
+    public void SetDataRoot(string? dataRoot)
+    {
+        _settings.DataRoot = string.IsNullOrWhiteSpace(dataRoot) ? null : dataRoot!.Trim();
+        Save();
+    }
+
     public void SetSnapshotFormat(string format)
     {
         if (format != "png" && format != "jpg")
@@ -178,11 +210,8 @@ public sealed class AppSettingsService
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    public static string GetEffectiveRoot()
-    {
-        var envOverride = Environment.GetEnvironmentVariable("PIAN_ASSISTANT_DATA_ROOT");
-        return string.IsNullOrWhiteSpace(envOverride) ? DefaultRoot : envOverride!;
-    }
+    /// <summary>引导根（config.json 所在）；等价于数据根解析的兜底值。</summary>
+    public static string GetEffectiveRoot() => DataRootResolver.BootstrapRoot;
 }
 
 /// <summary>
@@ -207,6 +236,12 @@ public sealed class AppSettings
     public bool OrganizeByDate { get; set; } = false;
     /// <summary>项目名子目录（非空时在日期层下再建一层；默认 null）。</summary>
     public string? ProjectSubfolderName { get; set; }
+    /// <summary>数据根（真正的数据存储位置）；null/空白表示用默认引导目录。</summary>
+    public string? DataRoot { get; set; }
+    /// <summary>是否自动恢复上次拉片记录（素材会话）；默认开。</summary>
+    public bool RestoreSession { get; set; } = true;
+    /// <summary>恢复播放位置与倍速；默认开。</summary>
+    public bool RestorePlaybackPosition { get; set; } = true;
 }
 
 [JsonSerializable(typeof(AppSettings))]

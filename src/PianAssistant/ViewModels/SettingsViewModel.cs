@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
@@ -25,6 +26,10 @@ public sealed class SettingsViewModel : ObservableObject
     private double _maxRate;
     private int _seekStepFrames;
     private double _rateStep;
+    private string _dataRoot;
+    private readonly string _originalDataRoot;
+    private bool _restoreSession;
+    private bool _restorePlaybackPosition;
 
     public SettingsViewModel(AppSettingsService settings, HotkeyService hotkeys)
     {
@@ -33,6 +38,10 @@ public sealed class SettingsViewModel : ObservableObject
         _settings = settings;
         _hotkeys = hotkeys;
 
+        _dataRoot = settings.DataRoot;
+        _originalDataRoot = settings.DataRoot;
+        _restoreSession = settings.RestoreSession;
+        _restorePlaybackPosition = settings.RestorePlaybackPosition;
         _screenshotsDirectory = settings.ScreenshotsDirectory;
         _clipsDirectory = settings.ClipsDirectory;
         _snapshotFormat = settings.SnapshotFormat;
@@ -46,6 +55,7 @@ public sealed class SettingsViewModel : ObservableObject
 
         BrowseScreenshotsCommand = new RelayCommand(BrowseScreenshots);
         BrowseClipsCommand = new RelayCommand(BrowseClips);
+        BrowseDataRootCommand = new RelayCommand(BrowseDataRoot);
         SaveCommand = new RelayCommand(Save);
         ResetHotkeyCommand = new RelayCommand(ResetSelectedHotkey);
         ResetAllHotkeysCommand = new RelayCommand(_hotkeys.ResetAll);
@@ -120,6 +130,27 @@ public sealed class SettingsViewModel : ObservableObject
         set => SetProperty(ref _rateStep, Math.Clamp(value, 0.05, 1.0));
     }
 
+    /// <summary>数据路径（数据根）；修改后需重启生效，不搬迁任何文件。</summary>
+    public string DataRoot
+    {
+        get => _dataRoot;
+        set => SetProperty(ref _dataRoot, value);
+    }
+
+    /// <summary>是否自动恢复上次拉片记录（素材会话）。</summary>
+    public bool RestoreSession
+    {
+        get => _restoreSession;
+        set => SetProperty(ref _restoreSession, value);
+    }
+
+    /// <summary>是否恢复播放位置与倍速。</summary>
+    public bool RestorePlaybackPosition
+    {
+        get => _restorePlaybackPosition;
+        set => SetProperty(ref _restorePlaybackPosition, value);
+    }
+
     /// <summary>Currently selected hotkey action for inline editing.</summary>
     public HotkeyAction SelectedAction
     {
@@ -145,17 +176,24 @@ public sealed class SettingsViewModel : ObservableObject
 
     public ICommand BrowseScreenshotsCommand { get; }
     public ICommand BrowseClipsCommand { get; }
+    public ICommand BrowseDataRootCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand ResetHotkeyCommand { get; }
     public ICommand ResetAllHotkeysCommand { get; }
 
     public event EventHandler? BrowseScreenshotsRequested;
     public event EventHandler? BrowseClipsRequested;
+    public event EventHandler? BrowseDataRootRequested;
     public event EventHandler? Saved;
     public event EventHandler? CloseRequested;
+    /// <summary>数据路径发生实际变化（需重启生效）时触发，由 View 层弹提示。</summary>
+    public event EventHandler? DataRootChanged;
+    /// <summary>校验失败（非法字符 / 目录不可写）时触发，参数为错误消息。</summary>
+    public event EventHandler<string>? ValidationFailed;
 
     private void BrowseScreenshots() => BrowseScreenshotsRequested?.Invoke(this, EventArgs.Empty);
     private void BrowseClips() => BrowseClipsRequested?.Invoke(this, EventArgs.Empty);
+    private void BrowseDataRoot() => BrowseDataRootRequested?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Called by the view after a folder dialog returns a path.</summary>
     public void SetScreenshotsDirectory(string path)
@@ -168,6 +206,38 @@ public sealed class SettingsViewModel : ObservableObject
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ClipsDirectory = path;
+    }
+
+    /// <summary>Called by the view after a folder dialog returns a path (数据路径).</summary>
+    public void SetDataRoot(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        DataRoot = path;
+    }
+
+    /// <summary>
+    /// 校验数据路径：空白视为「使用默认」，合法；否则检查非法字符与目录可写性。
+    /// 返回 null 表示合法，否则返回错误消息。
+    /// </summary>
+    public string? ValidateDataRoot()
+    {
+        if (string.IsNullOrWhiteSpace(_dataRoot)) return null;
+        try
+        {
+            foreach (var c in Path.GetInvalidPathChars())
+                if (_dataRoot.Contains(c)) return "数据路径包含非法字符。";
+            var full = Path.GetFullPath(_dataRoot.Trim());
+            Directory.CreateDirectory(full);
+            // 写探针验证可写性（成功后立即删除，不残留）。
+            var probe = Path.Combine(full, ".write_probe_" + Guid.NewGuid().ToString("N"));
+            File.WriteAllText(probe, "probe");
+            File.Delete(probe);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return "数据路径不可用：" + ex.Message;
+        }
     }
 
     /// <summary>Commit the currently edited gesture for the selected action.</summary>
@@ -204,6 +274,19 @@ public sealed class SettingsViewModel : ObservableObject
 
     private void Save()
     {
+        // 数据路径非法/不可写时阻断保存，交由 View 层提示。
+        var error = ValidateDataRoot();
+        if (error is not null)
+        {
+            ValidationFailed?.Invoke(this, error);
+            return;
+        }
+
+        var newDataRoot = string.IsNullOrWhiteSpace(_dataRoot) ? null : _dataRoot.Trim();
+        var dataRootChanged = !string.Equals(
+            NormalizePath(_originalDataRoot), NormalizePath(newDataRoot),
+            StringComparison.OrdinalIgnoreCase);
+
         _settings.SetOutputDirectories(_screenshotsDirectory, _clipsDirectory);
         _settings.SetSnapshotFormat(_snapshotFormat);
         _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
@@ -211,8 +294,24 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.MaxRate = MaxRate;
         _settings.SeekStepFrames = SeekStepFrames;
         _settings.RateStep = RateStep;
+        _settings.RestoreSession = _restoreSession;
+        _settings.RestorePlaybackPosition = _restorePlaybackPosition;
+        if (dataRootChanged)
+            _settings.SetDataRoot(newDataRoot);
+
         Saved?.Invoke(this, EventArgs.Empty);
+        // 仅在实际变化时提示「需重启生效」，且不搬迁任何文件。
+        if (dataRootChanged)
+            DataRootChanged?.Invoke(this, EventArgs.Empty);
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>规范化路径用于比较（去尾部斜杠、转全路径）；失败时返回原值。</summary>
+    private static string? NormalizePath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try { return Path.GetFullPath(path.Trim()).TrimEnd(Path.DirectorySeparatorChar); }
+        catch { return path.Trim(); }
     }
 }
 

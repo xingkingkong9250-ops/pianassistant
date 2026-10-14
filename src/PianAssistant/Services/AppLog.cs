@@ -12,10 +12,17 @@ namespace PianAssistant.Services;
 internal static class AppLog
 {
     private static readonly object Gate = new();
+    private static string? _logDirectory;
 
-    /// <summary>日志目录（绝对路径）。</summary>
-    public static string LogDirectory { get; } =
-        Path.Combine(AppSettingsService.GetEffectiveRoot(), "logs");
+    /// <summary>日志目录（绝对路径）；未显式设置时由 <see cref="DataRootResolver"/> 解析。</summary>
+    public static string LogDirectory => _logDirectory ?? DataRootResolver.LogsDir;
+
+    /// <summary>显式指定日志目录（由启动层按解析后的数据根注入，M7）。</summary>
+    public static void SetDirectory(string directory)
+    {
+        if (!string.IsNullOrWhiteSpace(directory))
+            _logDirectory = directory;
+    }
 
     public static void Info(string message) => Write("INFO", message);
 
