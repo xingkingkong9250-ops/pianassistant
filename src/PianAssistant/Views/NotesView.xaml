@@ -103,6 +103,8 @@
                         <MenuItem Header="✏ 编辑" Click="OnActivityEdit">
                             <MenuItem.Style>
                                 <Style TargetType="MenuItem">
+                                    <!-- 局部 Style 会屏蔽 App 级隐式样式，需显式指定前景色（深色菜单） -->
+                                    <Setter Property="Foreground" Value="#E0E0E0" />
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Type}" Value="Note">

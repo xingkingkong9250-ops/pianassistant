@@ -7,6 +7,29 @@
 
 ## [Unreleased]
 
+### v0.9.1 — 深色主题弹出控件撞色修复（NO.P，2026-10-14）
+
+> 用户反馈：倍速下拉框展开后白底浅灰字，信息无法辨认。根因：App.xaml 无任何全局
+> 样式，ComboBox 弹出层 / ContextMenu / TabControl / ListBox 全部使用 WPF 默认
+> 浅色模板，而各窗口 Foreground 为浅灰（继承），形成"白底浅字"撞色。
+
+#### 修复（全局深色主题，`App.xaml` 统一生效于所有窗口）
+
+- **ComboBox 完整深色模板**：深色 ToggleButton + 弹出层 `#252526` 底 `#3F3F46` 边框
+  （默认模板弹出层白底，无法仅靠颜色覆盖修复）。影响 5 处：主窗倍速框（`W1-R4-07`）、
+  笔记模板框（`W1-C2-C-07`）、设置窗截图格式（`W2-A-05`）与最高倍率（`W2-A-08`）
+- **ComboBoxItem**：深底浅字，悬停/选中用强调色 `#1A6B8A`
+- **ContextMenu / MenuItem**：深底浅字（保留系统模板，仅覆盖颜色）——
+  播放列表 / 截图 / 活动 / 画廊右键菜单与最近文件菜单
+- **TabControl / TabItem**（设置窗页签）：深色化，选中项强调色下划线（与主窗导航一致）
+- **ListBox**：默认白底改深色（影响设置窗快捷键列表 `W2-B-06` 等未显式设背景的列表）
+- **NotesView「✏ 编辑」菜单项**：其局部 Style 会屏蔽 App 级隐式样式，补显式前景色
+
+#### 验证
+
+- `dotnet build -c Release` 0 警告 0 错误；`dotnet test` 296 项全绿
+- self-contained win-x64 发布包 `artifacts/staging/PianAssistant_v0.9.1`
+
 ### v0.9.0 — M7 数据便携与会话恢复（NO.M，2026-10-14）
 
 > 由用户提出的新功能：自动记录每个素材的拉片数据，再次打开同一视频时自动调取；
