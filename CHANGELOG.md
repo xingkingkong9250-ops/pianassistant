@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+### v0.9.4 — 高倍速真实生效 + 高速档自动静音（NO.P，2026-10-14）
+
+> 用户反馈：设定最高倍率（如 8×）后并未真正加速，实际卡在 4×，且音频未屏蔽。
+
+#### 根因
+
+- `VideoPlaybackService.SetRate` 内遗留 `Math.Clamp(rate, 0.25, 4.0)`——早期倍速
+  0.25~4× 时代的服务层硬钳制；v0.6.1 提高上限时只改了 VM 层（`CurrentMaxRate`），
+  漏掉了这处，导致 8× 传到 LibVLC 前被钳成 4×。
+- 音轨激活时 LibVLC 3 音频时钟也会把有效倍速钳制在约 4×（aout 限制）。
+
+#### 修复（`VideoPlaybackService`）
+
+- **移除 4× 遗留钳制**：服务层兜底范围放宽为 0.25~32（VM 层已按设置的最高倍率钳制）
+- **高速档音轨策略 `ApplyHighRateAudioPolicy`**：倍速 > 4× 时禁用音轨
+  （`AudioTrack = -1`，同时达成静音）并重新应用倍速解除音频时钟钳制；
+  回落 ≤ 4× 时自动恢复禁用前的音轨；`Playing` 事件重应用（覆盖打开素材时按
+  倍速记忆恢复高速、而音轨在播放开始才选中的时序）；`Open` 时重置音轨记忆
+- `Rate` 属性 setter 统一收敛到 `SetRate`
+
+#### 验证
+
+- `dotnet build -c Release` 0 警告 0 错误；`dotnet test` 296 项全绿
+- self-contained win-x64 发布包 `artifacts/staging/PianAssistant_v0.9.4`
+
 ### v0.9.3 — 输入法强制英文模式（NO.P，2026-10-14）
 
 > 用户反馈：中文输入法处于中文模式时单键快捷键失效（WPF 收到 `Key.ImeProcessed`

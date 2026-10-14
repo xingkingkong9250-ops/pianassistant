@@ -37,7 +37,7 @@ public sealed class VideoPlaybackService : IVideoPlayback
     public double Rate
     {
         get => _mediaPlayer.Rate;
-        set => _mediaPlayer.SetRate((float)value);
+        set => SetRate(value);
     }
     public int Volume
     {
@@ -75,6 +75,9 @@ public sealed class VideoPlaybackService : IVideoPlayback
         _mediaPlayer.Playing += (_, _) =>
         {
             OnMediaParsed();
+            // 音轨此刻才完成选择：若当前处于高速档（如打开时按倍速记忆恢复 8×），
+            // 需再次应用音轨策略禁用音频，解除 4× 时钟钳制
+            ApplyHighRateAudioPolicy(Rate);
             Playing?.Invoke(this, EventArgs.Empty);
         };
         _mediaPlayer.Paused += (_, _) => Paused?.Invoke(this, EventArgs.Empty);
@@ -103,6 +106,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
         _currentPath = path;
         _media = new Media(_libVlc, new Uri(path));
         _mediaPlayer.Media = _media;
+        // 新素材音轨 id 无效化：高速档禁用的音轨记忆仅在同一素材内有效
+        _savedAudioTrack = null;
     }
 
     public void Play() => _mediaPlayer.Play();
@@ -159,10 +164,40 @@ public sealed class VideoPlaybackService : IVideoPlayback
         }
     }
 
+    /// <summary>
+    /// 音频时钟会把有效倍速钳制在约 4×（LibVLC 3 aout 限制）。
+    /// 高于该阈值时禁用音轨（同步静音、解除钳制），回落时恢复原音轨。
+    /// </summary>
+    private const double HighRateAudioLimit = 4.0;
+    private int? _savedAudioTrack;
+
     public void SetRate(double rate)
     {
-        var clamped = Math.Clamp(rate, 0.25, 4.0);
+        // 服务层兜底 0.25~32（VM 层已按设置的最高倍率钳制，勿在此收紧）
+        var clamped = Math.Clamp(rate, 0.25, 32.0);
+        ApplyHighRateAudioPolicy(clamped);
         _mediaPlayer.SetRate((float)clamped);
+    }
+
+    /// <summary>按倍速应用音轨策略：&gt;4× 禁用音轨真实加速，≤4× 恢复音轨。</summary>
+    private void ApplyHighRateAudioPolicy(double rate)
+    {
+        if (rate > HighRateAudioLimit)
+        {
+            var current = _mediaPlayer.AudioTrack;
+            if (current != -1)
+            {
+                if (current >= 0) _savedAudioTrack = current;
+                _mediaPlayer.SetAudioTrack(-1);
+                _mediaPlayer.SetRate((float)rate); // 音轨禁用后重新应用，确保解除音频时钟钳制
+            }
+        }
+        else if (_savedAudioTrack is int track)
+        {
+            _mediaPlayer.SetAudioTrack(track);
+            _savedAudioTrack = null;
+            _mediaPlayer.SetRate((float)rate);
+        }
     }
 
     public string TakeSnapshot(string outputPath)
