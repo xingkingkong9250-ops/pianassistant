@@ -7,6 +7,31 @@
 
 ## [Unreleased]
 
+### v0.9.2 — 暂停态时间轴点击跳转修复（NO.P，2026-10-14）
+
+> 用户反馈：视频暂停状态下点击时间轴，画面与播放头都不会跳到点击位置。
+
+#### 根因
+
+- 时间轴点击走 `SeekPercent` → LibVLC `MediaPlayer.Position` 赋值；
+  方向键逐帧走 `SeekRelative` → `MediaPlayer.Time` 赋值。
+  **LibVLC 3 暂停态下 `Position` 赋值不刷新画面、且 `TimeChanged` 事件不触发**
+  （播放头也不动），而 `Time` 赋值可靠——这解释了逐帧正常、点击失效的差异。
+
+#### 修复（`VideoPlaybackService`）
+
+- `Seek` / `SeekPercent` 统一收敛到新私有入口 `SeekToMs`：改用 `Time`（毫秒，精度也优于
+  float 型 `Position`）赋值
+- 暂停态补两步：`NextFrame()` 强制渲染新位置画面（步进 ≈1 帧，误差可忽略）；
+  手动触发 `PositionChanged` 通知 UI 播放头立即更新（有 `_isUpdatingFromPlayback`
+  守卫，无回写循环）
+- 播放态行为不变（仍由 `TimeChanged` 驱动）
+
+#### 验证
+
+- `dotnet build -c Release` 0 警告 0 错误；`dotnet test` 296 项全绿
+- self-contained win-x64 发布包 `artifacts/staging/PianAssistant_v0.9.2`
+
 ### v0.9.1 — 深色主题弹出控件撞色修复（NO.P，2026-10-14）
 
 > 用户反馈：倍速下拉框展开后白底浅灰字，信息无法辨认。根因：App.xaml 无任何全局

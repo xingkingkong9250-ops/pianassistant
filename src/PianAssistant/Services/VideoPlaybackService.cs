@@ -119,8 +119,7 @@ public sealed class VideoPlaybackService : IVideoPlayback
     {
         var lengthMs = _media?.Duration ?? 0;
         if (lengthMs <= 0) return;
-        var pct = (float)Math.Clamp(position.TotalMilliseconds / lengthMs, 0, 1);
-        _mediaPlayer.Position = pct;
+        SeekToMs(Math.Clamp((long)position.TotalMilliseconds, 0, lengthMs));
     }
 
     public void SeekRelative(TimeSpan delta)
@@ -137,8 +136,27 @@ public sealed class VideoPlaybackService : IVideoPlayback
     public void SeekPercent(double percent)
     {
         if (_media is null) return;
-        var p = (float)Math.Clamp(percent, 0, 1);
-        _mediaPlayer.Position = p;
+        var lengthMs = _media.Duration;
+        if (lengthMs <= 0) return;
+        SeekToMs(Math.Clamp((long)(Math.Clamp(percent, 0, 1) * lengthMs), 0, lengthMs));
+    }
+
+    /// <summary>
+    /// 统一 seek 入口：用 <see cref="MediaPlayer.Time"/>（毫秒）而非 <see cref="MediaPlayer.Position"/>
+    /// —— LibVLC 3 暂停态下 Position 赋值不刷新画面且不触发 TimeChanged，
+    /// 而 Time 赋值（逐帧路径 SeekRelative 所用）可靠。暂停时补一帧渲染并手动通知 UI。
+    /// </summary>
+    private void SeekToMs(long targetMs)
+    {
+        var wasPlaying = _mediaPlayer.IsPlaying;
+        _mediaPlayer.Time = targetMs;
+        if (!wasPlaying)
+        {
+            // 暂停态：步进一帧强制渲染新位置画面（步进量 ≈1 帧，误差可忽略）；
+            // TimeChanged 暂停态不触发，手动通知播放头立即更新。
+            _mediaPlayer.NextFrame();
+            PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(targetMs));
+        }
     }
 
     public void SetRate(double rate)
