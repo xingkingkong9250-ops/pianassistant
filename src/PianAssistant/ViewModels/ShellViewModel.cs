@@ -18,7 +18,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly ServiceRegistry _services;
     private readonly bool _ownsServices;
     private readonly HotkeyCommandMap _hotkeyMap;
-    private SidebarPanel _activePanel = SidebarPanel.Playlist;
+    private SidebarPanel _activePanel = SidebarPanel.Notes;
     private bool _isFullscreen;
     private bool _disposed;
     // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。

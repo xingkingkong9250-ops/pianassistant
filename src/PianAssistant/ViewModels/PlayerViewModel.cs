@@ -88,6 +88,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             () => _playback.Seek(_length));
         IncreaseRateCommand = new RelayCommand(IncreaseRate);
         DecreaseRateCommand = new RelayCommand(DecreaseRate);
+        ResetRateCommand = new RelayCommand(() => Rate = 1.0);
         MarkInCommand = new RelayCommand(MarkIn);
         MarkOutCommand = new RelayCommand(MarkOut);
         ClearInOutCommand = new RelayCommand(ClearInOut);
@@ -372,6 +373,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand SeekToEndCommand { get; }
     public ICommand IncreaseRateCommand { get; }
     public ICommand DecreaseRateCommand { get; }
+    public ICommand ResetRateCommand { get; }
     public ICommand MarkInCommand { get; }
     public ICommand MarkOutCommand { get; }
     public ICommand ClearInOutCommand { get; }
