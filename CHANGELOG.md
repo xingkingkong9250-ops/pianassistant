@@ -7,6 +7,26 @@
 
 ## [Unreleased]
 
+### v0.9.3 — 输入法强制英文模式（NO.P，2026-10-14）
+
+> 用户反馈：中文输入法处于中文模式时单键快捷键失效（WPF 收到 `Key.ImeProcessed`
+> 而非原始字母键 S/C/F 等），要求软件启动后强制切换为英文输入。
+
+#### 新增（`Services/ImeService` + `MainWindow` 接线）
+
+- **启动即强制英文**：`OnSourceInitialized` 时通过 `WM_IME_CONTROL → IMC_SETCONVERSIONMODE`
+  （对微软拼音等 TSF 输入法兼容层有效）与 imm32 `ImmSetConversionStatus`（老式输入法兜底）
+  双通道把 IME 转换状态置为字母数字（英文）模式
+- **持续保障**：窗口激活时（alt-tab 切回）与键盘焦点离开文本输入控件时再次强制——
+  防止用户在外部切回中文后热键失效；**文本框内不打扰**（笔记/搜索框仍可正常切换中文输入）
+- **退出恢复**：首次强制前记录原转换状态，`OnClosing` 时还原系统输入法状态
+- 无输入法的纯英文键盘环境所有调用均为安全空操作
+
+#### 验证
+
+- `dotnet build -c Release` 0 警告 0 错误；`dotnet test` 296 项全绿
+- self-contained win-x64 发布包 `artifacts/staging/PianAssistant_v0.9.3`
+
 ### v0.9.2 — 暂停态时间轴点击跳转修复（NO.P，2026-10-14）
 
 > 用户反馈：视频暂停状态下点击时间轴，画面与播放头都不会跳到点击位置。

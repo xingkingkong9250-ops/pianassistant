@@ -57,6 +57,8 @@ public partial class MainWindow : Window
         PreviewKeyUp += OnPreviewArrowKeyUp;
         // 全屏时鼠标静止自动隐藏
         PreviewMouseMove += OnWindowPreviewMouseMove;
+        // 输入法强制英文：焦点不在文本框时再次强制，避免中文 IME 吞掉单键快捷键
+        IsKeyboardFocusWithinChanged += OnImeKeyboardFocusChanged;
     }
 
     // 供子视图（NotesView 等）访问 Shell；外部只读
@@ -66,8 +68,36 @@ public partial class MainWindow : Window
     {
         base.OnSourceInitialized(e);
         // 挂 WndProc 钩子转发 WM_HOTKEY 给全局热键服务
-        var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        _hwnd = new WindowInteropHelper(this).Handle;
+        var source = HwndSource.FromHwnd(_hwnd);
         source?.AddHook(WndProc);
+        // 启动即强制英文输入模式，避免中文输入法吞掉单键快捷键
+        ImeService.ForceEnglish(_hwnd);
+    }
+
+    // 主窗口句柄（IME 控制用）
+    private IntPtr _hwnd;
+
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+        // 从其它窗口切回时也强制一次（用户在外部切回中文后热键仍可用）
+        ImeService.ForceEnglish(_hwnd);
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // 退出时恢复进入程序前保存的输入法状态
+        ImeService.RestoreSaved(_hwnd);
+        base.OnClosing(e);
+    }
+
+    // 键盘焦点在窗口内且不在文本输入控件时强制英文模式；文本框内不打扰（可正常输入中文笔记）
+    private void OnImeKeyboardFocusChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (_hwnd == IntPtr.Zero || !IsKeyboardFocusWithin) return; // 失焦由 OnActivated 兜底
+        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
+        ImeService.ForceEnglish(_hwnd);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
