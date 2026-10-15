@@ -37,7 +37,7 @@ public enum HotkeyAction
     SeekPercent70,
     SeekPercent80,
     SeekPercent90,
-    ToggleSidebarPanel, // switch between playlist/notes
+    ToggleSidebarPanel, // 切换右侧边栏 笔记/片段导出 面板
     ToggleMute,         // M: 静音开关（M6 补齐：原 XAML 静态绑定迁入动态映射）
     VolumeUp,           // Ctrl+Up: 音量 +10
     VolumeDown,         // Ctrl+Down: 音量 -10

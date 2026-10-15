@@ -145,13 +145,21 @@
         <!-- ═══ 视频内容区 ═══ -->
         <Grid x:Name="ContentGrid" Grid.Row="1">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" MinWidth="160" MaxWidth="400" />
+                <ColumnDefinition Width="6" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="6" />
                 <ColumnDefinition Width="300" MinWidth="200" MaxWidth="500" />
             </Grid.ColumnDefinitions>
 
+            <!-- 左侧播放列表（常驻，W1-C1） -->
+            <views:PlaylistView Grid.Column="0" DataContext="{Binding Playlist}" />
+
+            <GridSplitter x:Name="PlaylistSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+                          Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
+
             <!-- 视频区 -->
-            <Grid x:Name="VideoArea" Grid.Column="0" Background="#000000"
+            <Grid x:Name="VideoArea" Grid.Column="2" Background="#000000"
                   AllowDrop="True" Drop="OnVideoDrop" DragOver="OnVideoDragOver">
                 <vlc:VideoView x:Name="VideoView" />
 
@@ -192,11 +200,11 @@
                 </Border>
             </Grid>
 
-            <GridSplitter x:Name="SidebarSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+            <GridSplitter x:Name="SidebarSplitter" Grid.Column="3" Width="6" HorizontalAlignment="Stretch"
                           Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
 
             <!-- 右侧面板 -->
-            <DockPanel x:Name="SidebarPanel" Grid.Column="2" Background="#161616">
+            <DockPanel x:Name="SidebarPanel" Grid.Column="4" Background="#161616">
                 <!-- 面板标题 -->
                 <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="16,10"
                         BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
@@ -205,11 +213,6 @@
                 </Border>
 
                 <Grid>
-                    <views:PlaylistView DataContext="{Binding Playlist}">
-                        <views:PlaylistView.Visibility>
-                            <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Playlist" />
-                        </views:PlaylistView.Visibility>
-                    </views:PlaylistView>
                     <views:NotesView DataContext="{Binding Notes}">
                         <views:NotesView.Visibility>
                             <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Notes" />

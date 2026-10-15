@@ -89,13 +89,13 @@ public partial class App : Application
     {
         var dlg = new OpenFileDialog
         {
-            Title = "选择视频文件",
+            Title = "选择视频文件（Ctrl/Shift 可多选）",
             Filter = "视频文件|*.mp4;*.mkv;*.avi;*.mov;*.flv;*.wmv;*.webm;*.ts;*.m2ts;*.mpg|所有文件|*.*",
-            Multiselect = false,
+            Multiselect = true,
         };
         if (dlg.ShowDialog() == true && _shell is not null)
         {
-            _shell.OpenMedia(dlg.FileName);
+            _shell.OpenMedia(dlg.FileNames);
         }
     }
 

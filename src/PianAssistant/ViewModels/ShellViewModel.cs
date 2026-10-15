@@ -50,7 +50,6 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>侧边栏面板标题（面板头显示用）。</summary>
     public string ActivePanelTitle => _activePanel switch
     {
-        SidebarPanel.Playlist => "播放列表",
         SidebarPanel.Notes => "笔记",
         SidebarPanel.Clips => "📦 片段导出",
         _ => string.Empty,
@@ -67,7 +66,6 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand OpenFileCommand { get; }
     public ICommand ToggleSidebarPanelCommand { get; }
     public ICommand ExitCommand { get; }
-    public ICommand ShowPlaylistCommand { get; }
     public ICommand ShowNotesCommand { get; }
     /// <summary>切换到片段批量导出面板。</summary>
     public ICommand ShowClipsCommand { get; }
@@ -192,11 +190,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // Commands.
         OpenFileCommand = new RelayCommand(RequestOpenFile);
         ToggleSidebarPanelCommand = new RelayCommand(
-            () => ActivePanel = ActivePanel == SidebarPanel.Playlist
-                ? SidebarPanel.Notes
-                : SidebarPanel.Playlist);
-        ShowPlaylistCommand = new RelayCommand(
-            () => ActivePanel = SidebarPanel.Playlist);
+            () => ActivePanel = ActivePanel == SidebarPanel.Notes
+                ? SidebarPanel.Clips
+                : SidebarPanel.Notes);
         ShowNotesCommand = new RelayCommand(
             () => ActivePanel = SidebarPanel.Notes);
         ShowClipsCommand = new RelayCommand(
@@ -233,6 +229,34 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _services.Settings.AddRecentFile(path);
         // Auto-play after opening.
         Player.PlayPauseCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// 批量打开媒体文件：依次注册进播放列表，最后选中并播放第一个新加入的条目。
+    /// </summary>
+    public void OpenMedia(IEnumerable<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        var list = paths.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct().ToList();
+        if (list.Count == 0) return;
+        if (list.Count == 1)
+        {
+            OpenMedia(list[0]);
+            return;
+        }
+        // 多选：全部加入播放列表，最后选中第一个并播放
+        MediaFile? firstAdded = null;
+        foreach (var path in list)
+        {
+            var media = Playlist.AddPath(path);
+            firstAdded ??= media;
+            _services.Settings.AddRecentFile(path);
+        }
+        if (firstAdded is not null)
+        {
+            Playlist.Select(firstAdded);
+            Player.PlayPauseCommand.Execute(null);
+        }
     }
 
     private void RequestOpenFile()

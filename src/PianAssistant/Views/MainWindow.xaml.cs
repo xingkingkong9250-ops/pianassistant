@@ -494,14 +494,21 @@ public partial class MainWindow : Window
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             var files = (string[])e.Data.GetData(DataFormats.FileDrop)!;
-            var player = Shell?.Player;
+            var shell = Shell;
+            var player = shell?.Player;
             if (player is not null)
             {
+                var videos = new List<string>();
                 foreach (var f in files)
                 {
                     if (IsSubtitleFile(f))
                         player.LoadSubtitle(f);
+                    else
+                        videos.Add(f);
                 }
+                // 视频批量加入播放列表并播放第一个（多选拖放同 Windows 选择逻辑）
+                if (videos.Count > 0)
+                    shell?.OpenMedia(videos);
             }
         }
         e.Handled = true;
