@@ -20,6 +20,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly HotkeyCommandMap _hotkeyMap;
     private SidebarPanel _activePanel = SidebarPanel.Notes;
     private bool _isFullscreen;
+    // 左右侧面板默认收起（用户手动展开）
+    private bool _isPlaylistVisible;
+    private bool _isSidebarVisible;
     private bool _disposed;
     // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。
     private bool _isRestoring;
@@ -61,6 +64,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         set => SetProperty(ref _isFullscreen, value);
     }
 
+    /// <summary>左侧播放列表面板是否展开（默认收起）。</summary>
+    public bool IsPlaylistVisible
+    {
+        get => _isPlaylistVisible;
+        set => SetProperty(ref _isPlaylistVisible, value);
+    }
+
+    /// <summary>右侧侧边栏（笔记/片段导出）是否展开（默认收起）。</summary>
+    public bool IsSidebarVisible
+    {
+        get => _isSidebarVisible;
+        set => SetProperty(ref _isSidebarVisible, value);
+    }
+
     // --- Commands ---
 
     public ICommand OpenFileCommand { get; }
@@ -89,6 +106,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand ExportProjectCommand { get; }
     /// <summary>导入项目包（*.paproj）并加载到会话。</summary>
     public ICommand ImportProjectCommand { get; }
+    /// <summary>展开/收起左侧播放列表面板。</summary>
+    public ICommand TogglePlaylistVisibilityCommand { get; }
+    /// <summary>展开/收起右侧侧边栏面板。</summary>
+    public ICommand ToggleSidebarVisibilityCommand { get; }
 
     // --- Events ---
 
@@ -197,6 +218,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             () => ActivePanel = SidebarPanel.Notes);
         ShowClipsCommand = new RelayCommand(
             () => ActivePanel = SidebarPanel.Clips);
+        TogglePlaylistVisibilityCommand = new RelayCommand(
+            () => IsPlaylistVisible = !IsPlaylistVisible);
+        ToggleSidebarVisibilityCommand = new RelayCommand(
+            () => IsSidebarVisible = !IsSidebarVisible);
         ShowGalleryCommand = new RelayCommand(
             () => GalleryRequested?.Invoke(this, EventArgs.Empty));
         ExitCommand = new RelayCommand(() => ExitRequested?.Invoke(this, EventArgs.Empty));

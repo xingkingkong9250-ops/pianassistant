@@ -122,6 +122,13 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
+                <!-- W1-R1-23 展开/收起左侧播放列表 -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="📑" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
+                            Command="{Binding TogglePlaylistVisibilityCommand}"
+                            ToolTip="展开/收起播放列表" />
+                </StackPanel>
+
                 <!-- W1-R1-17 设置（末端右侧） -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
                     <Button Content="⚙" Style="{StaticResource IconButton}" Padding="10,6"
@@ -139,27 +146,37 @@
                         </Button.ContextMenu>
                     </Button>
                 </StackPanel>
+
+                <!-- W1-R1-24 展开/收起右侧侧边栏 -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="🗔" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
+                            Command="{Binding ToggleSidebarVisibilityCommand}"
+                            ToolTip="展开/收起侧边栏" />
+                </StackPanel>
             </DockPanel>
         </Border>
 
         <!-- ═══ 视频内容区 ═══ -->
         <Grid x:Name="ContentGrid" Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" MinWidth="160" MaxWidth="400" />
-                <ColumnDefinition Width="6" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="300" MinWidth="200" MaxWidth="500" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- 左侧播放列表（常驻，W1-C1） -->
-            <views:PlaylistView Grid.Column="0" DataContext="{Binding Playlist}" />
-
-            <GridSplitter x:Name="PlaylistSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
-                          Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
+            <!-- 左侧播放列表（可收起，W1-C1；默认收起） -->
+            <Grid Grid.Column="0" Visibility="{Binding IsPlaylistVisible, Converter={x:Static views:BoolToVisibilityConverter.Instance}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220" MinWidth="160" MaxWidth="400" />
+                    <ColumnDefinition Width="6" />
+                </Grid.ColumnDefinitions>
+                <views:PlaylistView Grid.Column="0" DataContext="{Binding Playlist}" />
+                <GridSplitter x:Name="PlaylistSplitter" Grid.Column="1" Width="6" HorizontalAlignment="Stretch"
+                              Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
+            </Grid>
 
             <!-- 视频区 -->
-            <Grid x:Name="VideoArea" Grid.Column="2" Background="#000000"
+            <Grid x:Name="VideoArea" Grid.Column="1" Background="#000000"
                   AllowDrop="True" Drop="OnVideoDrop" DragOver="OnVideoDragOver">
                 <vlc:VideoView x:Name="VideoView" />
 
@@ -200,32 +217,39 @@
                 </Border>
             </Grid>
 
-            <GridSplitter x:Name="SidebarSplitter" Grid.Column="3" Width="6" HorizontalAlignment="Stretch"
-                          Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
+            <!-- 右侧侧边栏（可收起，W1-C2/C3；默认收起） -->
+            <Grid Grid.Column="2" Visibility="{Binding IsSidebarVisible, Converter={x:Static views:BoolToVisibilityConverter.Instance}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="6" />
+                    <ColumnDefinition Width="300" MinWidth="200" MaxWidth="500" />
+                </Grid.ColumnDefinitions>
+                <GridSplitter x:Name="SidebarSplitter" Grid.Column="0" Width="6" HorizontalAlignment="Stretch"
+                              Background="#1A1A1A" ResizeBehavior="PreviousAndNext" />
 
-            <!-- 右侧面板 -->
-            <DockPanel x:Name="SidebarPanel" Grid.Column="4" Background="#161616">
-                <!-- 面板标题 -->
-                <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="16,10"
-                        BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
-                    <TextBlock Text="{Binding ActivePanelTitle}" Foreground="#E8E8E8"
-                               FontWeight="SemiBold" FontSize="13" />
-                </Border>
+                <!-- 右侧面板 -->
+                <DockPanel x:Name="SidebarPanel" Grid.Column="1" Background="#161616">
+                    <!-- 面板标题 -->
+                    <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="16,10"
+                            BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+                        <TextBlock Text="{Binding ActivePanelTitle}" Foreground="#E8E8E8"
+                                   FontWeight="SemiBold" FontSize="13" />
+                    </Border>
 
-                <Grid>
-                    <views:NotesView DataContext="{Binding Notes}">
-                        <views:NotesView.Visibility>
-                            <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Notes" />
-                        </views:NotesView.Visibility>
-                    </views:NotesView>
-                    <!-- 片段批量导出面板（M4） -->
-                    <views:ClipsView DataContext="{Binding Clips}">
-                        <views:ClipsView.Visibility>
-                            <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Clips" />
-                        </views:ClipsView.Visibility>
-                    </views:ClipsView>
-                </Grid>
-            </DockPanel>
+                    <Grid>
+                        <views:NotesView DataContext="{Binding Notes}">
+                            <views:NotesView.Visibility>
+                                <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Notes" />
+                            </views:NotesView.Visibility>
+                        </views:NotesView>
+                        <!-- 片段批量导出面板（M4） -->
+                        <views:ClipsView DataContext="{Binding Clips}">
+                            <views:ClipsView.Visibility>
+                                <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Clips" />
+                            </views:ClipsView.Visibility>
+                        </views:ClipsView>
+                    </Grid>
+                </DockPanel>
+            </Grid>
         </Grid>
 
         <!-- ═══ 时间轴 ═══ -->
@@ -272,11 +296,11 @@
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- W1-R4-01 当前时间码 -->
                     <TextBlock Text="{Binding Player.TimeCodeDisplayString}" Foreground="#E8E8E8"
-                               FontFamily="Consolas" FontSize="13" />
-                    <TextBlock Text=" / " Foreground="#666666" FontFamily="Consolas" FontSize="13" Margin="2,0" />
+                               FontFamily="Consolas" FontSize="11" />
+                    <TextBlock Text=" / " Foreground="#666666" FontFamily="Consolas" FontSize="11" Margin="2,0" />
                     <!-- W1-R4-02 总时长 -->
                     <TextBlock Text="{Binding Player.LengthDisplayString}" Foreground="#999999"
-                               FontFamily="Consolas" FontSize="13" />
+                               FontFamily="Consolas" FontSize="11" />
                     <!-- W1-R4-03 倍速标记（非1.0×时显示，点击恢复1×） -->
                     <Button Style="{StaticResource IconButton}" Padding="0" Margin="10,0,0,0"
                             Command="{Binding Player.ResetRateCommand}"

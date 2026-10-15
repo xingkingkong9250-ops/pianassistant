@@ -7,6 +7,27 @@
 
 ## [Unreleased]
 
+### v0.13.0 — 左右侧面板可收起（默认收起）+ 时间码字号缩小（NO.M，2026-10-16）
+
+> 用户要求：W1-R4-01 / W1-R4-02 文字大小缩小；W1-C 左右两个侧面板可以收起，默认收起，找适当位置添加展开/收起按钮。
+
+#### 变更
+
+**面板收起/展开**
+- 顶栏新增「📑」（W1-R1-23，Logo 右侧）展开/收起左侧播放列表面板；新增「🗔」（W1-R1-24，打开视频右侧）展开/收起右侧侧边栏面板
+- 两个面板**默认收起**，收起时分隔条一并隐藏，视频区自动占满
+- `ShellViewModel` 新增 `IsPlaylistVisible` / `IsSidebarVisible`（默认 false）与 `TogglePlaylistVisibilityCommand` / `ToggleSidebarVisibilityCommand`
+- `ContentGrid` 列重构为 3 列（Auto / * / Auto），左右面板各自包进可 `Visibility=Collapsed` 的嵌套 Grid；`PlaylistSplitter` / `SidebarSplitter` 随面板整体收起
+
+**字号调整**
+- W1-R4-01 当前时间码、W1-R4-02 总时长（含中间「 / 」分隔符）字号 13 → 11
+
+#### 编号变更
+- 新增 W1-R1-23（播放列表开关）、W1-R1-24（侧边栏开关）
+- W1-R2-04 / W1-R2-07 说明补充「v0.13.0 起随面板整体收起」
+
+---
+
 ### v0.12.0 — 打开视频批量多选 + 播放列表固定于视频左侧（NO.M，2026-10-15）
 
 > 用户要求：打开视频支持批量选择（Windows 原生 Ctrl/Shift 多选），选中视频加入播放列表；播放列表放到主视频窗口左侧。

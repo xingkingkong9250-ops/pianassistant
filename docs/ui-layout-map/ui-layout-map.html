@@ -109,13 +109,15 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <rect class="wire" x="10" y="10" width="1180" height="44" rx="6"/>
   <text class="zone-lb" x="20" y="49" fill="var(--z-r1)">W1-R1 顶部导航栏 · 高 48 · TopNavBorder</text>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-01" data-name="Logo + 标题" data-desc="圆形 Logo「P」+「拉片助手」，左对齐"><rect x="20" y="16" width="86" height="22" rx="4"/><text x="63" y="28">R1-01</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-23" data-name="📑 播放列表开关" data-desc="展开/收起左侧播放列表面板（v0.13.0 新增，默认收起）"><rect x="116" y="16" width="30" height="22" rx="4"/><text x="131" y="28">23</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-24" data-name="🗔 侧边栏开关" data-desc="展开/收起右侧侧边栏面板（v0.13.0 新增，默认收起）"><rect x="990" y="16" width="30" height="22" rx="4"/><text x="1005" y="28">24</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="📂 打开视频" data-desc="AccentButton；右键菜单已随 v0.10.0 删除"><rect x="1030" y="16" width="86" height="22" rx="4"/><text x="1073" y="28">R1-16</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-17" data-name="⚙ 设置" data-desc="打开 W2 设置窗口（最右端）"><rect x="1130" y="16" width="30" height="22" rx="4"/><text x="1145" y="28">17</text></g>
 
   <!-- R2 左侧播放列表 -->
   <rect class="wire" x="10" y="62" width="200" height="420" rx="6"/>
   <text class="zone-lb" x="20" y="80" fill="var(--z-c)">W1-C1 播放列表 · 220px（可拖 160~400）</text>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C1" data-name="播放列表面板" data-desc="文件列表，拖拽排序/双击播放/右键菜单"><rect x="20" y="90" width="180" height="80" rx="4"/><text x="110" y="120">W1-C1</text><text x="110" y="142" style="font-size:10px;fill:var(--muted)">播放列表（常驻）</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C1" data-name="播放列表面板" data-desc="文件列表，拖拽排序/双击播放/右键菜单；v0.13.0 起可收起（默认收起）"><rect x="20" y="90" width="180" height="80" rx="4"/><text x="110" y="120">W1-C1</text><text x="110" y="142" style="font-size:10px;fill:var(--muted)">播放列表（可收起）</text></g>
   <rect class="wire" x="218" y="62" width="10" height="420" rx="3"/>
   <g class="chip" style="--z:var(--z-r2)" data-num="W1-R2-07" data-name="播放列表分隔条" data-desc="宽 6，可拖拽调整播放列表宽度 160~400px（v0.12.0 新增）"><rect x="216" y="255" width="14" height="24" rx="4"/><text x="223" y="268" style="writing-mode:tb">07</text></g>
 
@@ -173,9 +175,9 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>区域</th><th>说明</th></tr></thead>
 <tbody>
-<tr data-num="W1-R1"><td class="num">W1-R1</td><td>顶部导航栏</td><td>高 48，仅保留 Logo + 打开视频 + 设置（v0.10.0 精简，共 3 项，详见 §2）</td></tr>
-<tr data-num="W1-R2"><td class="num">W1-R2</td><td>视频内容区</td><td>01 视频画面 · 02 方向键反馈层 · 03 空状态层 · 04 侧栏分隔条(宽6, 200~500px) · 05 侧栏标题 · 06 侧栏内容区 · 07 播放列表分隔条(宽6, 160~400px, v0.12.0)</td></tr>
-<tr data-num="W1-C1"><td class="num">W1-C1</td><td>播放列表面板</td><td>v0.12.0 起固定于视频左侧（220px）；01 标题 · 02 列表（拖拽排序/双击播放）· 03 右键菜单（删除/复制路径/资源管理器）</td></tr>
+<tr data-num="W1-R1"><td class="num">W1-R1</td><td>顶部导航栏</td><td>高 48，Logo + 播放列表开关(23) + 侧边栏开关(24) + 打开视频 + 设置（v0.13.0 起 5 项，详见 §2）</td></tr>
+<tr data-num="W1-R2"><td class="num">W1-R2</td><td>视频内容区</td><td>01 视频画面 · 02 方向键反馈层 · 03 空状态层 · 04 侧栏分隔条(宽6, 200~500px, v0.13.0 随面板收起) · 05 侧栏标题 · 06 侧栏内容区 · 07 播放列表分隔条(宽6, 160~400px, v0.12.0, v0.13.0 随面板收起)</td></tr>
+<tr data-num="W1-C1"><td class="num">W1-C1</td><td>播放列表面板</td><td>v0.12.0 起固定于视频左侧（220px）；v0.13.0 起可经 W1-R1-23 展开/收起（默认收起）；01 标题 · 02 列表（拖拽排序/双击播放）· 03 右键菜单（删除/复制路径/资源管理器）</td></tr>
 <tr data-num="W1-C2"><td class="num">W1-C2</td><td>笔记面板</td><td>顶部子标签 T1 📷截图 / T2 ✂片段 / T3 📝活动；三个子面板 A/B/C 共 15 项（详见 §3）</td></tr>
 <tr data-num="W1-C3"><td class="num">W1-C3</td><td>片段批量导出面板</td><td>01 搜索 · 02 计数 · 03 队列 · 04 全部导出 · 05 拼接导出 · 06 取消 · 07 总进度 · 08 百分比</td></tr>
 <tr data-num="W1-R3"><td class="num">W1-R3</td><td>时间轴</td><td>01 缩放指示 · 02 滚动容器 · 03 TimelineControl（白色播放头/红色裁切点/入出点/活动小色块/选中段高亮）</td></tr>
@@ -183,22 +185,26 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-E-01"><td class="num">W1-E-01</td><td>通知提示条</td><td>右下角 ToastBorder，ShowToast 触发，默认 2.5s 淡出（会话恢复统计等轻提示）</td></tr>
 </tbody></table></div>
 
-<h2 id="w1r1"><span class="no">§2</span>W1-R1 顶部导航栏 · 3 项</h2>
-<p class="lead">v0.10.0 精简后仅保留 <strong>①品牌（左） ②打开视频（右） ③设置（最右端）</strong>。所有按钮均 <code>Focusable=False</code>。</p>
+<h2 id="w1r1"><span class="no">§2</span>W1-R1 顶部导航栏 · 5 项</h2>
+<p class="lead">v0.10.0 精简保留品牌/打开视频/设置；v0.13.0 新增 <strong>📑 播放列表开关（W1-R1-23，Logo 右侧）</strong> 与 <strong>🗔 侧边栏开关（W1-R1-24，打开视频右侧）</strong>，两侧面板默认收起。所有按钮均 <code>Focusable=False</code>。</p>
 <figure>
 <svg viewBox="0 0 1200 96" role="img" aria-label="W1-R1 顶部导航栏放大图">
   <rect class="wire" x="6" y="8" width="1188" height="80" rx="6"/>
-  <text class="lbl-m" x="16" y="24">① 品牌（左）</text><text class="lbl-m" x="1000" y="24">② 打开视频 ③ 设置（右）</text>
+  <text class="lbl-m" x="16" y="24">① 品牌 + 📑（左）</text><text class="lbl-m" x="940" y="24">🗔 ② 打开视频 ③ 设置（右）</text>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-01" data-name="Logo + 标题" data-desc="圆形 Logo「P」+「拉片助手」"><rect x="16" y="32" width="86" height="24" rx="4"/><text x="59" y="45">R1-01</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="📂 打开视频" data-desc="AccentButton，v0.10.0 改名"><rect x="1000" y="32" width="92" height="24" rx="4"/><text x="1046" y="45">R1-16</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-23" data-name="📑 播放列表开关" data-desc="展开/收起左侧播放列表（v0.13.0 新增）"><rect x="110" y="32" width="32" height="24" rx="4"/><text x="126" y="45">23</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-24" data-name="� 侧边栏开关" data-desc="展开/收起右侧侧边栏（v0.13.0 新增）"><rect x="956" y="32" width="32" height="24" rx="4"/><text x="972" y="45">24</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="�📂 打开视频" data-desc="AccentButton，v0.10.0 改名"><rect x="1000" y="32" width="92" height="24" rx="4"/><text x="1046" y="45">R1-16</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-17" data-name="⚙ 设置" data-desc="打开 W2（最右端）"><rect x="1096" y="32" width="32" height="24" rx="4"/><text x="1112" y="45">17</text></g>
 </svg>
-<figcaption>图 2 · R1 横向排布顺序（v0.10.0 精简后仅 3 项；中间大片留白为设计意图）</figcaption>
+<figcaption>图 2 · R1 横向排布顺序（v0.13.0 起 5 项；中间大片留白为设计意图）</figcaption>
 </figure>
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明 / 快捷键</th></tr></thead>
 <tbody>
 <tr data-num="W1-R1-01"><td class="num">W1-R1-01</td><td>Logo「P」+ 标题「拉片助手」</td><td>左对齐</td></tr>
+<tr data-num="W1-R1-23"><td class="num">W1-R1-23</td><td>按钮「📑」</td><td>展开/收起左侧播放列表面板；v0.13.0 新增，默认收起</td></tr>
+<tr data-num="W1-R1-24"><td class="num">W1-R1-24</td><td>按钮「🗔」</td><td>展开/收起右侧侧边栏面板；v0.13.0 新增，默认收起</td></tr>
 <tr data-num="W1-R1-16"><td class="num">W1-R1-16</td><td>按钮「📂 打开视频」</td><td>AccentButton；v0.10.0 从「打开文件」改名</td></tr>
 <tr data-num="W1-R1-17"><td class="num">W1-R1-17</td><td>按钮「⚙」</td><td>打开设置 W2（最右端）</td></tr>
 </tbody></table></div>
