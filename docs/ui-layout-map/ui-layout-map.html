@@ -341,25 +341,25 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 </tbody></table></div>
 
 <h2 id="w2"><span class="no">§5</span>W2 设置窗口</h2>
-<p class="lead">两个页签：<strong>A 输出设置</strong>（14 项）与 <strong>B 快捷键</strong>（6 项），底部 <strong>D-01 保存并关闭</strong>。数据路径相关为 M7 新增（A-11~14）。</p>
+<p class="lead">两个页签：<strong>A 输出设置</strong>（A-01~04 已废弃，现 10 项）与 <strong>B 快捷键</strong>（6 项），底部 <strong>D-01 保存并关闭</strong>。数据目录为唯一路径（A-11），截图/片段子目录自动派生。</p>
 <figure>
 <svg viewBox="0 0 1200 480" role="img" aria-label="W2 设置窗口布局图">
   <rect class="wire" x="6" y="8" width="1188" height="464" rx="6"/>
   <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabA" data-name="页签「输出设置」" data-desc="W2-A 共 14 项"><rect x="20" y="20" width="90" height="24" rx="4"/><text x="65" y="33">Tab A</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabB" data-name="页签「快捷键」" data-desc="W2-B 共 6 项"><rect x="114" y="20" width="80" height="24" rx="4"/><text x="154" y="33">Tab B</text></g>
   <text class="lbl-m" x="20" y="66">左列（输出设置 W2-A）：标签+输入行</text>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-01" data-name="截图目录" data-desc="输入框"><rect x="20" y="74" width="250" height="20" rx="4"/><text x="145" y="85">A-01</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-02" data-name="浏览…(截图)" data-desc=""><rect x="274" y="74" width="60" height="20" rx="4"/><text x="304" y="85">A-02</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-03" data-name="片段目录" data-desc="输入框"><rect x="20" y="98" width="250" height="20" rx="4"/><text x="145" y="109">A-03</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-04" data-name="浏览…(片段)" data-desc=""><rect x="274" y="98" width="60" height="20" rx="4"/><text x="304" y="109">A-04</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-01" data-name="截图目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="20" y="74" width="250" height="20" rx="4"/><text x="145" y="85">A-01（废）</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-02" data-name="浏览…(截图)（已废弃）" data-desc=""><rect x="274" y="74" width="60" height="20" rx="4"/><text x="304" y="85">A-02</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-03" data-name="片段目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="20" y="98" width="250" height="20" rx="4"/><text x="145" y="109">A-03（废）</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-04" data-name="浏览…(片段)（已废弃）" data-desc=""><rect x="274" y="98" width="60" height="20" rx="4"/><text x="304" y="109">A-04</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-05" data-name="截图格式" data-desc="下拉 png/jpg"><rect x="20" y="122" width="120" height="20" rx="4"/><text x="80" y="133">A-05</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-06" data-name="按日期分目录" data-desc="复选框 yyyyMMdd"><rect x="150" y="122" width="120" height="20" rx="4"/><text x="210" y="133">A-06</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-07" data-name="项目名" data-desc="二级子目录，留空不启用"><rect x="20" y="146" width="120" height="20" rx="4"/><text x="80" y="157">A-07</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-08" data-name="最高倍率" data-desc="2×~32×，默认 8×"><rect x="20" y="170" width="120" height="20" rx="4"/><text x="80" y="181">A-08</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-09" data-name="后退/快进步长" data-desc="1~600 帧，默认 5（←/→ 单步量）"><rect x="20" y="194" width="120" height="20" rx="4"/><text x="80" y="205">A-09</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-10" data-name="倍速步长" data-desc="0.05~1.0，默认 0.25（↑/↓ 增减量）"><rect x="20" y="218" width="120" height="20" rx="4"/><text x="80" y="229">A-10</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-11" data-name="数据路径" data-desc="数据根（DB/截图/片段/日志统一位置），默认 %APPDATA%；改动需重启、不自动搬迁"><rect x="20" y="250" width="314" height="22" rx="4"/><text x="177" y="262">A-11 数据路径输入框</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-12" data-name="浏览…(数据路径)" data-desc="选择数据根目录"><rect x="338" y="250" width="60" height="22" rx="4"/><text x="368" y="262">A-12</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-11" data-name="数据目录（唯一路径）" data-desc="截图/片段/数据库/日志统一根；自动建 screenshots/、clips/ 子目录；改动需重启、不自动搬迁"><rect x="20" y="250" width="314" height="22" rx="4"/><text x="177" y="262">A-11 数据目录输入框</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-12" data-name="浏览…(数据目录)" data-desc="选择数据根目录"><rect x="338" y="250" width="60" height="22" rx="4"/><text x="368" y="262">A-12</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-13" data-name="恢复上次拉片记录" data-desc="复选框，默认开；内容哈希识别同一素材"><rect x="20" y="276" width="200" height="20" rx="4"/><text x="120" y="287">A-13</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-14" data-name="恢复播放位置与倍速" data-desc="复选框，默认开；仅 A-13 开启时生效"><rect x="20" y="300" width="200" height="20" rx="4"/><text x="120" y="311">A-14</text></g>
   <text class="lbl-m" x="480" y="66">右列（快捷键 W2-B）</text>
@@ -376,18 +376,18 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明</th></tr></thead>
 <tbody>
-<tr data-num="W2-A-01"><td class="num">W2-A-01</td><td>截图目录输入框</td><td></td></tr>
-<tr data-num="W2-A-02"><td class="num">W2-A-02</td><td>按钮「浏览…」（截图目录）</td><td></td></tr>
-<tr data-num="W2-A-03"><td class="num">W2-A-03</td><td>片段目录输入框</td><td></td></tr>
-<tr data-num="W2-A-04"><td class="num">W2-A-04</td><td>按钮「浏览…」（片段目录）</td><td></td></tr>
+<tr data-num="W2-A-01"><td class="num">W2-A-01</td><td>截图目录输入框</td><td><strong>已废弃（v0.11.0）</strong>：截图目录统一从数据根派生</td></tr>
+<tr data-num="W2-A-02"><td class="num">W2-A-02</td><td>按钮「浏览…」（截图目录）</td><td><strong>已废弃（v0.11.0）</strong></td></tr>
+<tr data-num="W2-A-03"><td class="num">W2-A-03</td><td>片段目录输入框</td><td><strong>已废弃（v0.11.0）</strong>：片段目录统一从数据根派生</td></tr>
+<tr data-num="W2-A-04"><td class="num">W2-A-04</td><td>按钮「浏览…」（片段目录）</td><td><strong>已废弃（v0.11.0）</strong></td></tr>
 <tr data-num="W2-A-05"><td class="num">W2-A-05</td><td>截图格式下拉框</td><td>png / jpg</td></tr>
 <tr data-num="W2-A-06"><td class="num">W2-A-06</td><td>复选框「按日期分目录」</td><td>yyyyMMdd 子目录</td></tr>
 <tr data-num="W2-A-07"><td class="num">W2-A-07</td><td>项目名输入框</td><td>二级子目录，留空不启用</td></tr>
 <tr data-num="W2-A-08"><td class="num">W2-A-08</td><td>最高倍率下拉框</td><td>2×~32×，默认 8×；联动 ± 按钮步进上限</td></tr>
 <tr data-num="W2-A-09"><td class="num">W2-A-09</td><td>后退/快进步长输入框</td><td>1~600 帧，默认 5；←/→ 单步量</td></tr>
 <tr data-num="W2-A-10"><td class="num">W2-A-10</td><td>倍速步长输入框</td><td>0.05~1.0，默认 0.25；↑/↓ 增减量</td></tr>
-<tr data-num="W2-A-11"><td class="num">W2-A-11</td><td>数据路径输入框</td><td>数据根（DB/截图/片段/日志统一位置）；默认 %APPDATA%\Qianlan_App\PianAssistant\</td></tr>
-<tr data-num="W2-A-12"><td class="num">W2-A-12</td><td>按钮「浏览…」（数据路径）</td><td>选择数据根目录</td></tr>
+<tr data-num="W2-A-11"><td class="num">W2-A-11</td><td>数据目录输入框</td><td><strong>唯一路径</strong>：截图/片段/数据库/日志统一存放根；自动创建 screenshots\、clips\ 子文件夹；默认 %APPDATA%\Qianlan_App\PianAssistant\</td></tr>
+<tr data-num="W2-A-12"><td class="num">W2-A-12</td><td>按钮「浏览…」（数据目录）</td><td>选择数据根目录</td></tr>
 <tr data-num="W2-A-13"><td class="num">W2-A-13</td><td>复选框「恢复上次拉片记录」</td><td>默认开；同一素材（内容哈希识别）自动还原</td></tr>
 <tr data-num="W2-A-14"><td class="num">W2-A-14</td><td>复选框「恢复播放位置与倍速」</td><td>默认开；仅 A-13 开启时生效</td></tr>
 <tr data-num="W2-B-01"><td class="num">W2-B-01</td><td>复选框「启用全局热键」</td><td>应用失焦时 S 仍可截图</td></tr>

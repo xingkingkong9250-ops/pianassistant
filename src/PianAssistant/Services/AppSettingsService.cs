@@ -64,15 +64,11 @@ public sealed class AppSettingsService
     /// <summary>数据库文件路径（数据根下 pianassistant.db）。</summary>
     public string DatabasePath => Path.Combine(DataRoot, "pianassistant.db");
 
-    public string ScreenshotsDirectory =>
-        string.IsNullOrWhiteSpace(_settings.ScreenshotsDirectory)
-            ? Path.Combine(DataRoot, "screenshots")
-            : _settings.ScreenshotsDirectory!;
+    /// <summary>截图目录：统一从数据根派生（<c>DataRoot/screenshots</c>），不再支持独立配置。</summary>
+    public string ScreenshotsDirectory => Path.Combine(DataRoot, "screenshots");
 
-    public string ClipsDirectory =>
-        string.IsNullOrWhiteSpace(_settings.ClipsDirectory)
-            ? Path.Combine(DataRoot, "clips")
-            : _settings.ClipsDirectory!;
+    /// <summary>片段目录：统一从数据根派生（<c>DataRoot/clips</c>），不再支持独立配置。</summary>
+    public string ClipsDirectory => Path.Combine(DataRoot, "clips");
 
     public string SnapshotFormat =>
         string.IsNullOrWhiteSpace(_settings.SnapshotFormat)
@@ -132,13 +128,6 @@ public sealed class AppSettingsService
         _settings.RecentFiles.Insert(0, path);
         if (_settings.RecentFiles.Count > 10)
             _settings.RecentFiles.RemoveRange(10, _settings.RecentFiles.Count - 10);
-        Save();
-    }
-
-    public void SetOutputDirectories(string? screenshots, string? clips)
-    {
-        _settings.ScreenshotsDirectory = screenshots;
-        _settings.ClipsDirectory = clips;
         Save();
     }
 

@@ -30,9 +30,9 @@ public class BatchExecutionServiceTests : IDisposable
         File.WriteAllText(ffprobePath, "stub");
         _ffmpeg = new FfmpegRunner(ffmpegPath, ffprobePath);
         _clips = new ClipExtractionService(_ffmpeg, _tempDir);
-        // 设置服务用独立数据根，输出目录指向临时目录（避免写用户 AppData）
+        // 设置服务用临时目录作为数据根，截图/片段目录从数据根派生（避免写用户 AppData）
         _settings = new AppSettingsService(Path.Combine(_tempDir, "settings"));
-        _settings.SetOutputDirectories(_tempDir, _tempDir);
+        _settings.SetDataRoot(_tempDir);
         _svc = new BatchExecutionService(_ffmpeg, _clips, _settings);
     }
 
@@ -117,7 +117,7 @@ public class BatchExecutionServiceTests : IDisposable
         if (!TryCreateTestVideo(ffmpegPath, source)) return;
 
         var settings = new AppSettingsService(Path.Combine(workDir, "settings"));
-        settings.SetOutputDirectories(workDir, workDir);
+        settings.SetDataRoot(workDir);
         settings.SetOrganizationOptions(false, null);
         var svc = new BatchExecutionService(runner, new ClipExtractionService(runner, workDir), settings);
 
@@ -149,7 +149,7 @@ public class BatchExecutionServiceTests : IDisposable
         if (!TryCreateTestVideo(ffmpegPath, source)) return;
 
         var settings = new AppSettingsService(Path.Combine(workDir, "settings"));
-        settings.SetOutputDirectories(workDir, workDir);
+        settings.SetDataRoot(workDir);
         settings.SetOrganizationOptions(false, null);
         var svc = new BatchExecutionService(runner, new ClipExtractionService(runner, workDir), settings);
 
@@ -176,7 +176,7 @@ public class BatchExecutionServiceTests : IDisposable
         var runner = new FfmpegRunner(ffmpegPath,
             Path.Combine(Path.GetDirectoryName(ffmpegPath)!, "ffprobe.exe"));
         var settings = new AppSettingsService(Path.Combine(workDir, "settings"));
-        settings.SetOutputDirectories(workDir, workDir);
+        settings.SetDataRoot(workDir);
         settings.SetOrganizationOptions(false, null);
         var svc = new BatchExecutionService(runner, new ClipExtractionService(runner, workDir), settings);
 

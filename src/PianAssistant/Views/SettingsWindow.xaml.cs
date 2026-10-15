@@ -18,8 +18,6 @@ public partial class SettingsWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (Vm is null) return;
-        Vm.BrowseScreenshotsRequested += OnBrowseScreenshots;
-        Vm.BrowseClipsRequested += OnBrowseClips;
         Vm.BrowseDataRootRequested += OnBrowseDataRoot;
         Vm.CloseRequested += OnCloseRequested;
         Vm.DataRootChanged += OnDataRootChanged;
@@ -48,26 +46,6 @@ public partial class SettingsWindow : Window
     {
         MessageBox.Show(this, message, "数据路径无效",
             MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
-
-    private void OnBrowseScreenshots(object? sender, System.EventArgs e)
-    {
-        var dlg = new OpenFolderDialog
-        {
-            Title = "选择截图输出目录",
-        };
-        if (Vm is not null && dlg.ShowDialog() == true)
-            Vm.SetScreenshotsDirectory(dlg.FolderName);
-    }
-
-    private void OnBrowseClips(object? sender, System.EventArgs e)
-    {
-        var dlg = new OpenFolderDialog
-        {
-            Title = "选择片段输出目录",
-        };
-        if (Vm is not null && dlg.ShowDialog() == true)
-            Vm.SetClipsDirectory(dlg.FolderName);
     }
 
     private void OnApplyHotkey(object sender, RoutedEventArgs e)

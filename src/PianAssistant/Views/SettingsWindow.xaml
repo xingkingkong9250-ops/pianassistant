@@ -52,72 +52,59 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Label Grid.Row="0" Content="截图目录：" />
+                    <!-- 统一数据根目录：截图/片段/数据库/日志均在此目录下自动创建子文件夹 -->
+                    <Label Grid.Row="0" Content="数据目录：" />
                     <TextBox Grid.Row="0" Grid.Column="1"
-                             Text="{Binding ScreenshotsDirectory, Mode=TwoWay}" Margin="0,2" />
+                             Text="{Binding DataRoot, Mode=TwoWay}" Margin="0,2"
+                             ToolTip="所有数据（截图、片段、数据库、日志）的统一存放位置；程序将在此目录下自动创建 screenshots/、clips/ 子文件夹" />
                     <Button Grid.Row="0" Grid.Column="2" Content="浏览…"
-                            Command="{Binding BrowseScreenshotsCommand}" />
+                            Command="{Binding BrowseDataRootCommand}" />
 
-                    <Label Grid.Row="1" Content="片段目录：" />
-                    <TextBox Grid.Row="1" Grid.Column="1"
-                             Text="{Binding ClipsDirectory, Mode=TwoWay}" Margin="0,2" />
-                    <Button Grid.Row="1" Grid.Column="2" Content="浏览…"
-                            Command="{Binding BrowseClipsCommand}" />
-
-                    <Label Grid.Row="2" Content="截图格式：" />
-                    <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,2"
+                    <Label Grid.Row="1" Content="截图格式：" />
+                    <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,2"
                               SelectedItem="{Binding SnapshotFormat, Mode=TwoWay}">
                         <ComboBoxItem Content="png" />
                         <ComboBoxItem Content="jpg" />
                     </ComboBox>
 
                     <!-- 目录组织（M4）：按日期分目录 + 项目名子目录 -->
-                    <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,6,0,2"
+                    <CheckBox Grid.Row="2" Grid.Column="1" Margin="0,6,0,2"
                               Content="按日期分目录（yyyyMMdd）"
                               IsChecked="{Binding OrganizeByDate, Mode=TwoWay}"
                               Foreground="#E0E0E0"
-                              ToolTip="截图/片段输出到 [目录]\[yyyyMMdd]\ 子目录" />
-                    <Label Grid.Row="4" Content="项目名：" />
-                    <TextBox Grid.Row="4" Grid.Column="1"
+                              ToolTip="截图/片段输出到 [数据目录]\[yyyyMMdd]\ 子目录" />
+                    <Label Grid.Row="3" Content="项目名：" />
+                    <TextBox Grid.Row="3" Grid.Column="1"
                              Text="{Binding ProjectSubfolderName, Mode=TwoWay}" Margin="0,2"
                              ToolTip="非空时在日期层下再加一层 [项目名] 子目录；留空不启用" />
 
                     <!-- 播放倍率上限：超出约4×后音频静音但视频可播 -->
-                    <Label Grid.Row="5" Content="最高倍率：" />
-                    <ComboBox Grid.Row="5" Grid.Column="1" Margin="0,2"
+                    <Label Grid.Row="4" Content="最高倍率：" />
+                    <ComboBox Grid.Row="4" Grid.Column="1" Margin="0,2"
                               ItemsSource="{Binding MaxRateOptions}"
                               SelectedItem="{Binding MaxRate, Mode=TwoWay}"
                               ToolTip="倍速上限（2×~32×）。超过约4×后音频会静音，仅视频快放" />
 
                     <!-- 方向键步长（M6）：帧步进 + 倍速步长 -->
-                    <Label Grid.Row="6" Content="后退/快进步长：" />
-                    <TextBox Grid.Row="6" Grid.Column="1"
+                    <Label Grid.Row="5" Content="后退/快进步长：" />
+                    <TextBox Grid.Row="5" Grid.Column="1"
                              Text="{Binding SeekStepFrames, Mode=TwoWay}" Margin="0,2"
                              ToolTip="方向键左右每次移动的帧数（1~600，默认 5）" />
-                    <Label Grid.Row="7" Content="倍速步长：" />
-                    <TextBox Grid.Row="7" Grid.Column="1"
+                    <Label Grid.Row="6" Content="倍速步长：" />
+                    <TextBox Grid.Row="6" Grid.Column="1"
                              Text="{Binding RateStep, Mode=TwoWay}" Margin="0,2"
                              ToolTip="方向键上下调整倍速的步长（0.05~1.0，默认 0.25）" />
 
-                    <!-- 数据便携（M7）：数据路径 + 会话恢复开关 -->
-                    <Label Grid.Row="8" Content="数据路径：" Margin="0,8,0,0" />
-                    <TextBox Grid.Row="8" Grid.Column="1" Margin="0,8,0,2"
-                             Text="{Binding DataRoot, Mode=TwoWay}"
-                             ToolTip="所有运行数据（数据库/截图/片段/日志）的存放位置；修改后需重启生效，不自动搬迁旧数据" />
-                    <Button Grid.Row="8" Grid.Column="2" Content="浏览…" Margin="0,8,0,0"
-                            Command="{Binding BrowseDataRootCommand}" />
-
-                    <CheckBox Grid.Row="9" Grid.Column="1" Margin="0,8,0,2"
+                    <!-- 会话恢复开关 -->
+                    <CheckBox Grid.Row="7" Grid.Column="1" Margin="0,8,0,2"
                               Content="恢复上次拉片记录"
                               IsChecked="{Binding RestoreSession, Mode=TwoWay}"
                               Foreground="#E0E0E0"
                               ToolTip="再次打开同一素材时自动还原裁切点/截图/笔记；默认开启" />
 
-                    <CheckBox Grid.Row="10" Grid.Column="1" Margin="0,2,0,2"
+                    <CheckBox Grid.Row="8" Grid.Column="1" Margin="0,2,0,2"
                               Content="恢复播放位置与倍速"
                               IsChecked="{Binding RestorePlaybackPosition, Mode=TwoWay}"
                               Foreground="#E0E0E0"

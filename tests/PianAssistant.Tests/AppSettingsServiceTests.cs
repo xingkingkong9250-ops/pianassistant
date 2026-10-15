@@ -103,14 +103,15 @@ public class AppSettingsServiceTests : IDisposable
     }
 
     [Fact]
-    public void SetOutputDirectories_Persists()
+    public void ScreenshotsAndClipsDirectories_DerivedFromDataRoot()
     {
         var svc1 = new AppSettingsService(_tempDir);
-        svc1.SetOutputDirectories("/custom/screens", "/custom/clips");
+        svc1.SetDataRoot("/my/data");
 
         var svc2 = new AppSettingsService(_tempDir);
-        Assert.Equal("/custom/screens", svc2.ScreenshotsDirectory);
-        Assert.Equal("/custom/clips", svc2.ClipsDirectory);
+        // 截图与片段目录统一从数据根派生，不再支持独立配置
+        Assert.Equal(Path.Combine("/my/data", "screenshots"), svc2.ScreenshotsDirectory);
+        Assert.Equal(Path.Combine("/my/data", "clips"), svc2.ClipsDirectory);
     }
 
     // --- 配置损坏/备份恢复（M6 韧性加固）---

@@ -15,8 +15,6 @@ public sealed class SettingsViewModel : ObservableObject
 {
     private readonly AppSettingsService _settings;
     private readonly HotkeyService _hotkeys;
-    private string _screenshotsDirectory;
-    private string _clipsDirectory;
     private string _snapshotFormat;
     private HotkeyAction _selectedAction;
     private string _editingGesture = string.Empty;
@@ -42,8 +40,6 @@ public sealed class SettingsViewModel : ObservableObject
         _originalDataRoot = settings.DataRoot;
         _restoreSession = settings.RestoreSession;
         _restorePlaybackPosition = settings.RestorePlaybackPosition;
-        _screenshotsDirectory = settings.ScreenshotsDirectory;
-        _clipsDirectory = settings.ClipsDirectory;
         _snapshotFormat = settings.SnapshotFormat;
         _selectedAction = HotkeyAction.PlayPause;
         _globalHotkeysEnabled = settings.GlobalHotkeysEnabled;
@@ -53,8 +49,6 @@ public sealed class SettingsViewModel : ObservableObject
         _seekStepFrames = settings.SeekStepFrames;
         _rateStep = settings.RateStep;
 
-        BrowseScreenshotsCommand = new RelayCommand(BrowseScreenshots);
-        BrowseClipsCommand = new RelayCommand(BrowseClips);
         BrowseDataRootCommand = new RelayCommand(BrowseDataRoot);
         SaveCommand = new RelayCommand(Save);
         ResetHotkeyCommand = new RelayCommand(ResetSelectedHotkey);
@@ -63,18 +57,6 @@ public sealed class SettingsViewModel : ObservableObject
         // Build the action list for the hotkey editor ListBox.
         foreach (HotkeyAction action in Enum.GetValues(typeof(HotkeyAction)))
             HotkeyEntries.Add(new HotkeyEntry(action, _hotkeys.Active[action]));
-    }
-
-    public string ScreenshotsDirectory
-    {
-        get => _screenshotsDirectory;
-        set => SetProperty(ref _screenshotsDirectory, value);
-    }
-
-    public string ClipsDirectory
-    {
-        get => _clipsDirectory;
-        set => SetProperty(ref _clipsDirectory, value);
     }
 
     /// <summary>"png" or "jpg".</summary>
@@ -174,15 +156,11 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>All hotkey entries for the settings ListBox.</summary>
     public ObservableCollection<HotkeyEntry> HotkeyEntries { get; } = new();
 
-    public ICommand BrowseScreenshotsCommand { get; }
-    public ICommand BrowseClipsCommand { get; }
     public ICommand BrowseDataRootCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand ResetHotkeyCommand { get; }
     public ICommand ResetAllHotkeysCommand { get; }
 
-    public event EventHandler? BrowseScreenshotsRequested;
-    public event EventHandler? BrowseClipsRequested;
     public event EventHandler? BrowseDataRootRequested;
     public event EventHandler? Saved;
     public event EventHandler? CloseRequested;
@@ -191,22 +169,7 @@ public sealed class SettingsViewModel : ObservableObject
     /// <summary>校验失败（非法字符 / 目录不可写）时触发，参数为错误消息。</summary>
     public event EventHandler<string>? ValidationFailed;
 
-    private void BrowseScreenshots() => BrowseScreenshotsRequested?.Invoke(this, EventArgs.Empty);
-    private void BrowseClips() => BrowseClipsRequested?.Invoke(this, EventArgs.Empty);
     private void BrowseDataRoot() => BrowseDataRootRequested?.Invoke(this, EventArgs.Empty);
-
-    /// <summary>Called by the view after a folder dialog returns a path.</summary>
-    public void SetScreenshotsDirectory(string path)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ScreenshotsDirectory = path;
-    }
-
-    public void SetClipsDirectory(string path)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        ClipsDirectory = path;
-    }
 
     /// <summary>Called by the view after a folder dialog returns a path (数据路径).</summary>
     public void SetDataRoot(string path)
@@ -287,7 +250,6 @@ public sealed class SettingsViewModel : ObservableObject
             NormalizePath(_originalDataRoot), NormalizePath(newDataRoot),
             StringComparison.OrdinalIgnoreCase);
 
-        _settings.SetOutputDirectories(_screenshotsDirectory, _clipsDirectory);
         _settings.SetSnapshotFormat(_snapshotFormat);
         _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
         _settings.SetOrganizationOptions(_organizeByDate, _projectSubfolderName);
