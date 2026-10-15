@@ -1,4 +1,4 @@
-# run.ps1 — Debug 构建 + 关闭旧实例 + 启动。
+﻿# run.ps1 — Debug 构建 + 关闭旧实例 + 启动。
 # 通过 run.bat 静默调用，也可直接 powershell -File run.ps1 调试。
 $ErrorActionPreference = 'Stop'
 
@@ -21,12 +21,23 @@ function Get-ProjectVersion {
 try {
     Write-Log "=== PianAssistant run started ==="
 
-    # .NET SDK 检查
+    # .NET SDK 检查（PATH 不可用时回退到默认安装路径）
+    $dotnetCmd = 'dotnet'
     $out = & dotnet --version 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw ".NET SDK not found. Install .NET 10 SDK (win-x64). Output: $out"
+        $fallback = 'C:\Program Files\dotnet\dotnet.exe'
+        if (Test-Path -LiteralPath $fallback) {
+            $dotnetCmd = $fallback
+            $out = & $dotnetCmd --version 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Log "dotnet not on PATH; using fallback: $fallback"
+            }
+        }
+        if ($LASTEXITCODE -ne 0) {
+            throw ".NET SDK not found. Install .NET 10 SDK (win-x64). Output: $out"
+        }
     }
-    Write-Log ".NET SDK OK"
+    Write-Log ".NET SDK OK ($(& $dotnetCmd --version))"
 
     # 关闭已有实例（单实例模式：互斥锁已被旧进程持有，直接结束进程）
     $existing = Get-Process PianAssistant -ErrorAction SilentlyContinue
@@ -40,7 +51,7 @@ try {
     Write-Log "Project version: $version"
 
     Write-Log "Building Debug..."
-    $out = & dotnet build $solutionPath -c Debug --nologo 2>&1
+    $out = & $dotnetCmd build $solutionPath -c Debug --nologo 2>&1
     $out | Out-File -LiteralPath $logPath -Append -Encoding UTF8
     if ($LASTEXITCODE -ne 0) {
         Write-Log "Debug build failed (exit $LASTEXITCODE). See log: $logPath"
@@ -58,6 +69,9 @@ try {
     Write-Log "Launched PianAssistant (PID $($process.Id))."
 }
 catch {
-    Write-Log "FATAL: $($_.Exception.Message)"
+    $line = $_.InvocationInfo.ScriptLineNumber
+    $stmt = $_.InvocationInfo.Line.Trim()
+    Write-Log "FATAL (line $line): $($_.Exception.Message)"
+    Write-Log "FATAL statement: $stmt"
     throw
 }
