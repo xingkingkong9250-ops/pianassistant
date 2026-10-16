@@ -7,6 +7,64 @@
 
 ## [Unreleased]
 
+### v0.14.0 — 笔记面板重构为统一时间线（NO.M，2026-10-17）
+
+> 用户要求：笔记面板按时间顺序排布显示截图与片段；片段由剪切点切断后形成；片段之间保留可选中的裁切点标记，删除后上下片段自动合并；列表项为带缩略图的长方条（前图标、后名称与时长）；片段黄框、截图绿框、裁切点红标；选中项可导出到指定位置（后台先落库）；筛选支持 全部 / 仅截图 / 仅片段（含裁切点）/ 已选中 / 更多筛选。
+
+#### 变更
+
+**笔记面板整体重构（W1-C2 → W1-C2-D 统一时间线）**
+- 原三子标签（📷 截图 / ✂ 片段 / 📝 活动）合并为按时间顺序混排的统一时间线列表
+- 排序规则：`Position` 升序，同刻次序 裁切点 → 片段 → 截图
+- 新增统一条目模型 `TimelineListItem` 基类 + `ScreenshotListItem` / `SegmentListItem` / `CutPointListItem` 三子类
+- 卡片样式：截图绿框 `#4EC9B0` 📷、片段黄框 `#D7BA7D` 🎬、裁切点红色细条 `#E51400` ✂（无缩略图）
+- 截图卡片显示缩略图 + 「截图 N」+ 位置时间；片段卡片显示段起始帧缩略图 + 「片段 N · 时长」+ 起始时间
+
+**裁切点删除合并**
+- 时间线列表中选中红色裁切点条目 → `Delete` 键或右键「删除（合并相邻片段）」
+- `PlayerViewModel.RemoveCutPoint`（容差 100ms 按值删除）→ `CutPoints.CollectionChanged` → `NotesViewModel.RecomputeSegments` 边界重算，上下相邻片段自动合并
+
+**片段缩略图服务**
+- 新增 `SegmentThumbnailService`：ffmpeg `CaptureSingleFrame` 异步后台抽帧
+- 缓存目录 `clips/thumbs/{startMs}.jpg`；启动时 `PruneOrphans` 清理孤儿缩略图
+- 失败兜底返回 null，不阻塞 UI
+
+**选中导出**
+- 工具栏「📤 导出选中」+ `OpenFolderDialog` 选目录
+- 截图走 `File.Copy`，片段走 `ClipExtractionService.ExtractTo`（新重载，不走日期/项目子目录组织）
+- 数据先行落库（screenshots / clips 表），导出仅复制实体文件
+
+**筛选栏**
+- chip「全部 / 📷 截图 / 🎬 片段（含裁切点）/ ✔ 已选中」+「更多筛选 ▾」下拉（含「✂ 仅裁切点」）
+- `NotesFilter` 枚举：All / Screenshots / Segments / Selected / CutPointsOnly
+
+**文字笔记功能整体移除**
+- 移除：活动流子标签、笔记输入框、模板下拉、活动流搜索/导出
+- 移除类型：`ActivityEntry`、`NoteTemplate`、`NotesExportService`
+- 批量文本「标记」指令（`BatchActionKind.Marker`）改为返回「标记指令已不支持」
+- 时间轴 `Markers` 集合只来自截图（`MarkerKind.Screenshot`），不再产生 Note 标记
+- 会话快照 `Notes` 字段传空数组；旧项目包中的文字笔记数据静默忽略
+
+#### 编号变更
+- 新增 W1-C2-D-01（筛选栏）/ D-02（工具栏）/ D-03（统一时间线列表）/ D-04（截图右键）/ D-05（片段右键）/ D-06（裁切点右键）
+- 废弃 W1-C2-T1/T2/T3、W1-C2-A-01~03、W1-C2-B-01~05、W1-C2-C-01~09（共 20 项，永不复用）
+
+#### 文档同步
+- `docs/USER_GUIDE.md`：核心能力表、3.2 右侧面板整段重写、5.3 工作流重写、6 批量文本标记指令标不支持、其它章节入口编号更新
+- `docs/REGRESSION_CHECKLIST.md`：C 区「M2 笔记统一时间线」10 项新回归；D / F / G / N 区相关条目同步
+- `docs/UI_NUMBERING.md`：新增 D-01~D-06 表，20 个旧编号标「已删除」
+- `docs/ui-layout-map/ui-layout-map.html`：§3 整段重写（SVG 重绘 + 表格），§1 表格同步
+- `docs/superpowers/specs/2026-10-17-notes-panel-unified-timeline-design.md`：设计 spec 入库
+
+#### 测试
+- 新增 `TimelineListItemTests` / `SegmentThumbnailServiceTests`
+- 重写 `NotesViewModelTests`：统一列表排序、5 种筛选、删裁切点合并、Markers、跳转、选中导出、缩略图接线
+- `PlayerViewModelTests` 新增 `RemoveCutPoint` 3 个测试
+- `BatchExecutionServiceTests` Marker 测试断言失败含「不支持」
+- 全量 310 个单元测试通过
+
+---
+
 ### v0.13.1 — 顶栏按钮顺序微调（NO.P，2026-10-16）
 
 > 用户要求：W1-R1-01 后紧跟 W1-R1-16（打开视频），然后 W1-R1-23；W1-R1-24 放到最右端。

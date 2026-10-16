@@ -26,6 +26,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _disposed;
     // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。
     private bool _isRestoring;
+    // 片段入点(毫秒) → 导出输出路径：项目保存时回查用（统一时间线后不再经活动流记录）。
+    private readonly Dictionary<double, string> _clipOutputPaths = new();
     // 播放位置按秒节流落库，避免高频写库（M7）。
     private long _lastMarkedSecond = -1;
 
@@ -159,7 +161,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 设置保存后刷新播放器的最高倍率上限（下拉框档位 + 夹紧当前倍速）。
         Settings.Saved += (_, _) => Player.SetMaxRate(services.Settings.MaxRate);
 
-        // Wire Player → panel VMs + Notes 活动流.
+        // 片段缩略图：ffmpeg 抽段起始帧，缓存到数据根 clips/thumbs/。
+        Notes.Thumbnails = SegmentThumbnailService.Create(services.Ffmpeg, services.Settings.ClipsDirectory);
+
+        // Wire Player → panel VMs（统一时间线：截图进笔记列表；片段只记录输出路径供项目保存回查）.
         Player.ScreenshotCaptured += (_, entry) =>
         {
             Screenshots.Add(entry);
@@ -168,15 +173,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Player.ClipExtracted += (_, e) =>
         {
             Clips.Add(e.Range);
-            Notes.AddClip(e.Range, e.OutputPath);
+            _clipOutputPaths[e.Range.InPoint.TotalMilliseconds] = e.OutputPath;
         };
         Player.SegmentExported += (_, e) =>
         {
             Clips.Add(e.Range);
-            Notes.AddClip(e.Range, e.OutputPath);
+            _clipOutputPaths[e.Range.InPoint.TotalMilliseconds] = e.OutputPath;
         };
 
-        // 裁切点变化 → Notes 活动流
+        // 裁切点变化 → 重算分段并重建统一时间线列表
         Player.CutPoints.CollectionChanged += OnCutPointsChanged;
 
         // Wire Playlist → Player.
@@ -194,11 +199,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 非循环模式播放结束 → 自动推进播放列表
         Player.EndReached += OnPlayerEnded;
 
-        // 批量文本操作（M5）：标记/裁切点经回调分发到笔记与播放器；视频路径取当前媒体。
+        // 批量文本操作（M5）：裁切点经回调分发到播放器；标记指令已不支持（文字笔记随统一时间线移除）。
         Batch = new BatchPreviewViewModel(
             new BatchTextParser(),
             services.Batches,
-            (text, position) => Notes.AddMarkerAt(text, position),
             position => Player.AddCutPointAt(position),
             () => Player.CurrentPath);
 
@@ -355,15 +359,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         });
     }
 
-    /// <summary>裁切点集合变化时同步到 Notes 活动流（仅添加，不删除历史）。</summary>
+    /// <summary>裁切点集合变化时重算分段并重建笔记面板统一时间线（删除裁切点即合并相邻片段）。</summary>
     private void OnCutPointsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems is not null)
-        {
-            foreach (TimeSpan cp in e.NewItems)
-                Notes.AddCutPoint(cp);
-        }
-        // 重新计算段
         Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
     }
 
@@ -400,8 +398,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     // --- 项目文件（M6 全功能整合）---
 
     /// <summary>
-    /// 把 ProjectService 的会话访问器接到当前 VM：保存时汇总视频路径/截图/片段/笔记；
-    /// 加载时把读回的数据还原到播放列表、截图列表、片段队列与笔记活动流。
+    /// 把 ProjectService 的会话访问器接到当前 VM：保存时汇总视频路径/截图/片段；
+    /// 加载时把读回的数据还原到播放列表、截图列表与片段队列。
+    /// 文字笔记已随统一时间线重构移除：ResolveNotes/ApplyNotes 不再赋值
+    /// （旧项目包中的笔记数据静默忽略，数据库 notes 表保留不动）。
     /// </summary>
     private void WireProjectService(ServiceRegistry services)
     {
@@ -411,14 +411,6 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             Clips.Items
                 .Select(clip => (clip, FindClipOutputPath(clip)))
                 .ToList();
-        services.Projects.ResolveNotes = () =>
-        {
-            var source = Player.CurrentPath ?? "unknown";
-            return Notes.Activities
-                .Where(a => a.Type == ActivityType.Note)
-                .Select(a => new NoteEntry(source, a.Position, a.Label))
-                .ToList();
-        };
 
         services.Projects.ApplySourcePath = path =>
         {
@@ -440,13 +432,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             foreach (var (range, outputPath) in list)
             {
                 Clips.Add(range);
-                Notes.AddClip(range, outputPath);
+                if (!string.IsNullOrWhiteSpace(outputPath))
+                    _clipOutputPaths[range.InPoint.TotalMilliseconds] = outputPath;
             }
-        };
-        services.Projects.ApplyNotes = list =>
-        {
-            foreach (var note in list)
-                Notes.AddMarkerAt(note.Text, note.Position);
         };
     }
 
@@ -460,7 +448,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         var sessions = services.Sessions;
 
-        // 采集当前会话快照供落库。
+        // 采集当前会话快照供落库（文字笔记已移除，Notes 传空集合）。
         sessions.CaptureSnapshot = () => new MediaSessionSnapshot
         {
             Path = Player.CurrentPath ?? string.Empty,
@@ -470,10 +458,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             OutPoint = Player.OutPoint,
             CutPoints = Player.CutPoints.ToList(),
             Screenshots = Screenshots.Items.ToList(),
-            Notes = Notes.Activities
-                .Where(a => a.Type == ActivityType.Note)
-                .Select(a => new NoteEntry(Player.CurrentPath ?? "unknown", a.Position, a.Label))
-                .ToList(),
+            Notes = Array.Empty<NoteEntry>(),
         };
 
         // 把读回的会话应用到当前会话（服务保证在 UI 线程回调）。
@@ -491,13 +476,13 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Player.PropertyChanged += OnPlayerPropertyChangedForSession;
     }
 
-    /// <summary>把读回的会话数据还原到播放器、画廊与笔记活动流。</summary>
+    /// <summary>把读回的会话数据还原到播放器、画廊与笔记面板（旧会话笔记静默忽略）。</summary>
     private void ApplySession(MediaSession session)
     {
         _isRestoring = true;
         try
         {
-            // 先清空，再还原——否则清空会把刚由 SetCutPoints 重建的分段/裁切点活动一并抹掉。
+            // 先清空，再还原——否则清空会把刚由 SetCutPoints 重建的分段/裁切点一并抹掉。
             Screenshots.Clear();
             Notes.ClearAll();
 
@@ -515,8 +500,6 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 Screenshots.Add(entry);
                 Notes.AddScreenshot(entry);
             }
-            foreach (var n in session.Notes)
-                Notes.AddMarkerAt(n.Text, TimeSpan.FromMilliseconds(n.PositionMs));
 
             // 还原播放位置与倍速（位置为 0/倍速 1.0 时即等同不还原）。
             Player.Position = TimeSpan.FromMilliseconds(session.LastPositionMs);
@@ -561,11 +544,25 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _services.Sessions.MarkDirty();
     }
 
-    /// <summary>按片段入点从活动流中回查其输出路径（活动流片段条目位置=入点）。</summary>
+    /// <summary>按片段入点回查其导出输出路径（本次会话内经 ClipExtracted/SegmentExported 记录）。</summary>
     private string? FindClipOutputPath(ClipRange clip) =>
-        Notes.Activities
-            .FirstOrDefault(a => a.Type == ActivityType.Clip && a.Position == clip.InPoint)?
-            .FilePath;
+        _clipOutputPaths.TryGetValue(clip.InPoint.TotalMilliseconds, out var path) ? path : null;
+
+    /// <summary>
+    /// 把指定片段导出到用户选定的目录（笔记面板「导出此段/导出选中」用）：
+    /// 走 ffmpeg 流拷贝切出 mp4，文件名沿用自动命名规则。
+    /// </summary>
+    public string ExportSegmentTo(TimelineSegment segment, string targetDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(segment);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetDirectory);
+        var source = segment.SourcePath ?? Player.CurrentPath
+            ?? throw new InvalidOperationException("没有已打开的视频，无法导出片段。");
+        var range = new ClipRange(source, segment.Start, segment.End);
+        var outputPath = _services.Clips.ExtractTo(range, targetDirectory);
+        _clipOutputPaths[range.InPoint.TotalMilliseconds] = outputPath;
+        return outputPath;
+    }
 
     /// <summary>按动作名解析命令（热键一致性测试用）。</summary>
     public ICommand? ResolveCommand(string actionName) => _hotkeyMap.ResolveCommand(actionName);

@@ -245,4 +245,44 @@ public class PlayerViewModelTests : IDisposable
             new double[] { 10, 20, 30 },
             _vm.CutPoints.Select(c => c.TotalSeconds));
     }
+
+    // --- 按值删除裁切点（笔记面板裁切点行删除用，W1-C2-D-06） ---
+
+    [Fact]
+    public void RemoveCutPoint_RemovesMatchingValue()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(20));
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(30));
+
+        var removed = _vm.RemoveCutPoint(TimeSpan.FromSeconds(20));
+
+        Assert.True(removed);
+        Assert.Equal(
+            new double[] { 10, 30 },
+            _vm.CutPoints.Select(c => c.TotalSeconds));
+    }
+
+    [Fact]
+    public void RemoveCutPoint_NoMatch_ReturnsFalse()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        Assert.False(_vm.RemoveCutPoint(TimeSpan.FromSeconds(55)));
+        Assert.Single(_vm.CutPoints);
+    }
+
+    [Fact]
+    public void RemoveCutPoint_ClearsSelectedSegment()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _vm.SelectSegmentAt(TimeSpan.FromSeconds(15));
+        Assert.True(_vm.HasSelectedSegment);
+
+        _vm.RemoveCutPoint(TimeSpan.FromSeconds(10));
+
+        Assert.False(_vm.HasSelectedSegment);
+    }
 }

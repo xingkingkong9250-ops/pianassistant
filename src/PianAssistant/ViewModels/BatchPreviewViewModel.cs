@@ -18,7 +18,6 @@ public sealed class BatchPreviewViewModel : ObservableObject
     private readonly BatchTextParser _parser;
     private readonly BatchExecutionService _executor;
     private readonly Func<string?> _getVideoPath;
-    private readonly Action<string, TimeSpan> _addMarker;
     private readonly Action<TimeSpan> _addCutPoint;
     private CancellationTokenSource? _cts;
 
@@ -32,13 +31,11 @@ public sealed class BatchPreviewViewModel : ObservableObject
     public BatchPreviewViewModel(
         BatchTextParser parser,
         BatchExecutionService executor,
-        Action<string, TimeSpan> addMarker,
         Action<TimeSpan> addCutPoint,
         Func<string?>? getVideoPath = null)
     {
         _parser = parser ?? throw new ArgumentNullException(nameof(parser));
         _executor = executor ?? throw new ArgumentNullException(nameof(executor));
-        _addMarker = addMarker ?? throw new ArgumentNullException(nameof(addMarker));
         _addCutPoint = addCutPoint ?? throw new ArgumentNullException(nameof(addCutPoint));
         _getVideoPath = getVideoPath ?? (() => null);
 
@@ -143,21 +140,22 @@ public sealed class BatchPreviewViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 执行流程：标记/裁切点先经回调分发到笔记/播放器（即时生效），
-    /// 截图/片段交给执行器逐条跑 ffmpeg；完成或取消后汇总状态。
+    /// 执行流程：裁切点先经回调分发到播放器（即时生效）；标记指令已不支持
+    /// （文字笔记功能已随统一时间线重构移除），仅统计提示；截图/片段交给
+    /// 执行器逐条跑 ffmpeg；完成或取消后汇总状态。
     /// </summary>
     private async Task ExecuteAsync()
     {
         Parse();
         var valid = Items.Where(i => i.IsValid).ToList();
 
-        // 标记/裁切点：文本层直接分发（不走 ffmpeg）
+        // 裁切点：文本层直接分发（不走 ffmpeg）；标记已不支持
         var markers = valid.Where(i => i.Type == BatchActionKind.Marker).ToList();
         var cutPoints = valid.Where(i => i.Type == BatchActionKind.CutPoint).ToList();
-        foreach (var ins in markers)
-            _addMarker(ins.Label ?? string.Empty, ins.Start);
         foreach (var ins in cutPoints)
             _addCutPoint(ins.Start);
+        // 汇总文本中的标记提示（已不支持）
+        var markerNote = markers.Count > 0 ? $"；{markers.Count} 条标记指令已不支持" : string.Empty;
 
         // 截图/片段：需要已打开的视频
         var media = valid.Where(i => i.Type is BatchActionKind.Screenshot or BatchActionKind.Clip).ToList();
@@ -165,7 +163,7 @@ public sealed class BatchPreviewViewModel : ObservableObject
         {
             StatusText = markers.Count + cutPoints.Count == 0
                 ? "没有可执行的指令"
-                : $"已添加 {markers.Count} 条标记、{cutPoints.Count} 个裁切点（无截图/片段指令）";
+                : $"已添加 {cutPoints.Count} 个裁切点{markerNote}（无截图/片段指令）";
             return;
         }
         var videoPath = _getVideoPath();
@@ -193,7 +191,7 @@ public sealed class BatchPreviewViewModel : ObservableObject
                     Progress = total > 0 ? done * 100.0 / total : 100;
                 });
             StatusText = $"执行完成：成功 {ok} · 失败 {media.Count - ok}" +
-                         $"（已添加 {markers.Count} 条标记、{cutPoints.Count} 个裁切点）";
+                         $"（已添加 {cutPoints.Count} 个裁切点{markerNote}）";
         }
         catch (OperationCanceledException)
         {

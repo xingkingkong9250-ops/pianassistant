@@ -58,8 +58,11 @@ public sealed class BatchExecutionService
                     switch (instruction.Type)
                     {
                         case BatchActionKind.Marker:
+                            // 文字笔记功能已随统一时间线重构移除（W1-C2-D）
+                            result = BatchResult.Fail("标记指令已不支持");
+                            break;
                         case BatchActionKind.CutPoint:
-                            // 由 VM 层分发到笔记/播放器，执行器无需动作
+                            // 由 VM 层分发到播放器，执行器无需动作
                             result = BatchResult.Ok();
                             break;
                         case BatchActionKind.Screenshot:

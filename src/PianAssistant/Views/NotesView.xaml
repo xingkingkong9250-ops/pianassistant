@@ -7,30 +7,35 @@
              Foreground="#E8E8E8">
 
     <UserControl.Resources>
-        <!-- ListBox 项容器：透明背景、无选中高亮，保持项模板原外观 -->
-        <Style x:Key="PlainListBoxItem" TargetType="ListBoxItem">
+        <!-- ListBox 项容器：透明背景、IsSelected 双向同步条目选中态 -->
+        <Style x:Key="TimelineListBoxItem" TargetType="ListBoxItem">
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Focusable" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border Background="Transparent" Padding="0">
+                        <Border x:Name="Row" Background="Transparent" Padding="0">
                             <ContentPresenter />
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="#1FFFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <!-- 截图缩略图模板 -->
-        <DataTemplate x:Key="ScreenshotTemplate" DataType="{x:Type models:ScreenshotEntry}">
-            <Border Margin="8,3" Padding="0" CornerRadius="4"
-                    Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1"
-                    MouseLeftButtonDown="OnScreenshotClick" Cursor="Hand">
+        <!-- 截图条目模板：绿框 + 📷 + 缩略图 + 名称/时间 -->
+        <DataTemplate DataType="{x:Type models:ScreenshotListItem}">
+            <Border Margin="8,3" Padding="4" CornerRadius="4"
+                    Background="#1F1F1F" BorderBrush="{Binding AccentColor}" BorderThickness="1.5"
+                    MouseLeftButtonDown="OnItemJumpClick" Cursor="Hand">
                 <Border.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="📂 打开所在文件夹" Click="OnScreenshotOpenFolder" />
@@ -39,265 +44,139 @@
                     </ContextMenu>
                 </Border.ContextMenu>
                 <DockPanel>
-                    <!-- 缩略图 -->
-                    <Border DockPanel.Dock="Left" Width="120" Height="68" Margin="0" ClipToBounds="True"
-                            Background="#000000">
-                        <Image Source="{Binding OutputPath, Converter={x:Static views:ThumbnailConverter.Instance}}"
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="14"
+                               VerticalAlignment="Center" Margin="2,0,6,0" />
+                    <Border DockPanel.Dock="Left" Width="120" Height="68" ClipToBounds="True"
+                            CornerRadius="2" Background="#000000">
+                        <Image Source="{Binding Entry.OutputPath, Converter={x:Static views:ThumbnailConverter.Instance}}"
                                Stretch="UniformToFill"
                                RenderOptions.BitmapScalingMode="HighQuality" />
                     </Border>
-                    <!-- 信息 -->
-                    <StackPanel Margin="8,4" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Position, StringFormat='mm\\:ss\\.fff'}"
-                                   FontFamily="Consolas" FontSize="12" Foreground="#4EC9B0" />
-                        <TextBlock Text="{Binding CapturedAt, StringFormat='HH:mm:ss'}"
-                                   FontFamily="Consolas" FontSize="10" Foreground="#666666"
-                                   Margin="0,2,0,0" />
+                    <StackPanel Margin="8,2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="#E8E8E8" />
+                        <TextBlock Text="{Binding TimeText}" FontFamily="Consolas" FontSize="11"
+                                   Foreground="{Binding AccentColor}" Margin="0,2,0,0" />
                     </StackPanel>
                 </DockPanel>
             </Border>
         </DataTemplate>
 
-        <!-- 片段段模板 -->
-        <DataTemplate x:Key="SegmentTemplate" DataType="{x:Type models:TimelineSegment}">
-            <Border Margin="8,3" Padding="8,6" CornerRadius="4"
-                    Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1"
-                    MouseLeftButtonDown="OnSegmentClick" Cursor="Hand">
-                <DockPanel>
-                    <!-- 导出按钮 -->
-                    <Button DockPanel.Dock="Right" Content="📤" Padding="4" Margin="4,0"
-                            FontSize="13" Background="Transparent" Foreground="#888888"
-                            BorderThickness="0" Cursor="Hand" Focusable="False"
-                            Click="OnSegmentExport" ToolTip="导出此段" />
-                    <!-- 编号 -->
-                    <Border DockPanel.Dock="Left" Width="28" Height="28" CornerRadius="4"
-                            Background="#1A6B8A" Margin="0,0,8,0">
-                        <TextBlock Text="{Binding Index}" Foreground="White" FontWeight="SemiBold"
-                                   FontFamily="Consolas" FontSize="14"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <!-- 信息 -->
-                    <StackPanel VerticalAlignment="Center">
-                        <DockPanel>
-                            <TextBlock Text="{Binding StartText}" FontFamily="Consolas" FontSize="11"
-                                       Foreground="#CE9178" />
-                            <TextBlock Text=" → " FontFamily="Consolas" FontSize="11"
-                                       Foreground="#666666" />
-                            <TextBlock Text="{Binding EndText}" FontFamily="Consolas" FontSize="11"
-                                       Foreground="#CE9178" />
-                        </DockPanel>
-                        <TextBlock Text="{Binding Summary}" FontFamily="Consolas" FontSize="11"
-                                   Foreground="#888888" Margin="0,2,0,0" />
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-        </DataTemplate>
-
-        <!-- 活动条目模板：查看态 + 内联编辑态，右键菜单（编辑/删除） -->
-        <DataTemplate x:Key="ActivityTemplate" DataType="{x:Type models:ActivityEntry}">
-            <Border Margin="8,3" Padding="8,6" CornerRadius="4"
-                    Background="#1F1F1F" BorderBrush="#2A2A2A" BorderThickness="1">
+        <!-- 片段条目模板：黄框 + 🎬 + 段起始帧缩略图（异步补抽） + 名称·时长/起始时间 -->
+        <DataTemplate DataType="{x:Type models:SegmentListItem}">
+            <Border Margin="8,3" Padding="4" CornerRadius="4"
+                    Background="#1F1F1F" BorderBrush="{Binding AccentColor}" BorderThickness="1.5"
+                    MouseLeftButtonDown="OnItemJumpClick" Cursor="Hand">
                 <Border.ContextMenu>
                     <ContextMenu>
-                        <!-- 编辑仅对笔记类型显示 -->
-                        <MenuItem Header="✏ 编辑" Click="OnActivityEdit">
-                            <MenuItem.Style>
-                                <Style TargetType="MenuItem">
-                                    <!-- 局部 Style 会屏蔽 App 级隐式样式，需显式指定前景色（深色菜单） -->
-                                    <Setter Property="Foreground" Value="#E0E0E0" />
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding Type}" Value="Note">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </MenuItem.Style>
-                        </MenuItem>
-                        <MenuItem Header="🗑 删除" Click="OnActivityDelete" />
+                        <MenuItem Header="📤 导出此段" Click="OnSegmentExport" />
+                        <MenuItem Header="▶ 跳转播放" Click="OnSegmentJump" />
                     </ContextMenu>
                 </Border.ContextMenu>
-                <!-- 查看态（点击跳转）+ 编辑态（内联 TextBox）切换 -->
-                <Grid>
-                    <StackPanel Visibility="{Binding IsEditing, Converter={x:Static views:InverseBoolToVisibilityConverter.Instance}}"
-                                MouseLeftButtonDown="OnActivityClick" Cursor="Hand">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Text="{Binding TypeIcon}" FontSize="13" Margin="0,0,6,0" />
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding PositionText}" FontFamily="Consolas"
-                                       FontSize="11" Foreground="{Binding TypeColor}" Margin="6,0,0,0" />
-                            <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" FontSize="12" />
-                        </DockPanel>
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="14"
+                               VerticalAlignment="Center" Margin="2,0,6,0" />
+                    <Border DockPanel.Dock="Left" Width="120" Height="68" ClipToBounds="True"
+                            CornerRadius="2" Background="#000000">
+                        <Image Source="{Binding ThumbnailPath, Converter={x:Static views:ThumbnailConverter.Instance}}"
+                               Stretch="UniformToFill"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+                    <StackPanel Margin="8,2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="12" Foreground="#E8E8E8" />
+                        <TextBlock Text="{Binding TimeText}" FontFamily="Consolas" FontSize="11"
+                                   Foreground="{Binding AccentColor}" Margin="0,2,0,0" />
                     </StackPanel>
-                    <!-- 编辑态：内联 TextBox，Enter 提交 / Esc 取消 -->
-                    <TextBox Visibility="{Binding IsEditing, Converter={x:Static views:BoolToVisibilityConverter.Instance}}"
-                             Text="{Binding Label, Mode=TwoWay, UpdateSourceTrigger=Explicit}"
-                             IsVisibleChanged="OnActivityEditBoxVisible"
-                             KeyDown="OnActivityEditKeyDown"
-                             LostFocus="OnActivityEditLostFocus"
-                             Background="#111111" Foreground="#E8E8E8" BorderBrush="#1A6B8A"
-                             Padding="2,2" FontSize="12" />
-                </Grid>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- 裁切点条目模板：红色细条行（无缩略图），选中后可删除合并相邻片段 -->
+        <DataTemplate DataType="{x:Type models:CutPointListItem}">
+            <Border Margin="8,1" Padding="4,2" CornerRadius="3"
+                    Background="#1A1A1A" BorderBrush="{Binding AccentColor}" BorderThickness="1">
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="🗑 删除（合并相邻片段）" Click="OnCutPointDelete" />
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <DockPanel>
+                    <Border DockPanel.Dock="Left" Width="3" Margin="0,0,6,0"
+                            Background="{Binding AccentColor}" CornerRadius="1" />
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="11"
+                               VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding Title}" FontSize="11" VerticalAlignment="Center"
+                               Foreground="{Binding AccentColor}" />
+                </DockPanel>
             </Border>
         </DataTemplate>
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- 顶部子标签栏 -->
-        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="0"
+        <!-- W1-C2-D-01 筛选栏：常用 chip + 更多筛选下拉 -->
+        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="6,5"
                 BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" Content="📷 截图" Padding="0,8" FontSize="13"
-                        Background="Transparent" Foreground="#E8E8E8" BorderThickness="0,0,1,0"
-                        BorderBrush="#2A2A2A" Cursor="Hand" Focusable="False"
-                        Click="OnShowScreenshots" x:Name="BtnScreenshots" />
-                <Button Grid.Column="1" Content="✂ 片段" Padding="0,8" FontSize="13"
-                        Background="Transparent" Foreground="#888888" BorderThickness="0,1,1,0"
-                        BorderBrush="#2A2A2A" Cursor="Hand" Focusable="False"
-                        Click="OnShowSegments" x:Name="BtnSegments" />
-                <Button Grid.Column="2" Content="📝 活动" Padding="0,8" FontSize="13"
-                        Background="Transparent" Foreground="#888888" BorderThickness="0"
-                        Cursor="Hand" Focusable="False"
-                        Click="OnShowActivities" x:Name="BtnActivities" />
-            </Grid>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="ChipAll" Content="全部" Padding="10,3" FontSize="12"
+                        Background="#1A6B8A" Foreground="#E8E8E8" BorderThickness="0"
+                        Cursor="Hand" Focusable="False" Click="OnFilterAll" />
+                <Button x:Name="ChipScreenshots" Content="📷 截图" Padding="10,3" FontSize="12"
+                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
+                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterScreenshots" />
+                <Button x:Name="ChipSegments" Content="🎬 片段" Padding="10,3" FontSize="12"
+                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
+                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterSegments" />
+                <Button x:Name="ChipSelected" Content="✔ 已选中" Padding="10,3" FontSize="12"
+                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
+                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterSelected" />
+                <Button x:Name="ChipMore" Content="更多筛选 ▾" Padding="10,3" FontSize="12"
+                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
+                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnMoreFilters"
+                        ToolTip="更多筛选条件">
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="MoreFilterMenu">
+                            <MenuItem Header="✂ 仅裁切点" Click="OnFilterCutPointsOnly" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+            </StackPanel>
         </Border>
 
-        <!-- 截图面板 -->
-        <DockPanel x:Name="ScreenshotsPanel" Background="#161616">
-            <!-- 顶部：画廊入口 -->
-            <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="8,5"
-                    BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="🖼 画廊" Padding="8,3"
-                            Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                            Cursor="Hand" Focusable="False" Click="OnOpenGallery"
-                            ToolTip="打开截图画廊（网格浏览 / 大图翻页 / 标注）" />
-                    <TextBlock Text="截图" Foreground="#888888" FontSize="12"
-                               VerticalAlignment="Center" />
-                </DockPanel>
-            </Border>
-            <!-- 截图列表：ListBox 默认启用 VirtualizingStackPanel，避免全量实例化 -->
-            <ListBox ItemsSource="{Binding Screenshots}"
-                     ItemTemplate="{StaticResource ScreenshotTemplate}"
-                     ItemContainerStyle="{StaticResource PlainListBoxItem}"
-                     Background="Transparent" BorderThickness="0" Margin="0,4"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     VirtualizingPanel.IsVirtualizing="True"
-                     VirtualizingPanel.VirtualizationMode="Recycling" />
-        </DockPanel>
+        <!-- W1-C2-D-02 工具栏：画廊 / 裁切点导入导出 / 批量导出 / 导出选中 -->
+        <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="6,5"
+                BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="� 画廊" Padding="8,3" FontSize="12"
+                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+                        Cursor="Hand" Focusable="False" Click="OnOpenGallery"
+                        ToolTip="打开截图画廊（网格浏览 / 大图翻页 / 标注）" />
+                <Button Content="⬆ 导入裁切" Padding="8,3" FontSize="12"
+                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+                        Cursor="Hand" Focusable="False" Click="OnImportCutPoints"
+                        ToolTip="从文本清单导入裁切点（将替换现有裁切点）" />
+                <Button Content="⬇ 导出裁切" Padding="8,3" FontSize="12"
+                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+                        Cursor="Hand" Focusable="False" Click="OnExportCutPoints"
+                        ToolTip="导出裁切点清单（自动生成片段行）" />
+                <Button Content="📦 批量导出" Padding="8,3" FontSize="12"
+                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+                        Cursor="Hand" Focusable="False" Click="OnOpenClipsPanel"
+                        ToolTip="打开片段批量导出面板（队列进度 / 拼接）" />
+                <Button Content="� 导出选中" Padding="8,3" FontSize="12"
+                        Background="Transparent" Foreground="#D7BA7D" BorderThickness="0"
+                        Cursor="Hand" Focusable="False"
+                        Command="{Binding ExportSelectedCommand}"
+                        ToolTip="把选中的截图（复制 png）与片段（ffmpeg 切出 mp4）导出到指定目录" />
+            </StackPanel>
+        </Border>
 
-        <!-- 片段面板（默认隐藏） -->
-        <DockPanel x:Name="SegmentsPanel" Background="#161616" Visibility="Collapsed">
-            <!-- 顶部：裁切点导入/导出 + 批量导出面板入口 -->
-            <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="8,5"
-                    BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
-                <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="📦 批量导出" Padding="8,3"
-                            Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                            Cursor="Hand" Focusable="False" Click="OnOpenClipsPanel"
-                            ToolTip="打开片段批量导出面板（队列进度 / 拼接）" />
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="分段" Foreground="#888888" FontSize="12"
-                                   VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <Button Content="⬆ 导入裁切" Padding="8,3"
-                                Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                                Cursor="Hand" Focusable="False" Click="OnImportCutPoints"
-                                ToolTip="从文本清单导入裁切点（将替换现有裁切点）" />
-                        <Button Content="⬇ 导出裁切" Padding="8,3" Margin="6,0,0,0"
-                                Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                                Cursor="Hand" Focusable="False" Click="OnExportCutPoints"
-                                ToolTip="导出裁切点清单（自动生成片段行）" />
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-            <!-- 分段列表：虚拟化 -->
-            <ListBox ItemsSource="{Binding Segments}"
-                     ItemTemplate="{StaticResource SegmentTemplate}"
-                     ItemContainerStyle="{StaticResource PlainListBoxItem}"
-                     Background="Transparent" BorderThickness="0" Margin="0,4"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     VirtualizingPanel.IsVirtualizing="True"
-                     VirtualizingPanel.VirtualizationMode="Recycling" />
-        </DockPanel>
-
-        <!-- 活动流面板（默认隐藏） -->
-        <DockPanel x:Name="ActivitiesPanel" Visibility="Collapsed" Background="#161616">
-            <!-- 底部笔记输入区：模板下拉 + 输入框 -->
-            <Border DockPanel.Dock="Bottom" Background="#1A1A1A" Padding="8,6"
-                    BorderBrush="#2A2A2A" BorderThickness="0,1,0,0">
-                <StackPanel>
-                    <ComboBox x:Name="TemplateCombo" Margin="0,0,0,6"
-                              ItemsSource="{Binding TemplateOptions}"
-                              SelectedItem="{Binding ActiveTemplate, Mode=TwoWay}"
-                              ToolTip="笔记模板：添加笔记时自动附加分类前缀" />
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="添加" Padding="10,0" Margin="6,0,0,0"
-                                Background="#1A6B8A" Foreground="White" BorderThickness="0"
-                                Cursor="Hand" Focusable="False"
-                                Click="OnAddNote" ToolTip="添加笔记（Enter）" />
-                        <TextBox x:Name="NoteInput" Text="{Binding NewNoteText, UpdateSourceTrigger=PropertyChanged}"
-                                 KeyDown="OnNoteInputKeyDown" VerticalContentAlignment="Center"
-                                 Background="#1F1F1F" Foreground="#E8E8E8" BorderBrush="#2A2A2A"
-                                 Padding="4,4" ToolTip="输入笔记，回车添加" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- 顶部：搜索 + 时间范围 + 导出 -->
-            <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="8,6"
-                    BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
-                <StackPanel>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="📤 导出" Padding="8,4" Margin="6,0,0,0"
-                                Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                                Cursor="Hand" Focusable="False"
-                                Command="{Binding ExportCommand}"
-                                ToolTip="导出活动流（.md=Markdown / .txt=纯文本）" />
-                        <Button DockPanel.Dock="Right" Content="📄 整理导出" Padding="8,4" Margin="6,0,0,0"
-                                Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                                Cursor="Hand" Focusable="False"
-                                Command="{Binding ExportReportCommand}"
-                                ToolTip="整理导出：结构化 Markdown 报告（统计 + 活动流 + 分段汇总）" />
-                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 VerticalContentAlignment="Center"
-                                 Background="#1F1F1F" Foreground="#E8E8E8" BorderBrush="#2A2A2A"
-                                 Padding="4,4" ToolTip="搜索活动流" />
-                    </DockPanel>
-                    <!-- 时间范围筛选（留空不限） -->
-                    <DockPanel Margin="0,6,0,0">
-                        <TextBlock DockPanel.Dock="Left" Text="范围" Foreground="#666666"
-                                   VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox x:Name="RangeStartInput" Width="80" TextChanged="OnRangeStartChanged"
-                                 VerticalContentAlignment="Center" FontFamily="Consolas" FontSize="11"
-                                 Background="#1F1F1F" Foreground="#E8E8E8" BorderBrush="#2A2A2A"
-                                 Padding="4,2" Margin="0,0,6,0"
-                                 ToolTip="开始时间（mm:ss 或 hh:mm:ss），留空不限" />
-                        <TextBlock DockPanel.Dock="Left" Text="—" Foreground="#666666"
-                                   VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBox x:Name="RangeEndInput" TextChanged="OnRangeEndChanged"
-                                 VerticalContentAlignment="Center" FontFamily="Consolas" FontSize="11"
-                                 Background="#1F1F1F" Foreground="#E8E8E8" BorderBrush="#2A2A2A"
-                                 Padding="4,2"
-                                 ToolTip="结束时间（mm:ss 或 hh:mm:ss），留空不限" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- 活动列表（按搜索/范围过滤） -->
-            <!-- 活动流列表（按搜索/范围过滤）：虚拟化。
-                 模板含内联编辑 TextBox（Explicit 提交），用 Standard 模式避免
-                 回收容器时丢弃未提交的编辑内容。 -->
-            <ListBox ItemsSource="{Binding FilteredActivities}"
-                     ItemTemplate="{StaticResource ActivityTemplate}"
-                     ItemContainerStyle="{StaticResource PlainListBoxItem}"
-                     Background="Transparent" BorderThickness="0" Margin="0,4"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     VirtualizingPanel.IsVirtualizing="True"
-                     VirtualizingPanel.VirtualizationMode="Standard" />
-        </DockPanel>
+        <!-- W1-C2-D-03 统一时间线列表：Extended 多选（Ctrl/Shift），Delete 键删除选中裁切点 -->
+        <ListBox ItemsSource="{Binding FilteredItems}"
+                 SelectionMode="Extended"
+                 ItemContainerStyle="{StaticResource TimelineListBoxItem}"
+                 Background="Transparent" BorderThickness="0" Margin="0,4"
+                 KeyDown="OnListKeyDown"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling" />
     </DockPanel>
 </UserControl>

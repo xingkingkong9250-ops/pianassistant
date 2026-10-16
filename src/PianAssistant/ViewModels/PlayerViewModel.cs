@@ -653,6 +653,27 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
     }
 
+    /// <summary>
+    /// 按值删除裁切点（笔记面板裁切点行删除用，W1-C2-D-06）：
+    /// 容差 100ms 内取最近点；删除后清空段选中（上下片段随之合并）。
+    /// </summary>
+    public bool RemoveCutPoint(TimeSpan pos)
+    {
+        var best = -1;
+        var bestMs = double.MaxValue;
+        for (var i = 0; i < CutPoints.Count; i++)
+        {
+            var ms = Math.Abs((CutPoints[i] - pos).TotalMilliseconds);
+            if (ms < bestMs) { bestMs = ms; best = i; }
+        }
+        if (best < 0 || bestMs >= 100) return false;
+        CutPoints.RemoveAt(best);
+        SelectedSegmentStart = null;
+        SelectedSegmentEnd = null;
+        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+        return true;
+    }
+
     private void ClearCutPoints()
     {
         CutPoints.Clear();

@@ -47,18 +47,17 @@ public class BatchExecutionServiceTests : IDisposable
     private static BatchInstruction CutPoint(int line = 1) =>
         BatchInstruction.Valid(BatchActionKind.CutPoint, TimeSpan.FromSeconds(20), null, null, line);
 
-    // --- 跳过型指令（Marker/CutPoint：由 VM 层分发，执行器标成功） ---
+    // --- 跳过型指令（裁切点：由 VM 层分发，执行器标成功；标记已不支持） ---
 
     [Fact]
-    public async Task ExecuteAsync_MarkerInstruction_SucceedsWithoutOutput()
+    public async Task ExecuteAsync_MarkerInstruction_FailsNotSupported()
     {
         var (results, done, total) = await RunAsync(new[] { Marker() }, "stub.mp4");
         Assert.Equal(1, done);
         Assert.Equal(1, total);
         var result = Assert.Single(results);
-        Assert.True(result.Success);
-        Assert.Null(result.OutputPath);
-        Assert.Null(result.Error);
+        Assert.False(result.Success);
+        Assert.Contains("不支持", result.Error);
     }
 
     [Fact]

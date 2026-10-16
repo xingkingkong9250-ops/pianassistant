@@ -135,7 +135,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <text class="zone-lb" x="920" y="80" fill="var(--z-r2)">侧边栏 · 默认宽 300</text>
   <g class="chip" style="--z:var(--z-r2)" data-num="W1-R2-05" data-name="侧边栏标题栏" data-desc="显示 ActivePanelTitle（当前面板名）"><rect x="920" y="88" width="260" height="20" rx="4"/><text x="1050" y="99">R2-05 标题栏</text></g>
   <text class="lbl-m" x="920" y="124">W1-R2-06 内容区（二选一）：</text>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2" data-name="笔记面板" data-desc="📷截图 / ✂片段 / 📝活动 三子标签"><rect x="920" y="132" width="260" height="60" rx="4"/><text x="1050" y="156">W1-C2</text><text x="1050" y="174" style="font-size:10px;fill:var(--muted)">笔记（三子标签）</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D" data-name="笔记统一时间线" data-desc="截图/片段/裁切点按时间混排"><rect x="920" y="132" width="260" height="60" rx="4"/><text x="1050" y="156">W1-C2-D</text><text x="1050" y="174" style="font-size:10px;fill:var(--muted)">笔记统一时间线</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C3" data-name="片段批量导出面板" data-desc="队列 + 进度 + 全部导出/拼接/取消"><rect x="920" y="200" width="260" height="60" rx="4"/><text x="1050" y="224">W1-C3</text><text x="1050" y="242" style="font-size:10px;fill:var(--muted)">片段批量导出</text></g>
   <g class="chip" style="--z:var(--z-e)" data-num="W1-E-01" data-name="通知提示条" data-desc="右下角浮现，2.5s 自动淡出，不打断操作"><rect x="760" y="430" width="120" height="26" rx="5"/><text x="820" y="444">E-01 Toast</text></g>
 
@@ -178,7 +178,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-R1"><td class="num">W1-R1</td><td>顶部导航栏</td><td>高 48，Logo + 打开视频(16) + 播放列表开关(23) + 设置(17) + 侧边栏开关(24 最右端)（v0.13.1 顺序，详见 §2）</td></tr>
 <tr data-num="W1-R2"><td class="num">W1-R2</td><td>视频内容区</td><td>01 视频画面 · 02 方向键反馈层 · 03 空状态层 · 04 侧栏分隔条(宽6, 200~500px, v0.13.0 随面板收起) · 05 侧栏标题 · 06 侧栏内容区 · 07 播放列表分隔条(宽6, 160~400px, v0.12.0, v0.13.0 随面板收起)</td></tr>
 <tr data-num="W1-C1"><td class="num">W1-C1</td><td>播放列表面板</td><td>v0.12.0 起固定于视频左侧（220px）；v0.13.0 起可经 W1-R1-23 展开/收起（默认收起）；01 标题 · 02 列表（拖拽排序/双击播放）· 03 右键菜单（删除/复制路径/资源管理器）</td></tr>
-<tr data-num="W1-C2"><td class="num">W1-C2</td><td>笔记面板</td><td>顶部子标签 T1 📷截图 / T2 ✂片段 / T3 📝活动；三个子面板 A/B/C 共 15 项（详见 §3）</td></tr>
+<tr data-num="W1-C2-D"><td class="num">W1-C2-D</td><td>笔记统一时间线</td><td>v0.14.0 起：截图/片段/裁切点按时间混排（绿/黄/红三色边框）；D-01 筛选栏 · D-02 工具栏 · D-03 统一列表 · D-04~06 右键菜单（详见 §3）</td></tr>
 <tr data-num="W1-C3"><td class="num">W1-C3</td><td>片段批量导出面板</td><td>01 搜索 · 02 计数 · 03 队列 · 04 全部导出 · 05 拼接导出 · 06 取消 · 07 总进度 · 08 百分比</td></tr>
 <tr data-num="W1-R3"><td class="num">W1-R3</td><td>时间轴</td><td>01 缩放指示 · 02 滚动容器 · 03 TimelineControl（白色播放头/红色裁切点/入出点/活动小色块/选中段高亮）</td></tr>
 <tr data-num="W1-R4"><td class="num">W1-R4</td><td>底部控制栏</td><td>左：01~03 时间码/倍速标记 · 04~06 音量组 · 08 全屏 · 中：09~15 播放控制对称排列 · 右：R1-05/08/10/11 移入</td></tr>
@@ -211,7 +211,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <p style="color:var(--muted);font-size:.82rem">已删除：W1-R1-02~04（导航标签）、06~07（画廊/批量入口）、09/12~15（裁切/导出/入出点/循环）、18~22（项目按钮及右键菜单）。移至 R4：05/08/10/11。各编号已跟随删除，不再复用。</p>
 
 <h2 id="w1r2"><span class="no">§3</span>W1-R2 视频区 + 侧边栏三面板</h2>
-<p class="lead">侧边栏三面板：v0.10.0 顶栏导航标签已移除，默认显示 <strong style="color:var(--z-c)">C2</strong> 笔记面板；C2 内部有「📷截图 / ✂片段 / 📝活动」三子标签。</p>
+<p class="lead">侧边栏三面板：v0.10.0 顶栏导航标签已移除，默认显示 <strong style="color:var(--z-c)">C2</strong> 笔记面板；<strong style="color:#E51400">v0.14.0 起 C2 重构为统一时间线</strong>：截图/片段/裁切点按时间顺序混排，原三子标签（T1/T2/T3）与文字笔记功能（C-01~C-09）已废弃。</p>
 <figure>
 <svg viewBox="0 0 1200 430" role="img" aria-label="侧边栏三面板结构图">
   <rect class="wire" x="6" y="8" width="330" height="410" rx="6"/>
@@ -221,26 +221,34 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C1-03" data-name="右键菜单" data-desc="删除 / 复制路径 / 在资源管理器中打开"><rect x="16" y="366" width="180" height="20" rx="4" stroke-dasharray="3 2"/><text x="106" y="380">C1-03 菜单</text></g>
 
   <rect class="wire" x="350" y="8" width="410" height="410" rx="6"/>
-  <text class="lbl-m" x="360" y="26">W1-C2 笔记面板（NotesView）</text>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-T1" data-name="子标签📷截图" data-desc="BtnScreenshots"><rect x="360" y="34" width="86" height="22" rx="4"/><text x="403" y="46">C2-T1</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-T2" data-name="子标签✂片段" data-desc="BtnSegments"><rect x="450" y="34" width="86" height="22" rx="4"/><text x="493" y="46">C2-T2</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-T3" data-name="子标签📝活动" data-desc="BtnActivities"><rect x="540" y="34" width="86" height="22" rx="4"/><text x="583" y="46">C2-T3</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-A-01" data-name="🖼 画廊按钮" data-desc="打开 W3"><rect x="360" y="64" width="70" height="20" rx="4"/><text x="395" y="77">A-01</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-A-02" data-name="截图列表" data-desc="缩略图 120×68 + 位置 + 捕获时间；虚拟化 ListBox"><rect x="360" y="90" width="390" height="86" rx="4"/><text x="555" y="130">A-02 缩略图列表</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-A-03" data-name="右键菜单" data-desc="打开文件夹 / 标注 / 删除"><rect x="360" y="182" width="150" height="18" rx="4" stroke-dasharray="3 2"/><text x="435" y="195">A-03 菜单</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-B-02" data-name="⬆ 导入裁切" data-desc="导入裁切点清单"><rect x="360" y="208" width="80" height="20" rx="4"/><text x="400" y="221">B-02</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-B-03" data-name="⬇ 导出裁切" data-desc="导出裁切点+分段行"><rect x="444" y="208" width="80" height="20" rx="4"/><text x="484" y="221">B-03</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-B-04" data-name="📦 批量导出" data-desc="切到 C3 面板"><rect x="528" y="208" width="86" height="20" rx="4"/><text x="571" y="221">B-04</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-B-05" data-name="分段列表" data-desc="编号方块 + 起止→ + 时长 + 📤导出；按裁切点自动分段"><rect x="360" y="234" width="390" height="60" rx="4"/><text x="555" y="260">B-05（B-01「分段」标签在其上）</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-01" data-name="搜索框" data-desc="SearchText 关键词过滤"><rect x="360" y="300" width="120" height="20" rx="4"/><text x="420" y="313">C-01</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-04" data-name="范围起始" data-desc="RangeStartInput mm:ss"><rect x="484" y="300" width="70" height="20" rx="4"/><text x="519" y="313">C-04</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-05" data-name="范围结束" data-desc="RangeEndInput"><rect x="558" y="300" width="70" height="20" rx="4"/><text x="593" y="313">C-05</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-02" data-name="📄 整理导出" data-desc="Markdown 拉片报告"><rect x="632" y="300" width="86" height="20" rx="4"/><text x="675" y="313">C-02</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-03" data-name="📤 导出" data-desc=".md / .txt"><rect x="722" y="300" width="28" height="20" rx="4"/><text x="736" y="313">03</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-06" data-name="活动列表" data-desc="图标+标签+位置；右键编辑/删除；虚拟化"><rect x="360" y="326" width="390" height="56" rx="4"/><text x="555" y="352">C-06 活动流</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-07" data-name="模板下拉框" data-desc="7 项预设（构图/灯光/节奏/转场/表演/剪辑/无）"><rect x="360" y="386" width="110" height="20" rx="4"/><text x="415" y="399">C-07</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-08" data-name="笔记输入框" data-desc="NoteInput，Enter 添加"><rect x="474" y="386" width="200" height="20" rx="4"/><text x="574" y="399">C-08</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-C-09" data-name="按钮「添加」" data-desc=""><rect x="678" y="386" width="52" height="20" rx="4"/><text x="704" y="399">C-09</text></g>
+  <text class="lbl-m" x="360" y="26">W1-C2-D 笔记统一时间线（NotesView，v0.14.0）</text>
+  <!-- D-01 筛选栏 -->
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-01" data-name="筛选栏" data-desc="全部/截图/片段/已选中/更多筛选"><rect x="360" y="34" width="390" height="22" rx="4"/><text x="555" y="48">D-01 筛选：全部 · 📷截图 · 🎬片段 · ✔已选中 · 更多▾</text></g>
+  <!-- D-02 工具栏 -->
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-02" data-name="工具栏" data-desc="画廊/导入裁切/导出裁切/批量导出/导出选中"><rect x="360" y="60" width="390" height="22" rx="4"/><text x="555" y="74">D-02 🖼画廊 · ⬆导入 · ⬇导出 · 📦批量 · 📤导出选中</text></g>
+  <!-- D-03 统一时间线列表 -->
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-03" data-name="统一时间线列表" data-desc="截图绿框/片段黄框/裁切点红条；Extended 多选；Delete 删裁切点"><rect x="360" y="88" width="390" height="200" rx="4"/><text x="555" y="180">D-03 统一时间线列表</text></g>
+  <!-- 截图卡片示意 -->
+  <rect x="366" y="96" width="378" height="34" rx="3" fill="#1F1F1F" stroke="#4EC9B0" stroke-width="1.5"/>
+  <text x="372" y="112" font-size="10" fill="#4EC9B0">📷</text>
+  <rect x="392" y="100" width="52" height="26" rx="2" fill="#000"/>
+  <text x="450" y="110" font-size="10" fill="#E8E8E8">截图 1</text>
+  <text x="450" y="122" font-size="9" fill="#4EC9B0">00:05.000</text>
+  <!-- 片段卡片示意 -->
+  <rect x="366" y="134" width="378" height="34" rx="3" fill="#1F1F1F" stroke="#D7BA7D" stroke-width="1.5"/>
+  <text x="372" y="150" font-size="10" fill="#D7BA7D">🎬</text>
+  <rect x="392" y="138" width="52" height="26" rx="2" fill="#000"/>
+  <text x="450" y="148" font-size="10" fill="#E8E8E8">片段 1 · 00:10.000</text>
+  <text x="450" y="160" font-size="9" fill="#D7BA7D">00:00.000</text>
+  <!-- 裁切点红条示意 -->
+  <rect x="366" y="172" width="378" height="14" rx="2" fill="#1A1A1A" stroke="#E51400" stroke-width="1"/>
+  <rect x="370" y="174" width="3" height="10" fill="#E51400" rx="1"/>
+  <text x="380" y="182" font-size="9" fill="#E51400">✂ 裁切点 00:10.000</text>
+  <!-- D-04~06 右键菜单 -->
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-04" data-name="截图右键菜单" data-desc="打开文件夹/标注/删除"><rect x="360" y="294" width="126" height="18" rx="4" stroke-dasharray="3 2"/><text x="423" y="307">D-04 截图菜单</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-05" data-name="片段右键菜单" data-desc="导出此段/跳转播放"><rect x="490" y="294" width="126" height="18" rx="4" stroke-dasharray="3 2"/><text x="553" y="307">D-05 片段菜单</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-06" data-name="裁切点右键菜单" data-desc="删除（合并相邻片段）"><rect x="620" y="294" width="130" height="18" rx="4" stroke-dasharray="3 2"/><text x="685" y="307">D-06 裁切菜单</text></g>
+  <text class="lbl-m" x="360" y="330">已废弃（v0.14.0）：T1/T2/T3 子标签、A-01~03 截图子面板、B-01~05 片段子面板、C-01~09 活动流</text>
 
   <rect class="wire" x="774" y="8" width="420" height="410" rx="6"/>
   <text class="lbl-m" x="784" y="26">W1-C3 片段批量导出面板（ClipsView）</text>
@@ -252,9 +260,8 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C3-06" data-name="✕ 取消" data-desc="CancelBatchCommand"><rect x="972" y="336" width="60" height="20" rx="4"/><text x="1002" y="349">C3-06</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C3-07" data-name="总进度条" data-desc="BatchProgress"><rect x="784" y="362" width="240" height="20" rx="4"/><text x="904" y="375">C3-07</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C3-08" data-name="百分比文本" data-desc=""><rect x="1028" y="362" width="50" height="20" rx="4"/><text x="1053" y="375">C3-08</text></g>
-  <text class="lbl-m" x="784" y="404">B-01「分段」标签位于 C2-B 列表上方</text>
 </svg>
-<figcaption>图 3 · 侧边栏三面板并排展示（实际运行时同一区域只显示一个）</figcaption>
+<figcaption>图 3 · 侧边栏三面板并排展示（实际运行时同一区域只显示一个）；C2 已重构为统一时间线</figcaption>
 </figure>
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明</th></tr></thead>
@@ -262,26 +269,32 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-C1-01"><td class="num">W1-C1-01</td><td>面板标题「播放列表」</td><td></td></tr>
 <tr data-num="W1-C1-02"><td class="num">W1-C1-02</td><td>列表 ListBox</td><td>拖拽排序、双击播放；虚拟化</td></tr>
 <tr data-num="W1-C1-03"><td class="num">W1-C1-03</td><td>列表项右键菜单</td><td>删除 / 复制路径 / 在资源管理器中打开</td></tr>
-<tr data-num="W1-C2-T1"><td class="num">W1-C2-T1</td><td>子标签「📷 截图」</td><td>BtnScreenshots</td></tr>
-<tr data-num="W1-C2-T2"><td class="num">W1-C2-T2</td><td>子标签「✂ 片段」</td><td>BtnSegments</td></tr>
-<tr data-num="W1-C2-T3"><td class="num">W1-C2-T3</td><td>子标签「📝 活动」</td><td>BtnActivities</td></tr>
-<tr data-num="W1-C2-A-01"><td class="num">W1-C2-A-01</td><td>按钮「🖼 画廊」</td><td>打开 W3</td></tr>
-<tr data-num="W1-C2-A-02"><td class="num">W1-C2-A-02</td><td>截图列表</td><td>缩略图 120×68 + 位置 + 捕获时间</td></tr>
-<tr data-num="W1-C2-A-03"><td class="num">W1-C2-A-03</td><td>截图项右键菜单</td><td>打开所在文件夹 / 标注 / 删除</td></tr>
-<tr data-num="W1-C2-B-01"><td class="num">W1-C2-B-01</td><td>标签「分段」</td><td></td></tr>
-<tr data-num="W1-C2-B-02"><td class="num">W1-C2-B-02</td><td>按钮「⬆ 导入裁切」</td><td>导入裁切点清单</td></tr>
-<tr data-num="W1-C2-B-03"><td class="num">W1-C2-B-03</td><td>按钮「⬇ 导出裁切」</td><td>导出裁切点 + 自动分段行（v1 格式）</td></tr>
-<tr data-num="W1-C2-B-04"><td class="num">W1-C2-B-04</td><td>按钮「📦 批量导出」</td><td>切到 W1-C3 面板</td></tr>
-<tr data-num="W1-C2-B-05"><td class="num">W1-C2-B-05</td><td>分段列表</td><td>编号方块 + 起止时间→ + 时长 + 📤 导出</td></tr>
-<tr data-num="W1-C2-C-01"><td class="num">W1-C2-C-01</td><td>搜索框</td><td>SearchText，关键词过滤</td></tr>
-<tr data-num="W1-C2-C-02"><td class="num">W1-C2-C-02</td><td>按钮「📄 整理导出」</td><td>结构化 Markdown 拉片报告</td></tr>
-<tr data-num="W1-C2-C-03"><td class="num">W1-C2-C-03</td><td>按钮「📤 导出」</td><td>.md / .txt，含时间码</td></tr>
-<tr data-num="W1-C2-C-04"><td class="num">W1-C2-C-04</td><td>范围起始输入框</td><td>RangeStartInput（mm:ss / hh:mm:ss）</td></tr>
-<tr data-num="W1-C2-C-05"><td class="num">W1-C2-C-05</td><td>范围结束输入框</td><td>RangeEndInput</td></tr>
-<tr data-num="W1-C2-C-06"><td class="num">W1-C2-C-06</td><td>活动列表</td><td>图标 + 标签 + 位置；右键编辑(内联)/删除；虚拟化</td></tr>
-<tr data-num="W1-C2-C-07"><td class="num">W1-C2-C-07</td><td>模板下拉框</td><td>TemplateCombo，7 项预设</td></tr>
-<tr data-num="W1-C2-C-08"><td class="num">W1-C2-C-08</td><td>笔记输入框</td><td>NoteInput，Enter 添加</td></tr>
-<tr data-num="W1-C2-C-09"><td class="num">W1-C2-C-09</td><td>按钮「添加」</td><td>自动拼模板前缀</td></tr>
+<tr data-num="W1-C2-D-01"><td class="num">W1-C2-D-01</td><td>筛选栏</td><td>chip：全部 / 📷截图 / 🎬片段（含裁切点）/ ✔已选中 + 更多筛选▾（✂仅裁切点）</td></tr>
+<tr data-num="W1-C2-D-02"><td class="num">W1-C2-D-02</td><td>工具栏</td><td>🖼画廊 · ⬆导入裁切 · ⬇导出裁切 · 📦批量导出 · 📤导出选中</td></tr>
+<tr data-num="W1-C2-D-03"><td class="num">W1-C2-D-03</td><td>统一时间线列表</td><td>截图（绿框 #4EC9B0 📷）/ 片段（黄框 #D7BA7D 🎬）/ 裁切点（红条 #E51400 ✂）按时间混排；Extended 多选；Delete 删除选中裁切点（合并相邻片段）</td></tr>
+<tr data-num="W1-C2-D-04"><td class="num">W1-C2-D-04</td><td>截图项右键菜单</td><td>打开所在文件夹 / 标注 / 删除</td></tr>
+<tr data-num="W1-C2-D-05"><td class="num">W1-C2-D-05</td><td>片段项右键菜单</td><td>导出此段（弹目录选择框）/ 跳转播放</td></tr>
+<tr data-num="W1-C2-D-06"><td class="num">W1-C2-D-06</td><td>裁切点项右键菜单</td><td>删除（合并相邻片段）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-T1~~</td><td>~~子标签「📷 截图」~~</td><td>**已删除**（v0.14.0 统一时间线）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-T2~~</td><td>~~子标签「✂ 片段」~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-T3~~</td><td>~~子标签「📝 活动」~~</td><td>**已删除**（文字笔记功能移除）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-A-01~~</td><td>~~按钮「🖼 画廊」~~</td><td>**已删除**（迁移至 D-02）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-A-02~~</td><td>~~截图列表~~</td><td>**已删除**（并入 D-03）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-A-03~~</td><td>~~截图项右键菜单~~</td><td>**已删除**（迁移至 D-04）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-B-01~~</td><td>~~标签「分段」~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-B-02~~</td><td>~~按钮「⬆ 导入裁切」~~</td><td>**已删除**（迁移至 D-02）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-B-03~~</td><td>~~按钮「⬇ 导出裁切」~~</td><td>**已删除**（迁移至 D-02）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-B-04~~</td><td>~~按钮「📦 批量导出」~~</td><td>**已删除**（迁移至 D-02）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-B-05~~</td><td>~~分段列表~~</td><td>**已删除**（并入 D-03）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-01~~</td><td>~~搜索框~~</td><td>**已删除**（活动流移除）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-02~~</td><td>~~按钮「📄 整理导出」~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-03~~</td><td>~~按钮「📤 导出」~~</td><td>**已删除**（改为 D-02 导出选中）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-04~~</td><td>~~范围起始输入框~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-05~~</td><td>~~范围结束输入框~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-06~~</td><td>~~活动列表~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-07~~</td><td>~~模板下拉框~~</td><td>**已删除**（文字笔记移除）</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-08~~</td><td>~~笔记输入框~~</td><td>**已删除**</td></tr>
+<tr style="opacity:.4"><td class="num">~~W1-C2-C-09~~</td><td>~~按钮「添加」~~</td><td>**已删除**</td></tr>
 <tr data-num="W1-C3-01"><td class="num">W1-C3-01</td><td>搜索框</td><td>支持 #标签</td></tr>
 <tr data-num="W1-C3-02"><td class="num">W1-C3-02</td><td>计数文本</td><td>FilteredItems.Count</td></tr>
 <tr data-num="W1-C3-03"><td class="num">W1-C3-03</td><td>队列列表</td><td>起止→ / 时长 / 标签 / 状态 / 单项进度；虚拟化</td></tr>

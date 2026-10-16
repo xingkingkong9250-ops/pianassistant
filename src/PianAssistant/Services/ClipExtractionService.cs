@@ -38,12 +38,37 @@ public sealed class ClipExtractionService
         CancellationToken cancellationToken = default,
         Action<double>? onProgress = null)
     {
+        // 按组织选项解析本次输出目录（日期/项目子目录）
+        var outputDir = OutputDirectoryResolver.Resolve(
+            _outputDirectory, _organizeByDate, _projectSubfolder, DateTime.Now);
+        return ExtractCore(range, outputDir, reencode, cancellationToken, onProgress);
+    }
+
+    /// <summary>
+    /// 导出到用户选定的目录（笔记面板「导出此段/导出选中」用）：
+    /// 不走日期/项目子目录组织，文件名沿用自动命名规则。
+    /// </summary>
+    public string ExtractTo(
+        ClipRange range,
+        string targetDirectory,
+        bool reencode = false,
+        CancellationToken cancellationToken = default,
+        Action<double>? onProgress = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetDirectory);
+        return ExtractCore(range, targetDirectory, reencode, cancellationToken, onProgress);
+    }
+
+    private string ExtractCore(
+        ClipRange range,
+        string outputDir,
+        bool reencode,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress)
+    {
         ArgumentNullException.ThrowIfNull(range);
         if (!range.IsComplete)
             throw new InvalidOperationException("ClipRange is incomplete: out point must be set and after in.");
-        // 按组织选项解析本次输出目录（日期/项目子目录），确保存在
-        var outputDir = OutputDirectoryResolver.Resolve(
-            _outputDirectory, _organizeByDate, _projectSubfolder, DateTime.Now);
         Directory.CreateDirectory(outputDir);
 
         var sourceName = Path.GetFileNameWithoutExtension(range.SourcePath);
