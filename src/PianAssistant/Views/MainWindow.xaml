@@ -122,22 +122,9 @@
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- W1-R1-23 展开/收起左侧播放列表 -->
+                <!-- W1-R1-16 打开视频（左侧，紧跟 Logo） -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="📑" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
-                            Command="{Binding TogglePlaylistVisibilityCommand}"
-                            ToolTip="展开/收起播放列表" />
-                </StackPanel>
-
-                <!-- W1-R1-17 设置（末端右侧） -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
-                    <Button Content="⚙" Style="{StaticResource IconButton}" Padding="10,6"
-                            Command="{Binding OpenSettingsCommand}" FontSize="16" />
-                </StackPanel>
-
-                <!-- W1-R1-16 打开视频（右侧，在设置左侧） -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="📂 打开视频" Style="{StaticResource AccentButton}" Padding="12,6"
+                    <Button Content="� 打开视频" Style="{StaticResource AccentButton}" Padding="12,6"
                             Command="{Binding OpenFileCommand}"
                             ToolTip="打开视频文件（右键查看最近文件）">
                         <Button.ContextMenu>
@@ -147,11 +134,24 @@
                     </Button>
                 </StackPanel>
 
-                <!-- W1-R1-24 展开/收起右侧侧边栏 -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="🗔" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
+                <!-- W1-R1-23 展开/收起左侧播放列表（打开视频右侧） -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
+                    <Button Content="📑" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
+                            Command="{Binding TogglePlaylistVisibilityCommand}"
+                            ToolTip="展开/收起播放列表" />
+                </StackPanel>
+
+                <!-- W1-R1-24 展开/收起右侧侧边栏（最右端） -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0">
+                    <Button Content="�" Style="{StaticResource IconButton}" Padding="10,6" FontSize="16"
                             Command="{Binding ToggleSidebarVisibilityCommand}"
                             ToolTip="展开/收起侧边栏" />
+                </StackPanel>
+
+                <!-- W1-R1-17 设置（侧边栏开关左侧） -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="⚙" Style="{StaticResource IconButton}" Padding="10,6"
+                            Command="{Binding OpenSettingsCommand}" FontSize="16" />
                 </StackPanel>
             </DockPanel>
         </Border>
