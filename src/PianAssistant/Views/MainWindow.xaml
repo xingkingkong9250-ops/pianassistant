@@ -238,13 +238,19 @@
                     <Grid>
                         <views:NotesView DataContext="{Binding Notes}">
                             <views:NotesView.Visibility>
-                                <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Notes" />
+                                <Binding Path="DataContext.ActivePanel"
+                                         RelativeSource="{RelativeSource AncestorType=Window}"
+                                         Converter="{x:Static views:PanelToVisibilityConverter.Instance}"
+                                         ConverterParameter="Notes" />
                             </views:NotesView.Visibility>
                         </views:NotesView>
                         <!-- 片段批量导出面板（M4） -->
                         <views:ClipsView DataContext="{Binding Clips}">
                             <views:ClipsView.Visibility>
-                                <Binding Path="ActivePanel" Converter="{x:Static views:PanelToVisibilityConverter.Instance}" ConverterParameter="Clips" />
+                                <Binding Path="DataContext.ActivePanel"
+                                         RelativeSource="{RelativeSource AncestorType=Window}"
+                                         Converter="{x:Static views:PanelToVisibilityConverter.Instance}"
+                                         ConverterParameter="Clips" />
                             </views:ClipsView.Visibility>
                         </views:ClipsView>
                     </Grid>
