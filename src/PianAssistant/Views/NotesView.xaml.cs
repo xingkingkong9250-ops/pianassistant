@@ -217,18 +217,21 @@ public partial class NotesView : UserControl
         var defaultName = Path.GetFileNameWithoutExtension(shell.Player.CurrentPath ?? "拉片数据");
         var dlg = new SaveFileDialog
         {
-            Title = "导出数据（CSV 表格，可人工编辑）",
-            FileName = $"{defaultName}_拉片数据.csv",
-            Filter = "CSV 表格|*.csv",
+            Title = "导出数据（Excel / CSV，可人工编辑）",
+            FileName = $"{defaultName}_拉片数据.xlsx",
+            Filter = "Excel 表格|*.xlsx|CSV 表格|*.csv",
         };
         if (dlg.ShowDialog() != true) return;
 
         try
         {
             var data = vm.BuildExportData(shell.Player.CurrentPath, shell.Player.Length);
-            NotesDataCsvService.Export(dlg.FileName, data);
+            if (Path.GetExtension(dlg.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
+                NotesDataXlsxService.Export(dlg.FileName, data);
+            else
+                NotesDataCsvService.Export(dlg.FileName, data);
             MessageBox.Show(
-                $"已导出数据（CSV 表格，可用 Excel 编辑）：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}\n{dlg.FileName}",
+                $"已导出数据（可人工编辑后用「导入数据」覆盖）：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}\n{dlg.FileName}",
                 "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -253,15 +256,17 @@ public partial class NotesView : UserControl
 
         var dlg = new OpenFileDialog
         {
-            Title = "导入数据（CSV 表格）",
-            Filter = "CSV 表格|*.csv|所有文件|*.*",
+            Title = "导入数据（Excel / CSV 表格）",
+            Filter = "Excel 表格|*.xlsx|CSV 表格|*.csv|所有文件|*.*",
         };
         if (dlg.ShowDialog() != true) return;
 
         NotesExportData data;
         try
         {
-            data = NotesDataCsvService.Import(dlg.FileName);
+            data = Path.GetExtension(dlg.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase)
+                ? NotesDataXlsxService.Import(dlg.FileName)
+                : NotesDataCsvService.Import(dlg.FileName);
         }
         catch (Exception ex)
         {
@@ -279,11 +284,16 @@ public partial class NotesView : UserControl
                              && !string.Equals(data.SourcePath, shell.Player.CurrentPath, StringComparison.OrdinalIgnoreCase)
                              ? "\n\n⚠ 该数据文件来自其他视频。"
                              : string.Empty;
+        // 文件列是否携带截图清单：未携带（全缺失）时截图记录与标记保持不变
+        bool managesScreenshots = data.Screenshots.Any(s => s.File.Length > 0);
+        var screenshotRule = managesScreenshots
+            ? "· 文件未列出的截图记录将被移除（png 文件保留）\n· 截图勾选标记以文件为准覆盖\n"
+            : "· 文件未包含截图清单（文件列缺失）：截图记录与标记保持不变\n";
         var confirm = MessageBox.Show(
             $"将导入并覆盖当前视频的笔记数据：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}{warnOtherVideo}\n\n" +
             "· 裁切点以文件为准覆盖（自动重算片段）\n" +
-            "· 文件未列出的截图记录将被移除（png 文件保留）\n" +
-            "· 勾选标记以文件为准覆盖\n\n确认导入？",
+            "· 片段勾选标记以文件为准覆盖\n" +
+            screenshotRule + "\n确认导入？",
             "导入数据", MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 

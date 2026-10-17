@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using System.Text;
 using PianAssistant.Models;
@@ -65,14 +65,14 @@ public static class NotesDataCsvService
                     {
                         Start = FormatTime(start),
                         End = FormatTime(end),
-                        Marked = cols.Length > 3 && ParseMark(cols[3]),
+                        Marked = cols.Length > 3 && TryParseMark(cols[3]),
                     });
                     break;
                 case "截图" when TryParseTime(cols.Length > 1 ? cols[1] : null, out var pos):
                     data.Screenshots.Add(new ExportScreenshot
                     {
                         Position = FormatTime(pos),
-                        Marked = cols.Length > 3 && ParseMark(cols[3]),
+                        Marked = cols.Length > 3 && TryParseMark(cols[3]),
                         File = cols.Length > 4 ? cols[4].Trim() : string.Empty,
                     });
                     break;
@@ -104,8 +104,8 @@ public static class NotesDataCsvService
     public static string FormatTime(TimeSpan t) =>
         ((t < TimeSpan.Zero ? TimeSpan.Zero : t).ToString(@"hh\:mm\:ss\.fff"));
 
-    /// <summary>标记列解析：✓/√/true/1/是/y 视为已标记。</summary>
-    private static bool ParseMark(string text)
+    /// <summary>标记解析：✓/√/x/true/1/是/y 视为已标记（xlsx 导入共用）。</summary>
+    public static bool TryParseMark(string text)
     {
         var t = text.Trim().Trim('"').ToLowerInvariant();
         return t is "✓" or "√" or "x" or "true" or "1" or "是" or "y" or "yes";
