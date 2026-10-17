@@ -397,6 +397,59 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             Clips.Add(segment);
     }
 
+    /// <summary>
+    /// 导入人工编辑过的「导出数据」CSV 解析结果，覆盖当前视频的笔记数据
+    /// （W1-C2-D-02）：① 裁切点以文件为准覆盖（自动重算分段）；
+    /// ② 文件截图清单未列出的现有截图记录移除（png 文件保留不删）；
+    /// ③ 重建完成后以文件为标记真值源，逐条设置截图/片段勾选标记。
+    /// </summary>
+    public void ImportNotesData(NotesExportData data)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+
+        // 1. 截图集合覆盖：移除 CSV 未列出的记录（按输出路径匹配）
+        var csvShotFiles = data.Screenshots
+            .Select(s => s.File)
+            .Where(f => f.Length > 0)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var shot in Screenshots.Items
+                     .Where(s => !csvShotFiles.Contains(s.OutputPath)).ToList())
+        {
+            Notes.RemoveScreenshot(shot);
+        }
+
+        // 2. 裁切点覆盖（集合变化自动触发分段重算与列表重建）
+        var points = new List<TimeSpan>();
+        foreach (var text in data.CutPoints)
+        {
+            if (NotesDataCsvService.TryParseTime(text, out var t) && t > TimeSpan.Zero)
+                points.Add(t);
+        }
+        Player.SetCutPoints(points.Distinct().OrderBy(t => t).ToList());
+
+        // 3. 标记恢复：以 CSV 为真值源强制设置（含未标记的显式重置）
+        static TimeSpan T(string text) =>
+            NotesDataCsvService.TryParseTime(text, out var t) ? t : TimeSpan.Zero;
+        var segMarks = new HashSet<(long Start, long End)>(
+            data.Segments.Where(s => s.Marked)
+                .Select(s => (T(s.Start).Ticks, T(s.End).Ticks)));
+        var shotMarks = new HashSet<string>(
+            data.Screenshots.Where(s => s.Marked).Select(s => s.File),
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var item in Notes.Items)
+        {
+            switch (item)
+            {
+                case SegmentListItem seg:
+                    seg.IsMarked = segMarks.Contains((seg.Segment.Start.Ticks, seg.Segment.End.Ticks));
+                    break;
+                case ScreenshotListItem shot:
+                    shot.IsMarked = shotMarks.Contains(shot.Entry.OutputPath);
+                    break;
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

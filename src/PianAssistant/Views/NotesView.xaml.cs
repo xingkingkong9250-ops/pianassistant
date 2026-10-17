@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using PianAssistant.Models;
+using PianAssistant.Services;
 using PianAssistant.ViewModels;
 
 namespace PianAssistant.Views;
@@ -37,12 +38,14 @@ public partial class NotesView : UserControl
         {
             oldVm.ExportMarkedRequested -= OnExportMarkedRequested;
             oldVm.ExportDataRequested -= OnExportDataRequested;
+            oldVm.ImportDataRequested -= OnImportDataRequested;
             oldVm.PropertyChanged -= OnVmPropertyChanged;
         }
         if (e.NewValue is NotesViewModel newVm)
         {
             newVm.ExportMarkedRequested += OnExportMarkedRequested;
             newVm.ExportDataRequested += OnExportDataRequested;
+            newVm.ImportDataRequested += OnImportDataRequested;
             newVm.PropertyChanged += OnVmPropertyChanged;
         }
     }
@@ -197,7 +200,7 @@ public partial class NotesView : UserControl
         ExportSegmentsToFolder(marked);
     }
 
-    // --- 导出数据：裁切点 / 片段 / 截图 / 勾选标记 → JSON ---
+    // --- 导出数据：裁切点 / 片段 / 截图 / 勾选标记 → CSV（可人工编辑） ---
 
     private void OnExportDataRequested(object? sender, EventArgs e)
     {
@@ -214,30 +217,83 @@ public partial class NotesView : UserControl
         var defaultName = Path.GetFileNameWithoutExtension(shell.Player.CurrentPath ?? "拉片数据");
         var dlg = new SaveFileDialog
         {
-            Title = "导出数据（JSON）",
-            FileName = $"{defaultName}_拉片数据.json",
-            Filter = "JSON 文件|*.json",
+            Title = "导出数据（CSV 表格，可人工编辑）",
+            FileName = $"{defaultName}_拉片数据.csv",
+            Filter = "CSV 表格|*.csv",
         };
         if (dlg.ShowDialog() != true) return;
 
         try
         {
             var data = vm.BuildExportData(shell.Player.CurrentPath, shell.Player.Length);
-            var options = new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            };
-            File.WriteAllText(dlg.FileName,
-                System.Text.Json.JsonSerializer.Serialize(data, options),
-                new System.Text.UTF8Encoding(false));
+            NotesDataCsvService.Export(dlg.FileName, data);
             MessageBox.Show(
-                $"已导出数据：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}\n{dlg.FileName}",
+                $"已导出数据（CSV 表格，可用 Excel 编辑）：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}\n{dlg.FileName}",
                 "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
             MessageBox.Show($"导出失败：{ex.Message}", "导出数据", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    // --- 导入数据：人工编辑过的 CSV → 覆盖当前视频笔记数据 ---
+
+    private void OnImportDataRequested(object? sender, EventArgs e)
+    {
+        var vm = Vm;
+        var shell = (Window.GetWindow(this) as MainWindow)?.Shell;
+        if (vm is null || shell is null) return;
+        if (string.IsNullOrEmpty(shell.Player.CurrentPath))
+        {
+            MessageBox.Show("请先打开视频，再导入数据。", "导入数据",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new OpenFileDialog
+        {
+            Title = "导入数据（CSV 表格）",
+            Filter = "CSV 表格|*.csv|所有文件|*.*",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        NotesExportData data;
+        try
+        {
+            data = NotesDataCsvService.Import(dlg.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"读取失败：{ex.Message}", "导入数据", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        if (data.CutPoints.Count == 0 && data.Segments.Count == 0 && data.Screenshots.Count == 0)
+        {
+            MessageBox.Show("文件中没有有效的数据行（需要「裁切点/片段/截图」类型行）。",
+                "导入数据", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var warnOtherVideo = !string.IsNullOrEmpty(data.SourcePath)
+                             && !string.Equals(data.SourcePath, shell.Player.CurrentPath, StringComparison.OrdinalIgnoreCase)
+                             ? "\n\n⚠ 该数据文件来自其他视频。"
+                             : string.Empty;
+        var confirm = MessageBox.Show(
+            $"将导入并覆盖当前视频的笔记数据：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}{warnOtherVideo}\n\n" +
+            "· 裁切点以文件为准覆盖（自动重算片段）\n" +
+            "· 文件未列出的截图记录将被移除（png 文件保留）\n" +
+            "· 勾选标记以文件为准覆盖\n\n确认导入？",
+            "导入数据", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            shell.ImportNotesData(data);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"导入失败：{ex.Message}", "导入数据", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

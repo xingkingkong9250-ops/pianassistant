@@ -63,6 +63,8 @@ public sealed class NotesViewModel : ObservableObject
             () => ExportMarkedRequested?.Invoke(this, EventArgs.Empty));
         ExportDataCommand = new RelayCommand(
             () => ExportDataRequested?.Invoke(this, EventArgs.Empty));
+        ImportDataCommand = new RelayCommand(
+            () => ImportDataRequested?.Invoke(this, EventArgs.Empty));
         RefreshFilter();
     }
 
@@ -223,10 +225,15 @@ public sealed class NotesViewModel : ObservableObject
 
     public ICommand ExportMarkedCommand { get; }
 
-    /// <summary>导出数据请求：View 层弹保存框后写 JSON。</summary>
+    /// <summary>导出数据请求：View 层弹保存框后写 CSV。</summary>
     public event EventHandler? ExportDataRequested;
 
     public ICommand ExportDataCommand { get; }
+
+    /// <summary>导入数据请求：View 层弹打开框后解析 CSV 并覆盖。</summary>
+    public event EventHandler? ImportDataRequested;
+
+    public ICommand ImportDataCommand { get; }
 
     /// <summary>
     /// 构建「导出数据」快照（W1-C2-D-02）：裁切点、自动分段、截图清单
