@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v0.10.0）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v0.20.0）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v0.10.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v0.20.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -109,10 +109,10 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <rect class="wire" x="10" y="10" width="1180" height="44" rx="6"/>
   <text class="zone-lb" x="20" y="49" fill="var(--z-r1)">W1-R1 顶部导航栏 · 高 48 · TopNavBorder</text>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-01" data-name="Logo + 标题" data-desc="圆形 Logo「P」+「拉片助手」，左对齐"><rect x="20" y="16" width="86" height="22" rx="4"/><text x="63" y="28">R1-01</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="� 打开视频" data-desc="AccentButton；右键菜单已随 v0.10.0 删除（v0.13.1 起移至左侧紧跟 Logo）"><rect x="116" y="16" width="86" height="22" rx="4"/><text x="159" y="28">R1-16</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="📂 打开视频" data-desc="AccentButton；v0.13.1 起移至左侧紧跟 Logo；右键弹出最近文件菜单"><rect x="116" y="16" width="86" height="22" rx="4"/><text x="159" y="28">R1-16</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-23" data-name="� 播放列表开关" data-desc="展开/收起左侧播放列表面板（v0.13.0 新增，默认收起）"><rect x="210" y="16" width="30" height="22" rx="4"/><text x="225" y="28">23</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-17" data-name="⚙ 设置" data-desc="打开 W2 设置窗口（v0.13.1 起位于 24 左侧）"><rect x="1112" y="16" width="30" height="22" rx="4"/><text x="1127" y="28">17</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-24" data-name="🗔 侧边栏开关" data-desc="展开/收起右侧侧边栏面板（v0.13.0 新增，默认收起）；v0.13.1 起置于最右端"><rect x="1150" y="16" width="30" height="22" rx="4"/><text x="1165" y="28">24</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-24" data-name="🗔 侧边栏开关" data-desc="展开/收起右侧侧边栏面板（v0.13.0 新增）；v0.13.1 起置于最右端；v0.19.0 起默认展开"><rect x="1150" y="16" width="30" height="22" rx="4"/><text x="1165" y="28">24</text></g>
 
   <!-- R2 左侧播放列表 -->
   <rect class="wire" x="10" y="62" width="200" height="420" rx="6"/>
@@ -133,7 +133,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r2)" data-num="W1-R2-04" data-name="侧边栏分隔条" data-desc="宽 6，可拖拽调整侧边栏宽度 200~500px"><rect x="893" y="255" width="14" height="24" rx="4"/><text x="900" y="268" style="writing-mode:tb">04</text></g>
   <rect class="wire" x="910" y="62" width="280" height="420" rx="6"/>
   <text class="zone-lb" x="920" y="80" fill="var(--z-r2)">侧边栏 · 默认宽 300</text>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W1-R2-05" data-name="侧边栏标题栏" data-desc="显示 ActivePanelTitle（当前面板名）"><rect x="920" y="88" width="260" height="20" rx="4"/><text x="1050" y="99">R2-05 标题栏</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W1-R2-05" data-name="侧边栏标题栏" data-desc="显示 ActivePanelTitle：笔记面板标题「拉片笔记」（v0.19.0）"><rect x="920" y="88" width="260" height="20" rx="4"/><text x="1050" y="99">R2-05 标题栏</text></g>
   <text class="lbl-m" x="920" y="124">W1-R2-06 内容区（二选一）：</text>
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D" data-name="笔记统一时间线" data-desc="截图/片段/裁切点按时间混排"><rect x="920" y="132" width="260" height="60" rx="4"/><text x="1050" y="156">W1-C2-D</text><text x="1050" y="174" style="font-size:10px;fill:var(--muted)">笔记统一时间线</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C3" data-name="片段批量导出面板" data-desc="队列 + 进度 + 全部导出/拼接/取消"><rect x="920" y="200" width="260" height="60" rx="4"/><text x="1050" y="224">W1-C3</text><text x="1050" y="242" style="font-size:10px;fill:var(--muted)">片段批量导出</text></g>
@@ -153,7 +153,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-02" data-name="总时长" data-desc="LengthDisplayString"><rect x="82" y="580" width="58" height="22" rx="4"/><text x="111" y="592">R4-02</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-03" data-name="倍速标记" data-desc="非1×时显示；点击恢复1×"><rect x="144" y="580" width="58" height="22" rx="4"/><text x="173" y="592">R4-03</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-04" data-name="🔊 静音" data-desc="M 键"><rect x="206" y="580" width="30" height="22" rx="4"/><text x="221" y="592">04</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100"><rect x="240" y="580" width="90" height="22" rx="4"/><text x="285" y="592">R4-05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100；v0.19.0 起软件级记忆（config.json 持久化）"><rect x="240" y="580" width="90" height="22" rx="4"/><text x="285" y="592">R4-05</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-06" data-name="音量百分比" data-desc="文本"><rect x="334" y="580" width="36" height="22" rx="4"/><text x="352" y="592">06</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-08" data-name="⛶ 全屏" data-desc="F / Esc"><rect x="374" y="580" width="30" height="22" rx="4"/><text x="389" y="592">08</text></g>
   <!-- 中间：播放控制（对称排列） -->
@@ -165,10 +165,10 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-15" data-name="+ 提高倍速" data-desc="新增，档位步进"><rect x="608" y="580" width="30" height="22" rx="4"/><text x="623" y="592">15</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-13" data-name="⏭ 跳到结尾" data-desc="End"><rect x="642" y="580" width="30" height="22" rx="4"/><text x="657" y="592">13</text></g>
   <!-- 右侧：从 R1 移入 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="S，从 R1 移入"><rect x="1000" y="580" width="30" height="22" rx="4"/><text x="1015" y="592">05</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 截取片段" data-desc="Ctrl+Shift+E，从 R1 移入"><rect x="1034" y="580" width="30" height="22" rx="4"/><text x="1049" y="592">08</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="S；v0.20.0 起为时间轴截图标记 + ffmpeg 后台抽帧"><rect x="1000" y="580" width="30" height="22" rx="4"/><text x="1015" y="592">05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 添加裁切点" data-desc="C；v0.20.0 起由截取片段变更"><rect x="1034" y="580" width="30" height="22" rx="4"/><text x="1049" y="592">08</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩ 撤销裁切" data-desc="Backspace，从 R1 移入"><rect x="1068" y="580" width="30" height="22" rx="4"/><text x="1083" y="592">10</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空裁切" data-desc="Ctrl+Shift+C，从 R1 移入"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">11</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="Ctrl+Shift+C；v0.20.0 起含截图标记点，确认框后执行"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">11</text></g>
 </svg>
 <figcaption>图 1 · W1 主窗口总览（点击编号芯片查看说明；虚线 = 浮层/容器）</figcaption>
 </figure>
@@ -186,13 +186,13 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 </tbody></table></div>
 
 <h2 id="w1r1"><span class="no">§2</span>W1-R1 顶部导航栏 · 5 项</h2>
-<p class="lead">v0.10.0 精简保留品牌/打开视频/设置；v0.13.0 新增 <strong>📑 播放列表开关（W1-R1-23）</strong> 与 <strong>🗔 侧边栏开关（W1-R1-24）</strong>；v0.13.1 调整顺序：Logo → 打开视频(16) → 📑(23) → ⚙(17) → 🗔(24 最右端)。所有按钮均 <code>Focusable=False</code>。</p>
+<p class="lead">v0.10.0 精简保留品牌/打开视频/设置；v0.13.0 新增 <strong>📑 播放列表开关（W1-R1-23）</strong> 与 <strong>🗔 侧边栏开关（W1-R1-24）</strong>；v0.13.1 调整顺序：Logo → 打开视频(16) → 📑(23) → ⚙(17) → 🗔(24 最右端)；v0.19.0 起侧边栏默认展开。所有按钮均 <code>Focusable=False</code>。</p>
 <figure>
 <svg viewBox="0 0 1200 96" role="img" aria-label="W1-R1 顶部导航栏放大图">
   <rect class="wire" x="6" y="8" width="1188" height="80" rx="6"/>
   <text class="lbl-m" x="16" y="24">① 品牌 → ② 打开视频 → 📑（左）</text><text class="lbl-m" x="1000" y="24">⚙ → 🗔（最右端）</text>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-01" data-name="Logo + 标题" data-desc="圆形 Logo「P」+「拉片助手」"><rect x="16" y="32" width="86" height="24" rx="4"/><text x="59" y="45">R1-01</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="📂 打开视频" data-desc="AccentButton，v0.10.0 改名；v0.13.1 移至左侧紧跟 Logo"><rect x="110" y="32" width="92" height="24" rx="4"/><text x="156" y="45">R1-16</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-16" data-name="📂 打开视频" data-desc="AccentButton；v0.13.1 起移至左侧紧跟 Logo；右键弹出最近文件菜单"><rect x="110" y="32" width="92" height="24" rx="4"/><text x="156" y="45">R1-16</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-23" data-name="📑 播放列表开关" data-desc="展开/收起左侧播放列表（v0.13.0 新增，打开视频右侧）"><rect x="210" y="32" width="32" height="24" rx="4"/><text x="226" y="45">23</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-17" data-name="⚙ 设置" data-desc="打开 W2（v0.13.1 起位于 24 左侧）"><rect x="1096" y="32" width="32" height="24" rx="4"/><text x="1112" y="45">17</text></g>
   <g class="chip" style="--z:var(--z-r1)" data-num="W1-R1-24" data-name="🗔 侧边栏开关" data-desc="展开/收起右侧侧边栏（v0.13.0 新增，最右端）"><rect x="1136" y="32" width="32" height="24" rx="4"/><text x="1152" y="45">24</text></g>
@@ -203,15 +203,15 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <thead><tr><th>编号</th><th>控件</th><th>说明 / 快捷键</th></tr></thead>
 <tbody>
 <tr data-num="W1-R1-01"><td class="num">W1-R1-01</td><td>Logo「P」+ 标题「拉片助手」</td><td>左对齐</td></tr>
-<tr data-num="W1-R1-16"><td class="num">W1-R1-16</td><td>按钮「📂 打开视频」</td><td>AccentButton；v0.10.0 从「打开文件」改名；v0.13.1 起移至左侧紧跟 Logo</td></tr>
+<tr data-num="W1-R1-16"><td class="num">W1-R1-16</td><td>按钮「📂 打开视频」</td><td>AccentButton；v0.13.1 起移至左侧紧跟 Logo；右键弹出最近文件菜单</td></tr>
 <tr data-num="W1-R1-23"><td class="num">W1-R1-23</td><td>按钮「📑」</td><td>展开/收起左侧播放列表面板；v0.13.0 新增，v0.13.1 起位于打开视频右侧</td></tr>
 <tr data-num="W1-R1-17"><td class="num">W1-R1-17</td><td>按钮「⚙」</td><td>打开设置 W2；v0.13.1 起位于侧边栏开关左侧</td></tr>
-<tr data-num="W1-R1-24"><td class="num">W1-R1-24</td><td>按钮「🗔」</td><td>展开/收起右侧侧边栏面板；v0.13.0 新增，v0.13.1 起置于最右端</td></tr>
+<tr data-num="W1-R1-24"><td class="num">W1-R1-24</td><td>按钮「🗔」</td><td>展开/收起右侧侧边栏面板；v0.13.0 新增，v0.13.1 起置于最右端；v0.19.0 起默认展开</td></tr>
 </tbody></table></div>
 <p style="color:var(--muted);font-size:.82rem">已删除：W1-R1-02~04（导航标签）、06~07（画廊/批量入口）、09/12~15（裁切/导出/入出点/循环）、18~22（项目按钮及右键菜单）。移至 R4：05/08/10/11。各编号已跟随删除，不再复用。</p>
 
 <h2 id="w1r2"><span class="no">§3</span>W1-R2 视频区 + 侧边栏三面板</h2>
-<p class="lead">侧边栏三面板：v0.10.0 顶栏导航标签已移除，默认显示 <strong style="color:var(--z-c)">C2</strong> 笔记面板；<strong style="color:#E51400">v0.14.0 起 C2 重构为统一时间线</strong>：截图/片段/裁切点按时间顺序混排，原三子标签（T1/T2/T3）与文字笔记功能（C-01~C-09）已废弃。</p>
+<p class="lead">侧边栏三面板：v0.10.0 顶栏导航标签已移除，默认显示 <strong style="color:var(--z-c)">C2</strong> 笔记面板；<strong style="color:#E51400">v0.14.0 起 C2 重构为统一时间线</strong>：截图/片段/裁切点按时间顺序混排，原三子标签（T1/T2/T3）与文字笔记功能（C-01~C-09）已废弃；v0.19.0 起面板标题更名「<strong>拉片笔记</strong>」且侧边栏默认展开。</p>
 <figure>
 <svg viewBox="0 0 1200 430" role="img" aria-label="侧边栏三面板结构图">
   <rect class="wire" x="6" y="8" width="330" height="410" rx="6"/>
@@ -223,11 +223,11 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <rect class="wire" x="350" y="8" width="410" height="410" rx="6"/>
   <text class="lbl-m" x="360" y="26">W1-C2-D 笔记统一时间线（NotesView，v0.14.0）</text>
   <!-- D-01 筛选栏 -->
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-01" data-name="筛选栏" data-desc="全部/截图/片段/已选中/更多筛选"><rect x="360" y="34" width="390" height="22" rx="4"/><text x="555" y="48">D-01 筛选：全部 · 📷截图 · 🎬片段 · ✔已选中 · 更多▾</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-01" data-name="筛选栏" data-desc="基筛选 chip（单选）+ ⚑仅标记叠加开关（v0.15.0）"><rect x="360" y="34" width="390" height="22" rx="4"/><text x="555" y="48">D-01 筛选：☰ 全部 · 📷 · 🎬 · ✂ 仅裁切点 · ⚑ 仅标记</text></g>
   <!-- D-02 工具栏 -->
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-02" data-name="工具栏" data-desc="画廊/导入裁切/导出裁切/批量导出/导出选中"><rect x="360" y="60" width="390" height="22" rx="4"/><text x="555" y="74">D-02 🖼画廊 · ⬆导入 · ⬇导出 · 📦批量 · 📤导出选中</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-02" data-name="工具栏" data-desc="v0.14.2 起旧按钮移除（备份保留）；v0.16~0.18 新增数据交换"><rect x="360" y="60" width="390" height="22" rx="4"/><text x="555" y="74">D-02 📤 导出标记 · 📋 导出数据 · 📥 导入数据</text></g>
   <!-- D-03 统一时间线列表 -->
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-03" data-name="统一时间线列表" data-desc="截图绿框/片段黄框/裁切点红条；Extended 多选；Delete 删裁切点"><rect x="360" y="88" width="390" height="200" rx="4"/><text x="555" y="180">D-03 统一时间线列表</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-03" data-name="统一时间线列表" data-desc="截图绿框/片段黄框/裁切点红条；☑勾选标记（v0.15.0 独立记录）；Extended 多选；Delete 删裁切点"><rect x="360" y="88" width="390" height="200" rx="4"/><text x="555" y="180">D-03 统一时间线列表（条目右侧 ☑ 勾选）</text></g>
   <!-- 截图卡片示意 -->
   <rect x="366" y="96" width="378" height="34" rx="3" fill="#1F1F1F" stroke="#4EC9B0" stroke-width="1.5"/>
   <text x="372" y="112" font-size="10" fill="#4EC9B0">📷</text>
@@ -269,9 +269,9 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-C1-01"><td class="num">W1-C1-01</td><td>面板标题「播放列表」</td><td></td></tr>
 <tr data-num="W1-C1-02"><td class="num">W1-C1-02</td><td>列表 ListBox</td><td>拖拽排序、双击播放；虚拟化</td></tr>
 <tr data-num="W1-C1-03"><td class="num">W1-C1-03</td><td>列表项右键菜单</td><td>删除 / 复制路径 / 在资源管理器中打开</td></tr>
-<tr data-num="W1-C2-D-01"><td class="num">W1-C2-D-01</td><td>筛选栏</td><td>chip：全部 / 📷截图 / 🎬片段（含裁切点）/ ✔已选中 + 更多筛选▾（✂仅裁切点）</td></tr>
-<tr data-num="W1-C2-D-02"><td class="num">W1-C2-D-02</td><td>工具栏</td><td>🖼画廊 · ⬆导入裁切 · ⬇导出裁切 · 📦批量导出 · 📤导出选中</td></tr>
-<tr data-num="W1-C2-D-03"><td class="num">W1-C2-D-03</td><td>统一时间线列表</td><td>截图（绿框 #4EC9B0 📷）/ 片段（黄框 #D7BA7D 🎬）/ 裁切点（红条 #E51400 ✂）按时间混排；Extended 多选；Delete 删除选中裁切点（合并相邻片段）</td></tr>
+<tr data-num="W1-C2-D-01"><td class="num">W1-C2-D-01</td><td>筛选栏</td><td>基筛选 chip（单选）：☰ 全部 / 📷 截图 / 🎬 片段（含裁切点）/ ✂ 仅裁切点；叠加开关 ⚑ 仅标记（v0.15.0 起替换「已选中」，与 ☑ 勾选联动）</td></tr>
+<tr data-num="W1-C2-D-02"><td class="num">W1-C2-D-02</td><td>工具栏</td><td>📤 导出标记（勾选条目批量导出）· 📋 导出数据（v0.16.0，.xlsx/CSV 表格）· 📥 导入数据（v0.17.0，覆盖裁切点/截图/标记）。旧按钮（画廊/导入导出裁切/批量导出）v0.14.2 起从界面移除，功能与处理器备份保留</td></tr>
+<tr data-num="W1-C2-D-03"><td class="num">W1-C2-D-03</td><td>统一时间线列表</td><td>截图（绿框 #4EC9B0 📷）/ 片段（黄框 #D7BA7D 🎬）/ 裁切点（红条 #E51400 ✂）按时间混排；条目右侧 ☑ 勾选标记（v0.14.1 新增，v0.15.0 起为独立记录 IsMarked，跨列表重建保留）；Extended 多选；Delete 删除选中裁切点（合并相邻片段）</td></tr>
 <tr data-num="W1-C2-D-04"><td class="num">W1-C2-D-04</td><td>截图项右键菜单</td><td>打开所在文件夹 / 标注 / 删除</td></tr>
 <tr data-num="W1-C2-D-05"><td class="num">W1-C2-D-05</td><td>片段项右键菜单</td><td>导出此段（弹目录选择框）/ 跳转播放</td></tr>
 <tr data-num="W1-C2-D-06"><td class="num">W1-C2-D-06</td><td>裁切点项右键菜单</td><td>删除（合并相邻片段）</td></tr>
@@ -321,7 +321,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-02" data-name="总时长" data-desc="「/ 00:00:00:00」"><rect x="96" y="124" width="70" height="24" rx="4"/><text x="131" y="137">R4-02</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-03" data-name="倍速标记" data-desc="非1×显示，点击恢复1×"><rect x="170" y="124" width="70" height="24" rx="4"/><text x="205" y="137">R4-03</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-04" data-name="🔊 静音" data-desc="M"><rect x="244" y="124" width="30" height="24" rx="4"/><text x="259" y="137">04</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100"><rect x="278" y="124" width="90" height="24" rx="4"/><text x="323" y="137">R4-05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100；v0.19.0 起软件级记忆（config.json 持久化）"><rect x="278" y="124" width="90" height="24" rx="4"/><text x="323" y="137">R4-05</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-06" data-name="百分比" data-desc=""><rect x="372" y="124" width="36" height="24" rx="4"/><text x="390" y="137">06</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-08" data-name="⛶ 全屏" data-desc="F / Esc"><rect x="412" y="124" width="30" height="24" rx="4"/><text x="427" y="137">08</text></g>
   <!-- R4 中间：对称播放控制 -->
@@ -333,10 +333,10 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-15" data-name="+ 提速" data-desc="新增"><rect x="684" y="124" width="30" height="24" rx="4"/><text x="699" y="137">15</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-13" data-name="⏭" data-desc="End"><rect x="718" y="124" width="30" height="24" rx="4"/><text x="733" y="137">13</text></g>
   <!-- R4 右侧：从 R1 移入 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷" data-desc="S 截图"><rect x="1000" y="124" width="30" height="24" rx="4"/><text x="1015" y="137">05</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂" data-desc="Ctrl+Shift+E"><rect x="1034" y="124" width="30" height="24" rx="4"/><text x="1049" y="137">08</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷" data-desc="S 截图；v0.20.0 起时间轴标记 + ffmpeg 抽帧"><rect x="1000" y="124" width="30" height="24" rx="4"/><text x="1015" y="137">05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂" data-desc="C 添加裁切点（v0.20.0）"><rect x="1034" y="124" width="30" height="24" rx="4"/><text x="1049" y="137">08</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩" data-desc="Backspace"><rect x="1068" y="124" width="30" height="24" rx="4"/><text x="1083" y="137">10</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖" data-desc="Ctrl+Shift+C"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">11</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖" data-desc="Ctrl+Shift+C 清空全部标记（v0.20.0）"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">11</text></g>
   <text class="lbl-m" x="624" y="163">居中播放控制组（09~15）对称排列，右端为 R1 移入按钮</text>
 </svg>
 <figcaption>图 4 · R3 时间轴（上）与 R4 底部控制栏（下）</figcaption>
@@ -351,7 +351,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-R4-02"><td class="num">W1-R4-02</td><td>总时长</td><td>LengthDisplayString</td></tr>
 <tr data-num="W1-R4-03"><td class="num">W1-R4-03</td><td>倍速标记</td><td>非 1.0× 时显示蓝色标签；<strong>点击恢复 1×</strong></td></tr>
 <tr data-num="W1-R4-04"><td class="num">W1-R4-04</td><td>按钮「🔊」</td><td>静音（M）</td></tr>
-<tr data-num="W1-R4-05"><td class="num">W1-R4-05</td><td>音量滑块</td><td>0~100</td></tr>
+<tr data-num="W1-R4-05"><td class="num">W1-R4-05</td><td>音量滑块</td><td>0~100；软件级全局属性，v0.19.0 起持久化到 config.json（防抖写盘 + 退出冲刷），不写入视频数据</td></tr>
 <tr data-num="W1-R4-06"><td class="num">W1-R4-06</td><td>音量百分比文本</td><td></td></tr>
 <tr data-num="W1-R4-08"><td class="num">W1-R4-08</td><td>按钮「⛶」</td><td>全屏（F / Esc）</td></tr>
 <tr data-num="W1-R4-09"><td class="num">W1-R4-09</td><td>按钮「⏮」</td><td>跳到开头（Home）</td></tr>
@@ -361,10 +361,10 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-R4-12"><td class="num">W1-R4-12</td><td>按钮「▶」</td><td>下一帧（→）</td></tr>
 <tr data-num="W1-R4-15"><td class="num">W1-R4-15</td><td>按钮「+」</td><td><strong>新增</strong>；提高倍速（档位步进）</td></tr>
 <tr data-num="W1-R4-13"><td class="num">W1-R4-13</td><td>按钮「⏭」</td><td>跳到结尾（End）</td></tr>
-<tr data-num="W1-R1-05"><td class="num">W1-R1-05</td><td>按钮「📷」</td><td><strong>从 R1 移入</strong>；截图（S）</td></tr>
-<tr data-num="W1-R1-08"><td class="num">W1-R1-08</td><td>按钮「✂」</td><td><strong>从 R1 移入</strong>；截取片段（Ctrl+Shift+E）</td></tr>
+<tr data-num="W1-R1-05"><td class="num">W1-R1-05</td><td>按钮「📷」</td><td><strong>从 R1 移入</strong>；截图（S）：时间轴添加截图标记点，后台 ffmpeg 抽帧生成缩略图进笔记列表（v0.20.0）</td></tr>
+<tr data-num="W1-R1-08"><td class="num">W1-R1-08</td><td>按钮「✂」</td><td><strong>从 R1 移入</strong>；添加裁切点（C）——v0.20.0 起功能由「截取片段」变更（截取片段保留 Ctrl+Shift+E）</td></tr>
 <tr data-num="W1-R1-10"><td class="num">W1-R1-10</td><td>按钮「↩」</td><td><strong>从 R1 移入</strong>；撤销裁切点（Backspace）</td></tr>
-<tr data-num="W1-R1-11"><td class="num">W1-R1-11</td><td>按钮「✖」</td><td><strong>从 R1 移入</strong>；清空裁切点（Ctrl+Shift+C）</td></tr>
+<tr data-num="W1-R1-11"><td class="num">W1-R1-11</td><td>按钮「✖」</td><td><strong>从 R1 移入</strong>；清空全部标记：裁切点 + 截图标记点（Ctrl+Shift+C，确认框后执行）——v0.20.0 起由「清空裁切点」扩展</td></tr>
 </tbody></table></div>
 
 <h2 id="w2"><span class="no">§5</span>W2 设置窗口</h2>
@@ -570,7 +570,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 </div>
 
 <footer>
-<div>拉片助手（PianAssistant）界面编号视觉图鉴 · 依据 docs/UI_NUMBERING.md（编号唯一真源）与 v0.10.0 实际界面绘制 · 本图为可视化对照工具，编号定义以 UI_NUMBERING.md 为准。</div>
+<div>拉片助手（PianAssistant）界面编号视觉图鉴 · 依据 docs/UI_NUMBERING.md（编号唯一真源）与 v0.20.0 实际界面绘制 · 本图为可视化对照工具，编号定义以 UI_NUMBERING.md 为准。</div>
 </footer>
 
 </div>
