@@ -123,6 +123,19 @@ public sealed class NotesViewModel : ObservableObject
         RaiseChanged();
     }
 
+    /// <summary>
+    /// 批量清空全部截图（清空全部标记用）：重建列表（截图行移除、片段保留）
+    /// 与时间轴标记（Markers 随截图记录清空），png 文件由调用方决定是否保留。
+    /// </summary>
+    public void ClearScreenshots()
+    {
+        if (Screenshots.Count == 0) return;
+        Screenshots.Clear();
+        RebuildItems();
+        NotifyCountsChanged();
+        RaiseChanged();
+    }
+
     /// <summary>清空所有数据（打开新视频时调用）。</summary>
     public void ClearAll()
     {

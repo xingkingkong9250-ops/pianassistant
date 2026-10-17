@@ -404,4 +404,33 @@ public class NotesViewModelTests : IDisposable
         // 孤儿缓存被清理后只剩当前段
         Assert.Equal(2, Directory.GetFiles(Path.Combine(thumbsDir, "thumbs")).Length);
     }
+
+    // --- 清空全部截图（清空全部标记 v0.20.0）---
+
+    [Fact]
+    public void ClearScreenshots_RemovesShotRows_KeepsSegments_ClearsMarkers()
+    {
+        RecomputeWithCuts(10, 20); // 片段 0-10、10-20、20-300
+        _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5)));
+        _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(15)));
+        Assert.Equal(2, _vm.Markers.Count);
+        Assert.Contains(_vm.Items, i => i.Kind == TimelineItemKind.Screenshot);
+
+        _vm.ClearScreenshots();
+
+        Assert.Empty(_vm.Screenshots);
+        Assert.Empty(_vm.Markers); // 时间轴截图标记随记录清空
+        Assert.DoesNotContain(_vm.Items, i => i.Kind == TimelineItemKind.Screenshot);
+        // 片段与裁切点保留（由 Player 层另行清空）
+        Assert.Equal(3, _vm.Items.OfType<SegmentListItem>().Count());
+        Assert.Equal(2, _vm.Items.OfType<CutPointListItem>().Count());
+    }
+
+    [Fact]
+    public void ClearScreenshots_Empty_NoChange()
+    {
+        RecomputeWithCuts(10);
+        _vm.ClearScreenshots();
+        Assert.NotEmpty(_vm.Items); // 片段/裁切点不受影响
+    }
 }

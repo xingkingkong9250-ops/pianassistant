@@ -119,6 +119,8 @@ public partial class MainWindow : Window
         // 订阅全屏切换/退出事件（由 PlayerViewModel 的 F / Esc 快捷键触发）
         shell.Player.FullscreenToggleRequested += OnFullscreenToggle;
         shell.Player.FullscreenExitRequested += OnFullscreenExit;
+        // 清空全部标记（Ctrl+Shift+C / W1-R1-11）：确认后执行
+        shell.ConfirmClearAllMarksRequested += OnConfirmClearAllMarks;
 
         // 截图画廊入口（顶部 🖼 按钮）
         shell.GalleryRequested += (_, _) => OpenGallery();
@@ -459,6 +461,16 @@ public partial class MainWindow : Window
         if (shell is null) return;
         shell.Screenshots.Remove(entry);
         shell.Notes.RemoveScreenshot(entry);
+    }
+
+    /// <summary>「清空全部标记」确认框（Ctrl+Shift+C / W1-R1-11）：确认后执行。</summary>
+    private void OnConfirmClearAllMarks(object? sender, (int CutCount, int ShotCount) e)
+    {
+        var result = MessageBox.Show(
+            $"将清空当前视频的全部标记：\n· 裁切点 {e.CutCount} 个（分段一并移除）\n· 截图 {e.ShotCount} 张（png 文件保留，时间轴标记清除）\n\n此操作不可撤销，确定？",
+            "清空全部标记", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (result == MessageBoxResult.Yes)
+            Shell?.ExecuteClearAllMarks();
     }
 
     // 支持的字幕扩展名

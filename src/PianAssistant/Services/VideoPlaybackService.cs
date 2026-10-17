@@ -200,17 +200,6 @@ public sealed class VideoPlaybackService : IVideoPlayback
         }
     }
 
-    public string TakeSnapshot(string outputPath)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
-        var dir = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        // TakeSnapshot(num=0, filePath, width=0, height=0) → native resolution
-        if (!_mediaPlayer.TakeSnapshot(0, outputPath, 0, 0))
-            throw new InvalidOperationException("LibVLC TakeSnapshot failed.");
-        return outputPath;
-    }
-
     /// <summary>
     /// 加载外挂字幕文件。LibVLCSharp 3.8.2 通过 MediaPlayer.AddSlave
     /// 以 Subtitle 类型挂载外挂字幕轨。

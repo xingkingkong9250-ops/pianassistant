@@ -35,7 +35,6 @@ public interface IVideoPlayback : IDisposable
     void SeekRelative(TimeSpan delta);
     void SeekPercent(double percent);
     void SetRate(double rate);
-    string TakeSnapshot(string outputPath);
     /// <summary>加载外挂字幕文件（.srt/.ass/.vtt 等）到当前媒体。</summary>
     void LoadSubtitle(string path);
 }

@@ -185,12 +185,26 @@ public class PlayerViewModelTests : IDisposable
     [Fact]
     public async Task CaptureScreenshot_RaisesScreenshotCapturedEvent()
     {
-        _playback.Open(Path.Combine(_tempDir, "video.mp4"));
-        File.WriteAllText(_playback.CurrentPath!, "stub");
-        ScreenshotEntry? captured = null;
-        _vm.ScreenshotCaptured += (_, e) => captured = e;
+        // v0.20.0 起截图为 ffmpeg 抽帧：需要真实 ffmpeg（SkipIfMissing）
+        var ffmpegPath = FindBundledFfmpeg();
+        if (ffmpegPath is null) return;
+        var source = TryCreateTestVideo(ffmpegPath, Path.Combine(_tempDir, "src-cap.mp4"));
+        if (source is null) return;
 
-        await _vm.CaptureScreenshotCommand.ExecuteAsync();
+        var runner = new FfmpegRunner(ffmpegPath,
+            Path.Combine(Path.GetDirectoryName(ffmpegPath)!, "ffprobe.exe"));
+        var shotsDir = Path.Combine(_tempDir, "shots-cap");
+        Directory.CreateDirectory(shotsDir);
+        var stub = new StubVideoPlayback { Length = TimeSpan.FromSeconds(2) };
+        stub.Open(source);
+        stub.Seek(TimeSpan.FromSeconds(1));
+        var svc = new ScreenshotService(stub, runner, shotsDir);
+        using var vm = new PlayerViewModel(stub, svc, _clips, () => 5, () => 0.25, () => 8.0);
+
+        ScreenshotEntry? captured = null;
+        vm.ScreenshotCaptured += (_, e) => captured = e;
+
+        await vm.CaptureScreenshotCommand.ExecuteAsync();
         Assert.NotNull(captured);
         Assert.True(File.Exists(captured!.OutputPath));
     }
@@ -284,5 +298,118 @@ public class PlayerViewModelTests : IDisposable
         _vm.RemoveCutPoint(TimeSpan.FromSeconds(10));
 
         Assert.False(_vm.HasSelectedSegment);
+    }
+
+    private static string? FindBundledFfmpeg()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (int i = 0; i < 8 && dir is not null; i++, dir = dir.Parent)
+        {
+            var candidate = Path.Combine(
+                dir.FullName, "src", "PianAssistant", "Tools", "ffmpeg", "ffmpeg.exe");
+            if (File.Exists(candidate)) return candidate;
+        }
+        return null;
+    }
+
+    /// <summary>用 lavfi testsrc 生成测试视频；失败（不支持 lavfi/超时）返回 null。</summary>
+    private static string? TryCreateTestVideo(string ffmpegPath, string outputPath)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ffmpegPath,
+                Arguments = $"-f lavfi -i testsrc=duration=2:size=320x240:rate=10 -y \"{outputPath}\"",
+                CreateNoWindow = true,
+                UseShellExecute = false,
+            };
+            using var p = System.Diagnostics.Process.Start(psi);
+            p?.WaitForExit(30000);
+            return p is { HasExited: true, ExitCode: 0 } && File.Exists(outputPath) ? outputPath : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}
+
+/// <summary>软件级音量记忆（v0.19.0）：初始恢复 + 变化回调。</summary>
+public class PlayerViewModelVolumeTests : IDisposable
+{
+    private readonly string _tempDir;
+    private readonly StubVideoPlayback _playback;
+    private readonly FfmpegRunner _ffmpeg;
+    private readonly ScreenshotService _screenshots;
+    private readonly ClipExtractionService _clips;
+
+    public PlayerViewModelVolumeTests()
+    {
+        _tempDir = Path.Combine(Path.GetTempPath(), $"pian-vol-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_tempDir);
+        var ffmpegPath = Path.Combine(_tempDir, "ffmpeg.exe");
+        var ffprobePath = Path.Combine(_tempDir, "ffprobe.exe");
+        File.WriteAllText(ffmpegPath, "stub");
+        File.WriteAllText(ffprobePath, "stub");
+        _ffmpeg = new FfmpegRunner(ffmpegPath, ffprobePath);
+        _playback = new StubVideoPlayback();
+        _screenshots = new ScreenshotService(_playback, _ffmpeg, _tempDir, "png");
+        _clips = new ClipExtractionService(_ffmpeg, _tempDir);
+    }
+
+    public void Dispose()
+    {
+        try { Directory.Delete(_tempDir, true); } catch { }
+    }
+
+    private PlayerViewModel Create(int initialVolume = 100, Action<int>? persisted = null) =>
+        new(_playback, _screenshots, _clips, () => 5, () => 0.25, () => 8.0,
+            initialVolume: initialVolume, volumePersisted: persisted);
+
+    [Fact]
+    public void InitialVolume_AppliedToPlayback_AndExposed()
+    {
+        using var vm = Create(initialVolume: 45);
+        Assert.Equal(45, vm.Volume);
+        Assert.Equal(45, _playback.Volume);
+    }
+
+    [Fact]
+    public void VolumeChange_RaisesPersistedCallback_WithClampedValue()
+    {
+        var persisted = new List<int>();
+        using var vm = Create(initialVolume: 80, persisted: v => persisted.Add(v));
+        vm.Volume = 130; // 夹紧到 100
+        Assert.Equal(100, vm.Volume);
+        Assert.Equal(100, _playback.Volume);
+        vm.Volume = -5;  // 夹紧到 0
+        Assert.Equal(0, vm.Volume);
+        Assert.Equal(0, _playback.Volume);
+        Assert.Equal(new[] { 100, 0 }, persisted);
+    }
+
+    [Fact]
+    public void VolumeChange_WithoutCallback_DoesNotThrow()
+    {
+        using var vm = Create(initialVolume: 100);
+        vm.Volume = 30;
+        Assert.Equal(30, vm.Volume);
+    }
+
+    [Fact]
+    public void ClearCutPointsCommand_RaisesClearAllMarksRequested_InsteadOfDirectClear()
+    {
+        // v0.20.0：清空命令改为发确认请求（裁切点+截图标记），不在 Player 层直接清
+        var raised = 0;
+        using var vm = Create();
+        vm.ClearAllMarksRequested += (_, _) => raised++;
+        var path = Path.Combine(_tempDir, "clear.mp4");
+        File.WriteAllText(path, "stub");
+        vm.Open(path);
+        vm.CutPoints.Add(TimeSpan.FromSeconds(5));
+        vm.ClearCutPointsCommand.Execute(null);
+        Assert.Equal(1, raised);
+        Assert.Single(vm.CutPoints); // 未被直接清空，等待 Shell 确认后执行
     }
 }

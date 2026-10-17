@@ -339,15 +339,15 @@
                     <!-- W1-R1-05 截图 -->
                     <Button Content="📷" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.CaptureScreenshotCommand}" ToolTip="截图 (S)" />
-                    <!-- W1-R1-08 截取片段 -->
+                    <!-- W1-R1-08 添加裁切点（v0.20.0 起由「截取片段」改为「添加裁切点」；截取片段保留快捷键 Ctrl+Shift+E） -->
                     <Button Content="✂" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
-                            Command="{Binding Player.ExtractClipCommand}" ToolTip="截取片段 (Ctrl+Shift+E)" />
+                            Command="{Binding Player.AddCutPointCommand}" ToolTip="添加裁切点 (C)" />
                     <!-- W1-R1-10 撤销裁切点 -->
                     <Button Content="↩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.RemoveLastCutPointCommand}" ToolTip="撤销裁切点 (Backspace)" />
-                    <!-- W1-R1-11 清空裁切点 -->
+                    <!-- W1-R1-11 清空全部标记（v0.20.0 起包含截图标记点，确认后执行） -->
                     <Button Content="✖" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
-                            Command="{Binding Player.ClearCutPointsCommand}" ToolTip="清空裁切点 (Ctrl+Shift+C)" />
+                            Command="{Binding Player.ClearCutPointsCommand}" ToolTip="清空全部标记：裁切点 + 截图标记 (Ctrl+Shift+C)" />
                 </StackPanel>
 
                 <!-- 中间：播放控制（左右对称排列） -->

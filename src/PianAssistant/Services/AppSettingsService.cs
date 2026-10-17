@@ -145,6 +145,13 @@ public sealed class AppSettingsService
         set { _settings.RestorePlaybackPosition = value; Save(); }
     }
 
+    /// <summary>音量（0~100，软件级记忆：跨视频/会话保持，不写入视频数据）。</summary>
+    public int Volume
+    {
+        get => Math.Clamp(_settings.Volume, 0, 100);
+        set { _settings.Volume = Math.Clamp(value, 0, 100); Save(); }
+    }
+
     /// <summary>
     /// 设置数据根（写回 config.json，config.json 本身仍在引导目录）。
     /// 仅切换路径、不搬迁任何文件；生效需重启。
@@ -231,6 +238,8 @@ public sealed class AppSettings
     public bool RestoreSession { get; set; } = true;
     /// <summary>恢复播放位置与倍速；默认开。</summary>
     public bool RestorePlaybackPosition { get; set; } = true;
+    /// <summary>音量（0~100，软件级记忆，默认 100）。</summary>
+    public int Volume { get; set; } = 100;
 }
 
 [JsonSerializable(typeof(AppSettings))]

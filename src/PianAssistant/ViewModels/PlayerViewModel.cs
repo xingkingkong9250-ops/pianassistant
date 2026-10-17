@@ -38,6 +38,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private double _extractProgress;
     private int _volume = 100;
     private bool _isMuted;
+    // 音量持久化回调（Shell 侧防抖写 config.json；null 表示不持久化，测试用）
+    private readonly Action<int>? _onVolumePersisted;
     // PR 风格裁切点
     private TimeSpan? _selectedSegmentStart;
     private TimeSpan? _selectedSegmentEnd;
@@ -51,7 +53,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         ClipExtractionService clips,
         Func<int> getSeekStepFrames,
         Func<double> getRateStep,
-        Func<double> getMaxRate)
+        Func<double> getMaxRate,
+        int initialVolume = 100,
+        Action<int>? volumePersisted = null)
     {
         ArgumentNullException.ThrowIfNull(playback);
         ArgumentNullException.ThrowIfNull(screenshots);
@@ -62,6 +66,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _getSeekStepFrames = getSeekStepFrames ?? (() => 5);
         _getRateStep = getRateStep ?? (() => 0.25);
         _getMaxRate = getMaxRate ?? (() => 8.0);
+        _onVolumePersisted = volumePersisted;
+        // 软件级音量记忆：启动时恢复上次音量（config.json，跨视频保持）
+        _volume = Math.Clamp(initialVolume, 0, 100);
+        _playback.Volume = _volume;
 
         // Wire playback events.
         _playback.PositionChanged += OnPositionChanged;
@@ -108,7 +116,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         // PR 风格裁切命令
         AddCutPointCommand = new RelayCommand(AddCutPoint, () => HasMedia);
         RemoveLastCutPointCommand = new RelayCommand(RemoveLastCutPoint);
-        ClearCutPointsCommand = new RelayCommand(ClearCutPoints);
+        ClearCutPointsCommand = new RelayCommand(
+            // 清空全部标记（裁切点 + 截图标记）：经 Shell 确认后执行，不在 Player 层直接清
+            () => ClearAllMarksRequested?.Invoke(this, EventArgs.Empty));
         ExportSelectedSegmentCommand = new AsyncRelayCommand(
             ExportSelectedSegmentAsync, () => !_isExtracting && HasSelectedSegment);
 
@@ -292,6 +302,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
                 _playback.Volume = clamped;
                 if (clamped > 0 && _isMuted)
                     IsMuted = false;
+                // 软件级音量记忆：变化即通知持久化（Shell 侧防抖落盘）
+                _onVolumePersisted?.Invoke(clamped);
             }
         }
     }
@@ -307,6 +319,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     }
 
     // --- PR 风格裁切点 ---
+
+    /// <summary>清空全部标记请求（裁切点 + 截图标记）：由 Shell 层弹确认后执行。</summary>
+    public event EventHandler? ClearAllMarksRequested;
 
     /// <summary>所有裁切点（按时间排序）。</summary>
     public ObservableCollection<TimeSpan> CutPoints { get; } = new();
@@ -674,7 +689,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         return true;
     }
 
-    private void ClearCutPoints()
+    /// <summary>清空裁切点与选中段（不含截图标记；Shell 确认后调用）。</summary>
+    public void ClearCutPoints()
     {
         CutPoints.Clear();
         SelectedSegmentStart = null;

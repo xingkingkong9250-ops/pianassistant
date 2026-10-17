@@ -20,14 +20,16 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private readonly HotkeyCommandMap _hotkeyMap;
     private SidebarPanel _activePanel = SidebarPanel.Notes;
     private bool _isFullscreen;
-    // 左右侧面板默认收起（用户手动展开）
+    // 左侧播放列表默认收起；右侧侧边栏默认展开（用户要求笔记列表默认展开）
     private bool _isPlaylistVisible;
-    private bool _isSidebarVisible;
+    private bool _isSidebarVisible = true;
     private bool _disposed;
     // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。
     private bool _isRestoring;
     // 片段入点(毫秒) → 导出输出路径：项目保存时回查用（统一时间线后不再经活动流记录）。
     private readonly Dictionary<double, string> _clipOutputPaths = new();
+    // 音量防抖落库：拖动滑块高频变化时只在停止 500ms 后写 config.json。
+    private CancellationTokenSource? _volumeSaveCts;
     // 播放位置按秒节流落库，避免高频写库（M7）。
     private long _lastMarkedSecond = -1;
 
@@ -40,6 +42,33 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public SettingsViewModel Settings { get; }
     /// <summary>批量文本操作预览窗 VM（M5）。</summary>
     public BatchPreviewViewModel Batch { get; }
+
+    /// <summary>
+    /// 请求确认「清空全部标记」（裁切点 + 截图标记）：
+    /// 携带（裁切点数, 截图数），由 View 层弹确认框，确认后调用 <see cref="ExecuteClearAllMarks"/>。
+    /// </summary>
+    public event EventHandler<(int CutCount, int ShotCount)>? ConfirmClearAllMarksRequested;
+
+    private void RequestClearAllMarks()
+    {
+        var cuts = Player.CutPoints.Count;
+        var shots = Notes.Screenshots.Count;
+        if (cuts == 0 && shots == 0) return; // 无标记可清，不打扰
+        ConfirmClearAllMarksRequested?.Invoke(this, (cuts, shots));
+    }
+
+    /// <summary>
+    /// 执行清空全部标记：删除全部截图记录（画廊与笔记同步，png 文件保留、
+    /// 时间轴截图标记随之消失）并清空全部裁切点（分段重算为空）。
+    /// </summary>
+    public void ExecuteClearAllMarks()
+    {
+        if (_isRestoring) return;
+        foreach (var entry in Notes.Screenshots.ToList())
+            Screenshots.Remove(entry);
+        Notes.ClearScreenshots();
+        Player.ClearCutPoints();
+    }
 
     /// <summary>Currently visible sidebar panel (Playlist / Notes / Clips).</summary>
     public SidebarPanel ActivePanel
@@ -55,7 +84,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>侧边栏面板标题（面板头显示用）。</summary>
     public string ActivePanelTitle => _activePanel switch
     {
-        SidebarPanel.Notes => "笔记",
+        SidebarPanel.Notes => "拉片笔记",
         SidebarPanel.Clips => "📦 片段导出",
         _ => string.Empty,
     };
@@ -145,7 +174,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             services.Playback, services.Screenshots, services.Clips,
             () => services.Settings.SeekStepFrames,
             () => services.Settings.RateStep,
-            () => services.Settings.MaxRate);
+            () => services.Settings.MaxRate,
+            initialVolume: services.Settings.Volume,
+            volumePersisted: OnVolumePersisted);
+        // 清空全部标记（Ctrl+Shift+C / W1-R1-11）：先由 View 层确认再执行
+        Player.ClearAllMarksRequested += (_, _) => RequestClearAllMarks();
         Playlist = new PlaylistViewModel();
         // Notes needs the current playback position to timestamp new notes.
         Notes = new NotesViewModel(() => Player.Position);
@@ -407,15 +440,20 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        // 1. 截图集合覆盖：移除 CSV 未列出的记录（按输出路径匹配）
-        var csvShotFiles = data.Screenshots
-            .Select(s => s.File)
-            .Where(f => f.Length > 0)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var shot in Screenshots.Items
-                     .Where(s => !csvShotFiles.Contains(s.OutputPath)).ToList())
+        // 1. 截图集合覆盖：仅当 CSV 携带有效截图清单（至少一个文件路径）时执行移除；
+        //    文件列全缺失时不动截图集合（视为该文件不含截图管理意图），标记也保持不变。
+        var csvShots = data.Screenshots.Where(s => s.File.Length > 0).ToList();
+        bool managesScreenshots = csvShots.Count > 0;
+        if (managesScreenshots)
         {
-            Notes.RemoveScreenshot(shot);
+            var csvShotFiles = csvShots
+                .Select(s => s.File)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var shot in Screenshots.Items
+                         .Where(s => !csvShotFiles.Contains(s.OutputPath)).ToList())
+            {
+                Notes.RemoveScreenshot(shot);
+            }
         }
 
         // 2. 裁切点覆盖（集合变化自动触发分段重算与列表重建）
@@ -427,14 +465,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         Player.SetCutPoints(points.Distinct().OrderBy(t => t).ToList());
 
-        // 3. 标记恢复：以 CSV 为真值源强制设置（含未标记的显式重置）
+        // 3. 标记恢复：以 CSV 为真值源强制设置（含未标记的显式重置）；
+        //    CSV 不含截图清单时截图标记保持现状不动。
         static TimeSpan T(string text) =>
             NotesDataCsvService.TryParseTime(text, out var t) ? t : TimeSpan.Zero;
         var segMarks = new HashSet<(long Start, long End)>(
             data.Segments.Where(s => s.Marked)
                 .Select(s => (T(s.Start).Ticks, T(s.End).Ticks)));
         var shotMarks = new HashSet<string>(
-            data.Screenshots.Where(s => s.Marked).Select(s => s.File),
+            csvShots.Where(s => s.Marked).Select(s => s.File),
             StringComparer.OrdinalIgnoreCase);
         foreach (var item in Notes.Items)
         {
@@ -444,15 +483,39 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     seg.IsMarked = segMarks.Contains((seg.Segment.Start.Ticks, seg.Segment.End.Ticks));
                     break;
                 case ScreenshotListItem shot:
-                    shot.IsMarked = shotMarks.Contains(shot.Entry.OutputPath);
+                    shot.IsMarked = managesScreenshots && shotMarks.Contains(shot.Entry.OutputPath);
                     break;
             }
         }
     }
 
+    /// <summary>
+    /// 音量持久化（软件级记忆，不写入视频数据）：拖动滑块时高频触发，
+    /// 防抖 500ms 后才写 config.json，只保留最后一次值。
+    /// </summary>
+    private void OnVolumePersisted(int volume)
+    {
+        _volumeSaveCts?.Cancel();
+        _volumeSaveCts = new CancellationTokenSource();
+        var token = _volumeSaveCts.Token;
+        _ = Task.Delay(500, token).ContinueWith(
+            t =>
+            {
+                if (t.IsCanceled) return;
+                try { _services.Settings.Volume = volume; }
+                catch (Exception ex) { AppLog.Error("[ShellVM] 音量保存失败", ex); }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnRanToCompletion,
+            TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
+        // 退出前冲刷防抖中的音量（拖动后 500ms 内退出也能记住）
+        try { _services.Settings.Volume = Player.Volume; }
+        catch { /* 设置盘写失败不阻塞退出 */ }
         // 退出前把当前素材会话落库（M7）；须在释放播放器之前采集快照。
         try { _services.Sessions.EndSession(); }
         catch (Exception ex) { AppLog.Error("[ShellVM] 会话落库失败", ex); }

@@ -6,9 +6,10 @@ using PianAssistant.Models;
 namespace PianAssistant.Services;
 
 /// <summary>
-/// Captures a still frame from the player and records its metadata.
-/// Uses <see cref="IVideoPlayback.TakeSnapshot"/> (LibVLC TakeSnapshot,
-/// PNG default). Falls back to ffmpeg.exe when the LibVLC snapshot fails.
+/// Captures a still frame from the source video and records its metadata.
+/// v0.20.0 起不再使用播放器截屏（LibVLC TakeSnapshot 已移除）：
+/// 一律由 ffmpeg 从源视频抽帧（后台执行、不干扰播放，画质为原始分辨率），
+/// 由调用方 Task.Run 包装为异步。
 /// </summary>
 public sealed class ScreenshotService
 {
@@ -44,8 +45,8 @@ public sealed class ScreenshotService
     public string Format => _format;
 
     /// <summary>
-    /// Captures a screenshot at the current player position and returns
-    /// the absolute output file path.
+    /// Captures a screenshot at the current player position (ffmpeg 单帧抽帧)
+    /// and returns the screenshot entry.
     /// </summary>
     public ScreenshotEntry Capture(string? label = null)
     {
@@ -62,15 +63,8 @@ public sealed class ScreenshotService
         var outputPath = Path.Combine(outputDir, stamp);
         outputPath = MakeUnique(outputPath);
 
-        try
-        {
-            _playback.TakeSnapshot(outputPath);
-        }
-        catch (InvalidOperationException)
-        {
-            // Fallback to ffmpeg.exe for this exact position.
-            _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, pos, outputPath);
-        }
+        // 后台 ffmpeg 抽帧：从源视频按时间点取原始帧（不依赖播放器状态）
+        _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, pos, outputPath);
 
         return new ScreenshotEntry(_playback.CurrentPath, outputPath, pos, DateTime.Now, label);
     }

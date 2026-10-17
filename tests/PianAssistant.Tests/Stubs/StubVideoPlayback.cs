@@ -25,8 +25,6 @@ public sealed class StubVideoPlayback : IVideoPlayback
     public int Width { get; set; } = 1920;
     public int Height { get; set; } = 1080;
     public string? CurrentPath { get; private set; }
-    public string? LastSnapshotPath { get; private set; }
-    public bool SnapshotShouldFail { get; set; }
 
     public void Open(string path)
     {
@@ -80,18 +78,6 @@ public sealed class StubVideoPlayback : IVideoPlayback
     }
 
     public void SetRate(double rate) => Rate = rate;
-
-    public string TakeSnapshot(string outputPath)
-    {
-        if (SnapshotShouldFail)
-            throw new InvalidOperationException("Stub snapshot forced to fail.");
-        LastSnapshotPath = outputPath;
-        // Create a dummy file so MakeUnique logic doesn't kick in.
-        var dir = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        File.WriteAllText(outputPath, "stub");
-        return outputPath;
-    }
 
     /// <summary>Stub: 记录最后一次加载的字幕路径。</summary>
     public string? LastSubtitlePath { get; private set; }
