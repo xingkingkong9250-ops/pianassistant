@@ -134,7 +134,7 @@
                 <Button x:Name="ChipSelected" Content="✔ 已选中" Padding="10,3" FontSize="12"
                         Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
                         BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterSelected" />
-                <Button x:Name="ChipMore" Content="更多筛选 ▾" Padding="10,3" FontSize="12"
+                <Button x:Name="ChipMore" Content="⋯" Padding="8,3" FontSize="12"
                         Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
                         BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnMoreFilters"
                         ToolTip="更多筛选条件">
