@@ -30,11 +30,22 @@ public abstract class TimelineListItem : ObservableObject
     public bool HasThumbnail { get; }
 
     private bool _isSelected;
-    /// <summary>列表选中态（TwoWay 绑定 ListBox）。</summary>
+    /// <summary>列表选中态（TwoWay 绑定 ListBox；与勾选标记相互独立）。</summary>
     public bool IsSelected
     {
         get => _isSelected;
         set => SetProperty(ref _isSelected, value);
+    }
+
+    private bool _isMarked;
+    /// <summary>
+    /// 勾选标记（TwoWay 绑定条目 CheckBox）：独立记录信息，
+    /// 用于批量导出与筛选「仅标记」叠加条件；不影响列表行选中。
+    /// </summary>
+    public bool IsMarked
+    {
+        get => _isMarked;
+        set => SetProperty(ref _isMarked, value);
     }
 
     private protected TimelineListItem(

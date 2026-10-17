@@ -35,19 +35,19 @@ public partial class NotesView : UserControl
     {
         if (e.OldValue is NotesViewModel oldVm)
         {
-            oldVm.ExportSelectedRequested -= OnExportSelectedRequested;
+            oldVm.ExportMarkedRequested -= OnExportMarkedRequested;
             oldVm.PropertyChanged -= OnVmPropertyChanged;
         }
         if (e.NewValue is NotesViewModel newVm)
         {
-            newVm.ExportSelectedRequested += OnExportSelectedRequested;
+            newVm.ExportMarkedRequested += OnExportMarkedRequested;
             newVm.PropertyChanged += OnVmPropertyChanged;
         }
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(NotesViewModel.ActiveFilter))
+        if (e.PropertyName is nameof(NotesViewModel.ActiveFilter) or nameof(NotesViewModel.OnlyMarked))
             UpdateFilterChips();
     }
 
@@ -63,23 +63,26 @@ public partial class NotesView : UserControl
     private void OnFilterAll(object sender, RoutedEventArgs e) => SetFilter(NotesFilter.All);
     private void OnFilterScreenshots(object sender, RoutedEventArgs e) => SetFilter(NotesFilter.Screenshots);
     private void OnFilterSegments(object sender, RoutedEventArgs e) => SetFilter(NotesFilter.Segments);
-    private void OnFilterSelected(object sender, RoutedEventArgs e) => SetFilter(NotesFilter.Selected);
     private void OnFilterCutPointsOnly(object sender, RoutedEventArgs e) => SetFilter(NotesFilter.CutPointsOnly);
 
-    private void OnMoreFilters(object sender, RoutedEventArgs e)
+    /// <summary>⚑ 仅标记：叠加开关，切换后与当前基筛选组合。</summary>
+    private void OnToggleMarked(object sender, RoutedEventArgs e)
     {
-        MoreFilterMenu.PlacementTarget = ChipMore;
-        MoreFilterMenu.IsOpen = true;
+        if (Vm is null) return;
+        Vm.OnlyMarked = !Vm.OnlyMarked;
+        UpdateFilterChips();
     }
 
     private void UpdateFilterChips()
     {
-        var active = Vm?.ActiveFilter ?? NotesFilter.All;
+        var vm = Vm;
+        var active = vm?.ActiveFilter ?? NotesFilter.All;
         SetChip(ChipAll, active == NotesFilter.All);
         SetChip(ChipScreenshots, active == NotesFilter.Screenshots);
         SetChip(ChipSegments, active == NotesFilter.Segments);
-        SetChip(ChipSelected, active == NotesFilter.Selected);
-        SetChip(ChipMore, active == NotesFilter.CutPointsOnly);
+        SetChip(ChipCutPoints, active == NotesFilter.CutPointsOnly);
+        // ⚑ 叠加开关与基筛选独立显示激活态（可同时高亮）
+        SetChip(ChipMarked, vm?.OnlyMarked == true);
     }
 
     private static void SetChip(Button chip, bool active)
@@ -174,22 +177,22 @@ public partial class NotesView : UserControl
         (Window.GetWindow(this) as MainWindow)?.ShowClipsPanel();
     }
 
-    // --- 选中导出：截图复制 png，片段 ffmpeg 切出 mp4 ---
+    // --- 标记导出：截图复制 png，片段 ffmpeg 切出 mp4 ---
 
-    private void OnExportSelectedRequested(object? sender, EventArgs e)
+    private void OnExportMarkedRequested(object? sender, EventArgs e)
     {
         var vm = Vm;
         if (vm is null) return;
-        var selected = vm.GetSelectedItems()
+        var marked = vm.GetMarkedItems()
             .Where(i => i.Kind is TimelineItemKind.Screenshot or TimelineItemKind.Segment)
             .ToList();
-        if (selected.Count == 0)
+        if (marked.Count == 0)
         {
-            MessageBox.Show("请先在列表中选中要导出的截图或片段（Ctrl/Shift 可多选）。",
-                "导出选中", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("请先勾选要导出的截图或片段（条目右侧勾选框），再点「导出标记」。",
+                "导出标记", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        ExportSegmentsToFolder(selected);
+        ExportSegmentsToFolder(marked);
     }
 
     /// <summary>弹目录选择框，后台执行复制/切出，完成后弹汇总提示。</summary>

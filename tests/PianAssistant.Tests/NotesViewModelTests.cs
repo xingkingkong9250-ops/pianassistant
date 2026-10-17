@@ -113,32 +113,66 @@ public class NotesViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Filter_Selected_OnlySelectedAcrossKinds()
+    public void Filter_OnlyMarked_OverlaysBaseFilter()
     {
         RecomputeWithCuts(10);
         _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5)));
         var shot = _vm.Items.OfType<ScreenshotListItem>().Single();
         var seg = _vm.Items.OfType<SegmentListItem>().First();
-        shot.IsSelected = true;
+        // 勾选标记独立于列表选中：标记截图、选中片段（行选中不参与标记筛选）
+        shot.IsMarked = true;
         seg.IsSelected = true;
 
-        _vm.ActiveFilter = NotesFilter.Selected;
+        // 叠加开关开启：只看标记条目（基筛选 = 全部）
+        _vm.OnlyMarked = true;
+        var markedView = _vm.FilteredItems.ToList();
+        Assert.Single(markedView);
+        Assert.Same(shot, markedView[0]);
 
-        Assert.Equal(2, _vm.FilteredItems.Count);
-        Assert.All(_vm.FilteredItems, i => Assert.True(i.IsSelected));
+        // 与基筛选组合：截图基筛选 + 仅标记 → 仍只有标记的截图
+        _vm.ActiveFilter = NotesFilter.Screenshots;
+        Assert.Single(_vm.FilteredItems);
+        Assert.Same(shot, _vm.FilteredItems[0]);
+
+        // 与片段基筛选组合：无标记片段 → 空
+        _vm.ActiveFilter = NotesFilter.Segments;
+        Assert.Empty(_vm.FilteredItems);
+
+        // 关闭叠加：恢复片段基筛选完整结果（2 片段 + 1 裁切点）
+        _vm.OnlyMarked = false;
+        Assert.Equal(3, _vm.FilteredItems.Count);
     }
 
     [Fact]
-    public void Filter_Selected_RefreshesWhenSelectionChanges()
+    public void Filter_OnlyMarked_RefreshesWhenMarkChanges()
     {
         RecomputeWithCuts(10);
         _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5)));
-        _vm.ActiveFilter = NotesFilter.Selected;
+        _vm.OnlyMarked = true;
         Assert.Empty(_vm.FilteredItems);
 
-        _vm.Items.OfType<ScreenshotListItem>().Single().IsSelected = true;
+        _vm.Items.OfType<ScreenshotListItem>().Single().IsMarked = true;
 
         Assert.Single(_vm.FilteredItems);
+    }
+
+    [Fact]
+    public void Mark_PreservedAcrossRebuild()
+    {
+        RecomputeWithCuts(10);
+        _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5)));
+        _vm.Items.OfType<ScreenshotListItem>().Single().IsMarked = true;
+        _vm.Items.OfType<SegmentListItem>().First().IsMarked = true;
+
+        // 插入新裁切点触发 RebuildItems（片段行全部重建）
+        _vm.RecomputeSegments(
+            new[] { TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(15) },
+            TimeSpan.FromSeconds(30), null);
+
+        var marked = _vm.GetMarkedItems();
+        Assert.Equal(2, marked.Count);
+        Assert.Contains(marked, i => i is ScreenshotListItem);
+        Assert.Contains(marked, i => i is SegmentListItem);
     }
 
     [Fact]
@@ -229,7 +263,7 @@ public class NotesViewModelTests : IDisposable
         Assert.Null(seek);
     }
 
-    // --- 选中导出 ---
+    // --- 标记导出 ---
 
     [Fact]
     public void GetSelectedItems_ReturnsSelectedAcrossKinds()
@@ -247,11 +281,27 @@ public class NotesViewModelTests : IDisposable
     }
 
     [Fact]
-    public void ExportSelectedCommand_RaisesRequestEvent()
+    public void GetMarkedItems_IndependentFromSelection()
+    {
+        RecomputeWithCuts(10);
+        _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5)));
+        // 截图：仅标记；片段：仅行选中 —— 两种状态互不影响
+        _vm.Items.OfType<ScreenshotListItem>().Single().IsMarked = true;
+        _vm.Items.OfType<SegmentListItem>().First().IsSelected = true;
+
+        var marked = _vm.GetMarkedItems();
+        Assert.Single(marked);
+        Assert.Contains(marked, i => i.Kind == TimelineItemKind.Screenshot);
+        Assert.DoesNotContain(_vm.Items, i => i.IsMarked && i.IsSelected);
+        Assert.Single(_vm.GetSelectedItems());
+    }
+
+    [Fact]
+    public void ExportMarkedCommand_RaisesRequestEvent()
     {
         var raised = 0;
-        _vm.ExportSelectedRequested += (_, _) => raised++;
-        _vm.ExportSelectedCommand.Execute(null);
+        _vm.ExportMarkedRequested += (_, _) => raised++;
+        _vm.ExportMarkedCommand.Execute(null);
         Assert.Equal(1, raised);
     }
 

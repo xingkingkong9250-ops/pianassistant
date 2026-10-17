@@ -80,4 +80,16 @@ public class TimelineListItemTests
         Assert.True(item.IsSelected);
         Assert.Equal(1, raised);
     }
+
+    [Fact]
+    public void IsMarked_TwoWay_Notifies_IndependentFromSelection()
+    {
+        var item = new CutPointListItem(TimeSpan.Zero);
+        var raised = 0;
+        item.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(TimelineListItem.IsMarked)) raised++; };
+        item.IsMarked = true;
+        Assert.True(item.IsMarked);
+        Assert.False(item.IsSelected); // 标记与列表选中互不影响
+        Assert.Equal(1, raised);
+    }
 }

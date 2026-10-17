@@ -6,7 +6,7 @@ using PianAssistant.Services;
 
 namespace PianAssistant.ViewModels;
 
-/// <summary>笔记面板筛选模式（W1-C2-D-01）。</summary>
+/// <summary>笔记面板基筛选模式（W1-C2-D-01；与「仅标记」叠加开关组合使用）。</summary>
 public enum NotesFilter
 {
     /// <summary>全部条目。</summary>
@@ -15,16 +15,16 @@ public enum NotesFilter
     Screenshots,
     /// <summary>只显示视频片段（含裁切点）。</summary>
     Segments,
-    /// <summary>只显示选中项。</summary>
-    Selected,
-    /// <summary>只显示裁切点（更多筛选下拉）。</summary>
+    /// <summary>只显示裁切点。</summary>
     CutPointsOnly,
 }
 
 /// <summary>
 /// 侧边笔记面板（W1-C2-D 统一时间线）：截图/片段/裁切点按时间顺序混排。
 /// 片段由裁切点自动分段；裁切点可选中删除，删除后相邻片段自动合并。
-/// 支持五种筛选与选中导出；时间轴标记（Markers）由截图集合生成。
+/// 筛选 = 基筛选（全部/截图/片段/裁切点）+「仅标记」叠加开关；
+/// 勾选标记（IsMarked）为独立记录信息，用于批量导出与叠加筛选；
+/// 时间轴标记（Markers）由截图集合生成。
 /// </summary>
 public sealed class NotesViewModel : ObservableObject
 {
@@ -33,6 +33,7 @@ public sealed class NotesViewModel : ObservableObject
 
     private readonly Func<TimeSpan> _getPosition;
     private NotesFilter _activeFilter = NotesFilter.All;
+    private bool _onlyMarked;
     private IReadOnlyList<TimelineListItem> _filtered = Array.Empty<TimelineListItem>();
     private IReadOnlyList<TimeSpan> _cutPoints = Array.Empty<TimeSpan>();
 
@@ -58,20 +59,31 @@ public sealed class NotesViewModel : ObservableObject
     {
         ArgumentNullException.ThrowIfNull(getPosition);
         _getPosition = getPosition;
-        ExportSelectedCommand = new RelayCommand(
-            () => ExportSelectedRequested?.Invoke(this, EventArgs.Empty));
+        ExportMarkedCommand = new RelayCommand(
+            () => ExportMarkedRequested?.Invoke(this, EventArgs.Empty));
         RefreshFilter();
     }
 
     // --- 筛选 ---
 
-    /// <summary>当前筛选模式。</summary>
+    /// <summary>当前基筛选模式。</summary>
     public NotesFilter ActiveFilter
     {
         get => _activeFilter;
         set
         {
             if (SetProperty(ref _activeFilter, value))
+                RefreshFilter();
+        }
+    }
+
+    /// <summary>「仅标记」叠加开关：开启后在基筛选结果上再只保留已勾选标记的条目。</summary>
+    public bool OnlyMarked
+    {
+        get => _onlyMarked;
+        set
+        {
+            if (SetProperty(ref _onlyMarked, value))
                 RefreshFilter();
         }
     }
@@ -194,27 +206,38 @@ public sealed class NotesViewModel : ObservableObject
         }
     }
 
-    // --- 选中与导出 ---
+    // --- 标记与导出 ---
 
-    /// <summary>当前选中的条目（跨类型，按时间升序）。</summary>
+    /// <summary>当前选中的条目（ListBox 行选中，跨类型；用于 Delete 删裁切点等）。</summary>
     public IReadOnlyList<TimelineListItem> GetSelectedItems() =>
         Items.Where(i => i.IsSelected).ToList();
 
-    /// <summary>导出选中请求：View 层弹目录选择框后执行复制/切出。</summary>
-    public event EventHandler? ExportSelectedRequested;
+    /// <summary>当前勾选标记的条目（跨类型，按时间升序；用于批量导出）。</summary>
+    public IReadOnlyList<TimelineListItem> GetMarkedItems() =>
+        Items.Where(i => i.IsMarked).ToList();
 
-    public ICommand ExportSelectedCommand { get; }
+    /// <summary>导出标记请求：View 层弹目录选择框后执行复制/切出。</summary>
+    public event EventHandler? ExportMarkedRequested;
+
+    public ICommand ExportMarkedCommand { get; }
 
     // --- 内部 ---
 
     /// <summary>重建统一列表：截图按时间编号；排序 Position 升序 + 同刻 裁切点→片段→截图。</summary>
     private void RebuildItems()
     {
-        // 记住选中态来源（截图/裁切点按位置可恢复；片段随分段重建而重置）
+        // 记住选中/标记态来源（截图按 Entry、裁切点按位置、片段按起止时间码恢复；
+        // 勾选标记是用户的独立记录信息，重建后必须保留）
         var selectedShots = Items.OfType<ScreenshotListItem>()
             .Where(i => i.IsSelected).Select(i => i.Entry).ToHashSet();
         var selectedCuts = Items.OfType<CutPointListItem>()
             .Where(i => i.IsSelected).Select(i => i.Position).ToHashSet();
+        var markedShots = Items.OfType<ScreenshotListItem>()
+            .Where(i => i.IsMarked).Select(i => i.Entry).ToHashSet();
+        var markedSegs = Items.OfType<SegmentListItem>()
+            .Where(i => i.IsMarked).Select(i => (i.Segment.Start, i.Segment.End)).ToHashSet();
+        var markedCuts = Items.OfType<CutPointListItem>()
+            .Where(i => i.IsMarked).Select(i => i.Position).ToHashSet();
 
         Items.Clear();
         var rows = new List<TimelineListItem>();
@@ -230,11 +253,21 @@ public sealed class NotesViewModel : ObservableObject
             .OrderBy(r => r.Position)
             .ThenBy(r => r.KindSortOrder))
         {
-            if (row is ScreenshotListItem si && selectedShots.Contains(si.Entry))
-                row.IsSelected = true;
-            if (row is CutPointListItem ci && selectedCuts.Contains(ci.Position))
-                row.IsSelected = true;
-            // 选中态变化需实时刷新「只显示选中项」筛选
+            if (row is ScreenshotListItem si)
+            {
+                if (selectedShots.Contains(si.Entry)) si.IsSelected = true;
+                if (markedShots.Contains(si.Entry)) si.IsMarked = true;
+            }
+            else if (row is SegmentListItem gi)
+            {
+                if (markedSegs.Contains((gi.Segment.Start, gi.Segment.End))) gi.IsMarked = true;
+            }
+            else if (row is CutPointListItem ci)
+            {
+                if (selectedCuts.Contains(ci.Position)) ci.IsSelected = true;
+                if (markedCuts.Contains(ci.Position)) ci.IsMarked = true;
+            }
+            // 选中/标记态变化需实时刷新叠加筛选
             row.PropertyChanged += OnItemPropertyChanged;
             Items.Add(row);
         }
@@ -244,8 +277,9 @@ public sealed class NotesViewModel : ObservableObject
 
     private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(TimelineListItem.IsSelected)
-            && _activeFilter == NotesFilter.Selected)
+        if (e.PropertyName != nameof(TimelineListItem.IsMarked)) return;
+        RaiseChanged(); // 勾选标记是记录信息，触发会话自动保存
+        if (_onlyMarked)
             RefreshFilter();
     }
 
@@ -264,10 +298,12 @@ public sealed class NotesViewModel : ObservableObject
             NotesFilter.Screenshots => Items.Where(i => i.Kind == TimelineItemKind.Screenshot),
             NotesFilter.Segments => Items.Where(i =>
                 i.Kind is TimelineItemKind.Segment or TimelineItemKind.CutPoint),
-            NotesFilter.Selected => Items.Where(i => i.IsSelected),
             NotesFilter.CutPointsOnly => Items.Where(i => i.Kind == TimelineItemKind.CutPoint),
             _ => Items,
         };
+        // 「仅标记」叠加开关：在基筛选结果上再过滤已勾选标记的条目
+        if (_onlyMarked)
+            query = query.Where(i => i.IsMarked);
         _filtered = query.ToList();
         OnPropertyChanged(nameof(FilteredItems));
     }
