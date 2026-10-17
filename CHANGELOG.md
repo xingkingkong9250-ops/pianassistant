@@ -7,6 +7,28 @@
 
 ## [Unreleased]
 
+### v0.14.1 — 老数据片段显示修复 + 条目勾选按钮（NO.P，2026-10-17）
+
+> 用户反馈：笔记列表里的片段打开老数据不显示，需点击时间轴或插入切入点才刷新；片段与截图需加勾选按钮标识选中，用于批量导出视频和截图。
+
+#### 修复
+
+- **打开旧数据片段不显示**：会话还原先于 VLC 解析出时长（`Length=0`），`RecomputeSegments` 因 length=0 跳过建段，片段列表为空直到下一次插入裁切点才出现。修复：`ShellViewModel` 监听 `Player.Length` 从 0 变为实际值时补算一次分段（`OnPlayerLengthChanged`）
+- **侧边栏面板可见性绑定失效**（b48c494）：`NotesView`/`ClipsView` 的 `Visibility` 绑定因 `DataContext` 已切到子 VM 而静默失败，两面板同时渲染互相覆盖；改用 `RelativeSource AncestorType=Window` 绑定窗口 `DataContext.ActivePanel`
+- **TimelineControl 历史坏数据容错**：`OnRender` 对还原会话中 In>Out / In 超时长的坏 I/O 点钳制宽度非负（消除渲染 `ArgumentException`）；`SetViewportWidth` 拒绝 NaN（消除 ScrollViewer 布局未完成时 6 万余次 `MeasureOverride` NaN 异常风暴）；`MeasureOverride` 全链路 `IsFinite` 兜底
+- **全局异常弹窗 30 秒限频**：异常风暴时每次异常都弹模态框，嵌套消息泵导致 `TextShaping.dll` 栈溢出（0xc00000fd）直接杀死进程；改为 30 秒限频弹窗
+
+#### 增强
+
+- **条目勾选按钮**：截图与片段卡片右侧新增复选框（双向绑定 `IsSelected`），点勾即标为「已选中」，配合「✔ 已选中」筛选与「导出选中 / 批量导出」使用，无需再按住 Ctrl 点选；裁切点条目不提供勾选
+
+#### 验证
+
+- Release 编译 0 警告 0 错误；全量 310 个单元测试通过
+- E2E：打开含 13 个历史裁切点的会话，未做任何交互片段即自动显示；勾选框渲染正常、toggle 交互正常且状态保留；全程无 ERROR 日志，应用优雅退出
+
+---
+
 ### v0.14.0 — 笔记面板重构为统一时间线（NO.M，2026-10-17）
 
 > 用户要求：笔记面板按时间顺序排布显示截图与片段；片段由剪切点切断后形成；片段之间保留可选中的裁切点标记，删除后上下片段自动合并；列表项为带缩略图的长方条（前图标、后名称与时长）；片段黄框、截图绿框、裁切点红标；选中项可导出到指定位置（后台先落库）；筛选支持 全部 / 仅截图 / 仅片段（含裁切点）/ 已选中 / 更多筛选。

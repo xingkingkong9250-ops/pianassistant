@@ -179,7 +179,7 @@ public sealed class TimelineControl : Control
         {
             // 更新控件宽度以适配缩放
             var baseWidth = tc._viewportWidth > 0 ? tc._viewportWidth : tc.ActualWidth;
-            if (baseWidth > 0)
+            if (double.IsFinite(baseWidth) && baseWidth > 0 && double.IsFinite(tc.Scale))
                 tc.Width = baseWidth * tc.Scale;
             tc.ScaleChanged?.Invoke(tc, tc.Scale);
         }
@@ -188,17 +188,21 @@ public sealed class TimelineControl : Control
     /// <summary>由外部 ScrollViewer 设置可见区域宽度。</summary>
     public void SetViewportWidth(double width)
     {
+        // ScrollViewer.ViewportWidth 在布局未完成时可能为 NaN，必须拒绝（否则 Width/Measure 产生 NaN 引发布局异常风暴）
+        if (!double.IsFinite(width) || width <= 0) return;
         _viewportWidth = width;
-        if (width > 0)
-            Width = width * Scale;
+        Width = width * Scale;
     }
 
     protected override Size MeasureOverride(Size availableSize)
     {
+        // 兜底：任何非有限值（NaN/Infinity）一律回退为 0，确保 DesiredSize 永远有限
         var w = double.IsInfinity(availableSize.Width) ? _viewportWidth : availableSize.Width;
+        if (!double.IsFinite(w) || w <= 0) w = 0;
         if (w > 0 && _viewportWidth <= 0)
             _viewportWidth = w;
         var desiredWidth = (_viewportWidth > 0 ? _viewportWidth : w) * Scale;
+        if (!double.IsFinite(desiredWidth) || desiredWidth <= 0) desiredWidth = 0;
         return new Size(desiredWidth, 40);
     }
 
@@ -292,7 +296,10 @@ public sealed class TimelineControl : Control
             double outX = OutPoint is { } outP
                 ? outP.TotalMilliseconds / lenMs * w
                 : w;
-            dc.DrawRectangle(inOutBrush, null, new Rect(inX, 0, outX - inX, h));
+            // 容错：历史会话数据可能出现 In>Out 或 In 超出时长，宽度必须非负（否则渲染抛异常）
+            var ioWidth = Math.Max(0, outX - inX);
+            if (ioWidth > 0)
+                dc.DrawRectangle(inOutBrush, null, new Rect(inX, 0, ioWidth, h));
             dc.DrawLine(inOutPen, new Point(inX, 0), new Point(inX, h));
             if (OutPoint is not null)
                 dc.DrawLine(inOutPen, new Point(outX, 0), new Point(outX, h));

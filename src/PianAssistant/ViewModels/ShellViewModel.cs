@@ -183,6 +183,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         // 裁切点变化 → 重算分段并重建统一时间线列表
         Player.CutPoints.CollectionChanged += OnCutPointsChanged;
+        // 会话还原时 VLC 尚未解析出时长（Length=0），分段被跳过；
+        // 时长就绪后（0 → 实际值）若已有裁切点则补算一次分段。
+        Player.PropertyChanged += OnPlayerLengthChanged;
 
         // Wire Playlist → Player.
         Playlist.CurrentChanged += OnPlaylistCurrentChanged;
@@ -362,6 +365,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>裁切点集合变化时重算分段并重建笔记面板统一时间线（删除裁切点即合并相邻片段）。</summary>
     private void OnCutPointsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
+    }
+
+    /// <summary>
+    /// 时长从 0 变为实际值时补算分段：打开旧会话时还原先于 VLC 解析出时长，
+    /// RecomputeSegments 因 length=0 跳过建段，导致片段列表为空直到下一次交互。
+    /// </summary>
+    private void OnPlayerLengthChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PlayerViewModel.Length)) return;
+        if (Player.Length <= TimeSpan.Zero || Player.CutPoints.Count == 0) return;
         Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
     }
 

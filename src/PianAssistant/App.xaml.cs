@@ -16,6 +16,8 @@ public partial class App : Application
     private ServiceRegistry? _services;
     private ShellViewModel? _shell;
     private MainWindow? _mainWindow;
+    // 全局异常弹窗限频（防止异常风暴时嵌套模态消息泵栈溢出）。
+    private DateTime _lastErrorBoxUtc = DateTime.MinValue;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -139,9 +141,15 @@ public partial class App : Application
             AppLog.Error("[App] 未处理的 UI 线程异常", args.Exception);
             // 尽力把当前素材会话落库，降低异常退出时的数据损失（M7）。
             TryFlushSessions();
-            MessageBox.Show(
-                "发生未处理错误，已记录日志。应用可能仍可继续使用。",
-                "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            // 弹窗限频：异常风暴（如布局 NaN 循环）若每次异常都弹模态框，
+            // 嵌套消息泵会栈溢出（TextShaping.dll 0xc00000fd）直接杀死进程。
+            if ((DateTime.UtcNow - _lastErrorBoxUtc) > TimeSpan.FromSeconds(30))
+            {
+                _lastErrorBoxUtc = DateTime.UtcNow;
+                MessageBox.Show(
+                    "发生未处理错误，已记录日志。应用可能仍可继续使用。",
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
             args.Handled = true;
         };
 

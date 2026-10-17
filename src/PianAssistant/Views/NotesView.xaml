@@ -44,6 +44,9 @@
                     </ContextMenu>
                 </Border.ContextMenu>
                 <DockPanel>
+                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                              VerticalAlignment="Center" Margin="6,0,2,0" Focusable="False"
+                              ToolTip="勾选标记为「已选中」，供导出选中 / 批量导出使用" />
                     <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="14"
                                VerticalAlignment="Center" Margin="2,0,6,0" />
                     <Border DockPanel.Dock="Left" Width="120" Height="68" ClipToBounds="True"
@@ -73,6 +76,9 @@
                     </ContextMenu>
                 </Border.ContextMenu>
                 <DockPanel>
+                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                              VerticalAlignment="Center" Margin="6,0,2,0" Focusable="False"
+                              ToolTip="勾选标记为「已选中」，供导出选中 / 批量导出使用" />
                     <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="14"
                                VerticalAlignment="Center" Margin="2,0,6,0" />
                     <Border DockPanel.Dock="Left" Width="120" Height="68" ClipToBounds="True"
