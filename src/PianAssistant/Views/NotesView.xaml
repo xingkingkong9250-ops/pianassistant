@@ -147,27 +147,29 @@
             </StackPanel>
         </Border>
 
-        <!-- W1-C2-D-02 工具栏：画廊 / 裁切点导入导出 / 批量导出 / 导出选中 -->
+        <!-- W1-C2-D-02 工具栏：导出选中 -->
+<!-- 旧工具栏按钮（画廊 / 裁切点导入导出 / 批量导出）已从界面移除，功能与处理器保留备份，需要时取消注释复用：
+<Button Content="🖼 画廊" Padding="8,3" FontSize="12"
+        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+        Cursor="Hand" Focusable="False" Click="OnOpenGallery"
+        ToolTip="打开截图画廊（网格浏览 / 大图翻页 / 标注）" />
+<Button Content="⬆ 导入裁切" Padding="8,3" FontSize="12"
+        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+        Cursor="Hand" Focusable="False" Click="OnImportCutPoints"
+        ToolTip="从文本清单导入裁切点（将替换现有裁切点）" />
+<Button Content="⬇ 导出裁切" Padding="8,3" FontSize="12"
+        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+        Cursor="Hand" Focusable="False" Click="OnExportCutPoints"
+        ToolTip="导出裁切点清单（自动生成片段行）" />
+<Button Content="📦 批量导出" Padding="8,3" FontSize="12"
+        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
+        Cursor="Hand" Focusable="False" Click="OnOpenClipsPanel"
+        ToolTip="打开片段批量导出面板（队列进度 / 拼接）" />
+-->
         <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="6,5"
                 BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal">
-                <Button Content="� 画廊" Padding="8,3" FontSize="12"
-                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                        Cursor="Hand" Focusable="False" Click="OnOpenGallery"
-                        ToolTip="打开截图画廊（网格浏览 / 大图翻页 / 标注）" />
-                <Button Content="⬆ 导入裁切" Padding="8,3" FontSize="12"
-                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                        Cursor="Hand" Focusable="False" Click="OnImportCutPoints"
-                        ToolTip="从文本清单导入裁切点（将替换现有裁切点）" />
-                <Button Content="⬇ 导出裁切" Padding="8,3" FontSize="12"
-                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                        Cursor="Hand" Focusable="False" Click="OnExportCutPoints"
-                        ToolTip="导出裁切点清单（自动生成片段行）" />
-                <Button Content="📦 批量导出" Padding="8,3" FontSize="12"
-                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                        Cursor="Hand" Focusable="False" Click="OnOpenClipsPanel"
-                        ToolTip="打开片段批量导出面板（队列进度 / 拼接）" />
-                <Button Content="� 导出选中" Padding="8,3" FontSize="12"
+                <Button Content="📤 导出选中" Padding="8,3" FontSize="12"
                         Background="Transparent" Foreground="#D7BA7D" BorderThickness="0"
                         Cursor="Hand" Focusable="False"
                         Command="{Binding ExportSelectedCommand}"
