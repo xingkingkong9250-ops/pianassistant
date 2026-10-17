@@ -61,6 +61,8 @@ public sealed class NotesViewModel : ObservableObject
         _getPosition = getPosition;
         ExportMarkedCommand = new RelayCommand(
             () => ExportMarkedRequested?.Invoke(this, EventArgs.Empty));
+        ExportDataCommand = new RelayCommand(
+            () => ExportDataRequested?.Invoke(this, EventArgs.Empty));
         RefreshFilter();
     }
 
@@ -220,6 +222,46 @@ public sealed class NotesViewModel : ObservableObject
     public event EventHandler? ExportMarkedRequested;
 
     public ICommand ExportMarkedCommand { get; }
+
+    /// <summary>导出数据请求：View 层弹保存框后写 JSON。</summary>
+    public event EventHandler? ExportDataRequested;
+
+    public ICommand ExportDataCommand { get; }
+
+    /// <summary>
+    /// 构建「导出数据」快照（W1-C2-D-02）：裁切点、自动分段、截图清单
+    /// 及各条目的勾选标记状态。时间码 HH:mm:ss.fff。
+    /// </summary>
+    public NotesExportData BuildExportData(string? sourcePath, TimeSpan length)
+    {
+        var data = new NotesExportData
+        {
+            SourcePath = sourcePath,
+            ExportedAt = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss"),
+            VideoLength = length > TimeSpan.Zero ? FormatLong(length) : null,
+        };
+        foreach (var cp in _cutPoints.OrderBy(c => c))
+            data.CutPoints.Add(FormatLong(cp));
+        foreach (var seg in Items.OfType<SegmentListItem>())
+            data.Segments.Add(new ExportSegment
+            {
+                Index = seg.Segment.Index,
+                Start = FormatLong(seg.Segment.Start),
+                End = FormatLong(seg.Segment.End),
+                Marked = seg.IsMarked,
+            });
+        foreach (var shot in Items.OfType<ScreenshotListItem>())
+            data.Screenshots.Add(new ExportScreenshot
+            {
+                Position = FormatLong(shot.Entry.Position),
+                File = shot.Entry.OutputPath,
+                Marked = shot.IsMarked,
+            });
+        return data;
+    }
+
+    /// <summary>HH:mm:ss.fff（超一小时也能完整表达）。</summary>
+    private static string FormatLong(TimeSpan ts) => ts.ToString(@"hh\:mm\:ss\.fff");
 
     // --- 内部 ---
 

@@ -36,11 +36,13 @@ public partial class NotesView : UserControl
         if (e.OldValue is NotesViewModel oldVm)
         {
             oldVm.ExportMarkedRequested -= OnExportMarkedRequested;
+            oldVm.ExportDataRequested -= OnExportDataRequested;
             oldVm.PropertyChanged -= OnVmPropertyChanged;
         }
         if (e.NewValue is NotesViewModel newVm)
         {
             newVm.ExportMarkedRequested += OnExportMarkedRequested;
+            newVm.ExportDataRequested += OnExportDataRequested;
             newVm.PropertyChanged += OnVmPropertyChanged;
         }
     }
@@ -193,6 +195,50 @@ public partial class NotesView : UserControl
             return;
         }
         ExportSegmentsToFolder(marked);
+    }
+
+    // --- 导出数据：裁切点 / 片段 / 截图 / 勾选标记 → JSON ---
+
+    private void OnExportDataRequested(object? sender, EventArgs e)
+    {
+        var vm = Vm;
+        var shell = (Window.GetWindow(this) as MainWindow)?.Shell;
+        if (vm is null || shell is null) return;
+        if (vm.Items.Count == 0)
+        {
+            MessageBox.Show("当前没有可导出的数据（请先打开视频并产生截图/裁切点）。",
+                "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var defaultName = Path.GetFileNameWithoutExtension(shell.Player.CurrentPath ?? "拉片数据");
+        var dlg = new SaveFileDialog
+        {
+            Title = "导出数据（JSON）",
+            FileName = $"{defaultName}_拉片数据.json",
+            Filter = "JSON 文件|*.json",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var data = vm.BuildExportData(shell.Player.CurrentPath, shell.Player.Length);
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            };
+            File.WriteAllText(dlg.FileName,
+                System.Text.Json.JsonSerializer.Serialize(data, options),
+                new System.Text.UTF8Encoding(false));
+            MessageBox.Show(
+                $"已导出数据：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}\n{dlg.FileName}",
+                "导出数据", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"导出失败：{ex.Message}", "导出数据", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     /// <summary>弹目录选择框，后台执行复制/切出，完成后弹汇总提示。</summary>

@@ -305,6 +305,40 @@ public class NotesViewModelTests : IDisposable
         Assert.Equal(1, raised);
     }
 
+    [Fact]
+    public void ExportDataCommand_RaisesRequestEvent()
+    {
+        var raised = 0;
+        _vm.ExportDataRequested += (_, _) => raised++;
+        _vm.ExportDataCommand.Execute(null);
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public void BuildExportData_ContainsCutPointsSegmentsScreenshotsAndMarks()
+    {
+        RecomputeWithCuts(10);
+        _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5)));
+        _vm.Items.OfType<ScreenshotListItem>().Single().IsMarked = true;
+        _vm.Items.OfType<SegmentListItem>().First().IsMarked = true;
+
+        var data = _vm.BuildExportData("C:\\video.mp4", TimeSpan.FromSeconds(30));
+
+        Assert.Equal(1, data.Version);
+        Assert.Equal("C:\\video.mp4", data.SourcePath);
+        Assert.Equal("00:00:30.000", data.VideoLength);
+        Assert.Single(data.CutPoints);
+        Assert.Equal("00:00:10.000", data.CutPoints[0]);
+        Assert.Equal(2, data.Segments.Count);
+        Assert.True(data.Segments[0].Marked);   // 0-10s 段被标记
+        Assert.False(data.Segments[1].Marked);
+        Assert.Single(data.Screenshots);
+        Assert.Equal("00:00:05.000", data.Screenshots[0].Position);
+        Assert.True(data.Screenshots[0].Marked);
+        Assert.NotEmpty(data.Screenshots[0].File);
+        Assert.False(string.IsNullOrEmpty(data.ExportedAt));
+    }
+
     // --- 删除截图 / 清空 ---
 
     [Fact]
