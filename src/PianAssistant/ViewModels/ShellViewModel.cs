@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
@@ -448,25 +449,47 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// 导入人工编辑过的「导出数据」CSV 解析结果，覆盖当前视频的笔记数据
     /// （W1-C2-D-02）：① 裁切点以文件为准覆盖（自动重算分段）；
     /// ② 文件截图清单未列出的现有截图记录移除（png 文件保留不删）；
-    /// ③ 重建完成后以文件为标记真值源，逐条设置截图/片段勾选标记。
+    /// ③ 重建完成后以文件为标记真值源，逐条设置截图/片段勾选标记；
+    /// ④ 文件缺失的截图行按时间码后台 ffmpeg 重新抽帧（v1.2.0）。
     /// </summary>
     public void ImportNotesData(NotesExportData data)
     {
         ArgumentNullException.ThrowIfNull(data);
 
-        // 1. 截图集合覆盖：仅当 CSV 携带有效截图清单（至少一个文件路径）时执行移除；
-        //    文件列全缺失时不动截图集合（视为该文件不含截图管理意图），标记也保持不变。
-        var csvShots = data.Screenshots.Where(s => s.File.Length > 0).ToList();
-        bool managesScreenshots = csvShots.Count > 0;
+        // 1. 截图行分类：① 文件路径在磁盘存在 → 保留/回填（不抽帧）；
+        //    ② 文件列空或 png 缺失 → 记时间码待后台重建；③ 时间码无效的行丢弃。
+        var keptFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rebuilds = new List<(TimeSpan Position, bool Marked)>();
+        foreach (var s in data.Screenshots)
+        {
+            if (s.File.Length > 0 && File.Exists(s.File))
+            {
+                keptFiles.Add(s.File);
+                continue;
+            }
+            if (NotesDataCsvService.TryParseTime(s.Position, out var pos) && pos > TimeSpan.Zero)
+                rebuilds.Add((pos, s.Marked));
+        }
+        bool managesScreenshots = data.Screenshots.Count > 0;
         if (managesScreenshots)
         {
-            var csvShotFiles = csvShots
-                .Select(s => s.File)
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // 未被 CSV 引用的现有记录移除（png 文件保留不删）
             foreach (var shot in Screenshots.Items
-                         .Where(s => !csvShotFiles.Contains(s.OutputPath)).ToList())
+                         .Where(s => !keptFiles.Contains(s.OutputPath)).ToList())
             {
                 Notes.RemoveScreenshot(shot);
+            }
+            // CSV 有效文件行在集合中缺失时直接回填记录（换机/目录迁移但 png 已拷贝场景）
+            var existing = Screenshots.Items.Select(s => s.OutputPath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in data.Screenshots)
+            {
+                if (!keptFiles.Contains(s.File) || existing.Contains(s.File)) continue;
+                var pos = NotesDataCsvService.TryParseTime(s.Position, out var p) ? p : TimeSpan.Zero;
+                var entry = new ScreenshotEntry(
+                    Player.CurrentPath ?? string.Empty, s.File, pos, DateTime.Now);
+                Screenshots.Add(entry);
+                Notes.AddScreenshot(entry);
             }
         }
 
@@ -480,14 +503,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Player.SetCutPoints(points.Distinct().OrderBy(t => t).ToList());
 
         // 3. 标记恢复：以 CSV 为真值源强制设置（含未标记的显式重置）；
-        //    CSV 不含截图清单时截图标记保持现状不动。
+        //    重建中的缺失截图标记在抽帧完成入列表时按 CSV 值设置。
         static TimeSpan T(string text) =>
             NotesDataCsvService.TryParseTime(text, out var t) ? t : TimeSpan.Zero;
         var segMarks = new HashSet<(long Start, long End)>(
             data.Segments.Where(s => s.Marked)
                 .Select(s => (T(s.Start).Ticks, T(s.End).Ticks)));
         var shotMarks = new HashSet<string>(
-            csvShots.Where(s => s.Marked).Select(s => s.File),
+            data.Screenshots.Where(s => s.Marked && s.File.Length > 0).Select(s => s.File),
             StringComparer.OrdinalIgnoreCase);
         foreach (var item in Notes.Items)
         {
@@ -501,6 +524,56 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     break;
             }
         }
+
+        // 4. 缺失截图后台重建：按时间码 ffmpeg 抽帧，完成即入列表
+        if (rebuilds.Count > 0)
+            RebuildMissingScreenshots(rebuilds);
+    }
+
+    /// <summary>轻量提示请求（如导入重建截图汇总），View 层弹 toast。</summary>
+    public event EventHandler<string>? ToastRequested;
+
+    /// <summary>
+    /// 缺失截图后台重建（v1.2.0）：按导入数据的时间码逐条 ffmpeg 从源视频
+    /// 抽帧，产物校验通过后回 UI 线程入画廊与笔记列表并按 CSV 设置勾选；
+    /// 全部结束后 toast 汇总。单条失败不中断其余重建。
+    /// </summary>
+    private void RebuildMissingScreenshots(IReadOnlyList<(TimeSpan Position, bool Marked)> shots)
+    {
+        if (string.IsNullOrEmpty(Player.CurrentPath)) return;
+        var screenshotService = _services.Screenshots;
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null) return;
+        _ = Task.Run(async () =>
+        {
+            int ok = 0, fail = 0;
+            foreach (var (pos, marked) in shots)
+            {
+                try
+                {
+                    var entry = screenshotService.CaptureAt(pos);
+                    if (!File.Exists(entry.OutputPath))
+                        throw new InvalidOperationException("抽帧产物未生成（时间码可能超出视频时长）");
+                    await dispatcher.InvokeAsync(() =>
+                    {
+                        Screenshots.Add(entry);
+                        Notes.AddScreenshot(entry);
+                        var item = Notes.Items.OfType<ScreenshotListItem>()
+                            .FirstOrDefault(i => i.Entry.Position == entry.Position);
+                        if (item is not null) item.IsMarked = marked;
+                    });
+                    ok++;
+                }
+                catch (Exception ex)
+                {
+                    fail++;
+                    AppLog.Error($"[ShellVM] 导入重建截图失败 @{pos:hh\\:mm\\:ss\\.fff}", ex);
+                }
+            }
+            await dispatcher.InvokeAsync(() => ToastRequested?.Invoke(this,
+                $"导入完成：重建缺失截图 {ok}/{shots.Count}" +
+                (fail > 0 ? $"（失败 {fail}）" : string.Empty)));
+        });
     }
 
     /// <summary>

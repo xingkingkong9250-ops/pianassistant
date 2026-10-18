@@ -121,6 +121,8 @@ public partial class MainWindow : Window
         shell.Player.FullscreenExitRequested += OnFullscreenExit;
         // 清空全部标记（Ctrl+Shift+C / W1-R1-11）：确认后执行
         shell.ConfirmClearAllMarksRequested += OnConfirmClearAllMarks;
+        // 导入数据重建缺失截图等后台任务汇总提示（toast）
+        shell.ToastRequested += (_, msg) => ShowToast(msg);
 
         // 截图画廊入口（顶部 🖼 按钮）
         shell.GalleryRequested += (_, _) => OpenGallery();

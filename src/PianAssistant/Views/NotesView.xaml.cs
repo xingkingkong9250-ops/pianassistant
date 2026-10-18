@@ -284,11 +284,16 @@ public partial class NotesView : UserControl
                              && !string.Equals(data.SourcePath, shell.Player.CurrentPath, StringComparison.OrdinalIgnoreCase)
                              ? "\n\n⚠ 该数据文件来自其他视频。"
                              : string.Empty;
-        // 文件列是否携带截图清单：未携带（全缺失）时截图记录与标记保持不变
-        bool managesScreenshots = data.Screenshots.Any(s => s.File.Length > 0);
+        // 截图清单管理意图：只要携带截图行即管理截图集合；
+        // 文件缺失的行将按时间码后台 ffmpeg 重新抽帧（v1.2.0）
+        bool managesScreenshots = data.Screenshots.Count > 0;
+        int missingShots = data.Screenshots.Count(
+            s => s.File.Length == 0 || !File.Exists(s.File));
         var screenshotRule = managesScreenshots
-            ? "· 文件未列出的截图记录将被移除（png 文件保留）\n· 截图勾选标记以文件为准覆盖\n"
-            : "· 文件未包含截图清单（文件列缺失）：截图记录与标记保持不变\n";
+            ? (missingShots > 0
+                ? $"· 文件未列出的截图记录将被移除（png 文件保留）\n· {missingShots} 张缺失截图将按时间码自动重新截取\n"
+                : "· 文件未列出的截图记录将被移除（png 文件保留）\n· 截图勾选标记以文件为准覆盖\n")
+            : "· 文件未包含截图清单：截图记录与标记保持不变\n";
         var confirm = MessageBox.Show(
             $"将导入并覆盖当前视频的笔记数据：\n裁切点 {data.CutPoints.Count} · 片段 {data.Segments.Count} · 截图 {data.Screenshots.Count}{warnOtherVideo}\n\n" +
             "· 裁切点以文件为准覆盖（自动重算片段）\n" +

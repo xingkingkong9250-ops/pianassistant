@@ -48,7 +48,13 @@ public sealed class ScreenshotService
     /// Captures a screenshot at the current player position (ffmpeg 单帧抽帧)
     /// and returns the screenshot entry.
     /// </summary>
-    public ScreenshotEntry Capture(string? label = null)
+    public ScreenshotEntry Capture(string? label = null) => CaptureAt(_playback.Position, label);
+
+    /// <summary>
+    /// 在指定时间码抽帧（不依赖播放器当前位置）：导入数据时按 CSV 时间码
+    /// 重建缺失截图用（v1.2.0）。文件命名与 <see cref="Capture"/> 一致。
+    /// </summary>
+    public ScreenshotEntry CaptureAt(TimeSpan position, string? label = null)
     {
         if (_playback.CurrentPath is null)
             throw new InvalidOperationException("No media is open.");
@@ -58,15 +64,14 @@ public sealed class ScreenshotService
         Directory.CreateDirectory(outputDir);
 
         var source = Path.GetFileNameWithoutExtension(_playback.CurrentPath);
-        var pos = _playback.Position;
-        var stamp = $"{source}_{TimeCodeFormatter.ToFileNameFragment(pos)}_{DateTime.Now:yyyyMMddHHmmss}.{_format}";
+        var stamp = $"{source}_{TimeCodeFormatter.ToFileNameFragment(position)}_{DateTime.Now:yyyyMMddHHmmss}.{_format}";
         var outputPath = Path.Combine(outputDir, stamp);
         outputPath = MakeUnique(outputPath);
 
         // 后台 ffmpeg 抽帧：从源视频按时间点取原始帧（不依赖播放器状态）
-        _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, pos, outputPath);
+        _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, position, outputPath);
 
-        return new ScreenshotEntry(_playback.CurrentPath, outputPath, pos, DateTime.Now, label);
+        return new ScreenshotEntry(_playback.CurrentPath, outputPath, position, DateTime.Now, label);
     }
 
     private static string MakeUnique(string path)

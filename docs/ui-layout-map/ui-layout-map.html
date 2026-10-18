@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.1.3）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.2.0）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.1.3 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.2.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -270,7 +270,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-C1-02"><td class="num">W1-C1-02</td><td>列表 ListBox</td><td>拖拽排序、双击播放；虚拟化</td></tr>
 <tr data-num="W1-C1-03"><td class="num">W1-C1-03</td><td>列表项右键菜单</td><td>删除 / 复制路径 / 在资源管理器中打开</td></tr>
 <tr data-num="W1-C2-D-01"><td class="num">W1-C2-D-01</td><td>筛选栏</td><td>基筛选 chip（单选）：☰ 全部 / 📷 截图 / 🎬 片段（含裁切点）/ ✂ 仅裁切点；叠加开关 ⚑ 仅标记（v0.15.0 起替换「已选中」，与 ☑ 勾选联动）</td></tr>
-<tr data-num="W1-C2-D-02"><td class="num">W1-C2-D-02</td><td>工具栏</td><td>📤 导出标记（勾选条目批量导出）· 📋 导出数据（v0.16.0，.xlsx/CSV 表格）· 📥 导入数据（v0.17.0，覆盖裁切点/截图/标记）。旧按钮（画廊/导入导出裁切/批量导出）v0.14.2 起从界面移除，功能与处理器备份保留</td></tr>
+<tr data-num="W1-C2-D-02"><td class="num">W1-C2-D-02</td><td>工具栏</td><td>📤 导出标记（勾选条目批量导出）· 📋 导出数据（v0.16.0，.xlsx/CSV 表格）· 📥 导入数据（v0.17.0，覆盖裁切点/截图/标记；<strong>v1.2.0 起文件缺失的截图行按时间码后台 ffmpeg 自动重新截取</strong>）。旧按钮（画廊/导入导出裁切/批量导出）v0.14.2 起从界面移除，功能与处理器备份保留</td></tr>
 <tr data-num="W1-C2-D-03"><td class="num">W1-C2-D-03</td><td>统一时间线列表</td><td>截图（绿框 #4EC9B0 📷）/ 片段（黄框 #D7BA7D 🎬）/ 裁切点（红条 #E51400 ✂）按时间混排；条目右侧 ☑ 勾选标记（v0.14.1 新增，v0.15.0 起为独立记录 IsMarked，跨列表重建保留）；Extended 多选；Delete 删除选中裁切点（合并相邻片段）</td></tr>
 <tr data-num="W1-C2-D-04"><td class="num">W1-C2-D-04</td><td>截图项右键菜单</td><td>打开所在文件夹 / 标注 / 删除</td></tr>
 <tr data-num="W1-C2-D-05"><td class="num">W1-C2-D-05</td><td>片段项右键菜单</td><td>导出此段（弹目录选择框）/ 跳转播放</td></tr>
