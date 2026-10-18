@@ -154,11 +154,20 @@ public sealed class TimelineControl : Control
             oldCol.CollectionChanged -= control.OnMarkedSegmentsCollectionChanged;
         if (e.NewValue is INotifyCollectionChanged newCol)
             newCol.CollectionChanged += control.OnMarkedSegmentsCollectionChanged;
-        control.InvalidateVisual();
+        control.InvalidateTimelineVisual();
     }
 
     private void OnMarkedSegmentsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        => InvalidateVisual();
+        => InvalidateTimelineVisual();
+
+    // 集合同步可能来自非 UI 线程（VLC 事件链），InvalidateVisual 必须在 UI 线程执行。
+    private void InvalidateTimelineVisual()
+    {
+        if (Dispatcher.CheckAccess())
+            InvalidateVisual();
+        else
+            Dispatcher.BeginInvoke(() => InvalidateVisual());
+    }
 
     /// <summary>缩放比例：1.0=适应宽度，越大越放大。范围 0.5~50。</summary>
     public double Scale

@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### v1.1.2 — 修复：打开视频崩溃两次（NO.P，2026-10-18）
+
+> 现象：打开带裁切点的视频即崩（0xe0434352）。与视频大小无关——WER 堆栈定位为跨线程
+> `InvalidOperationException`：LibVLC `Playing` 事件从原生线程回调 → set_Length →
+> RecomputeSegments → MarkedSegments 变化 → TimelineControl.InvalidateVisual（要求 UI 线程）。
+> v1.1.0 前未崩只是时序巧合（无裁切点时 OnPlayerLengthChanged 提前 return）。
+
+#### 变更
+
+- **根治**：VideoPlaybackService 全部 VLC 事件（TimeChanged/Playing/Paused/Stopped/EndReached）
+  统一经 `RaiseOnUi` marshal 到 UI 线程
+- **纵深防御**：TimelineControl 黄带回调改走 `InvalidateTimelineVisual`（Dispatcher.CheckAccess 分流）
+- 版本 1.1.1 → 1.1.2
+
+---
+
 ### v1.1.1 — 修复：无裁切点时片段选中/标记不可用（NO.P，2026-10-18）
 
 > E2E 反馈：拖播放头无段高亮跟随、X 无法标记。根因：自动选中在无裁切点时被实现为「不选中」，

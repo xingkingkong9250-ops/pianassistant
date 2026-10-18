@@ -1,5 +1,7 @@
 using LibVLCSharp.Shared;
 using System.IO;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace PianAssistant.Services;
 
@@ -68,20 +70,32 @@ public sealed class VideoPlaybackService : IVideoPlayback
             EnableHardwareDecoding = true,
             Scale = 0f, // fit
         };
-        _mediaPlayer.TimeChanged += (_, _) => PositionChanged?.Invoke(this, Position);
-        _mediaPlayer.EndReached += (_, _) => EndReached?.Invoke(this, EventArgs.Empty);
+        // LibVLC 事件从原生线程回调；统一 marshal 到 UI 线程，避免
+        // ViewModel→集合→WPF 渲染链在非 UI 线程执行引发跨线程崩溃（v1.1.2）
+        _mediaPlayer.TimeChanged += (_, _) => RaiseOnUi(() => PositionChanged?.Invoke(this, Position));
+        _mediaPlayer.EndReached += (_, _) => RaiseOnUi(() => EndReached?.Invoke(this, EventArgs.Empty));
         // Parse track info (fps/dimensions) once playback starts — tracks
         // are demuxed by then. Replaces ESAdded (not available in 3.8.2).
-        _mediaPlayer.Playing += (_, _) =>
+        _mediaPlayer.Playing += (_, _) => RaiseOnUi(() =>
         {
             OnMediaParsed();
             // 音轨此刻才完成选择：若当前处于高速档（如打开时按倍速记忆恢复 8×），
             // 需再次应用音轨策略禁用音频，解除 4× 时钟钳制
             ApplyHighRateAudioPolicy(Rate);
             Playing?.Invoke(this, EventArgs.Empty);
-        };
-        _mediaPlayer.Paused += (_, _) => Paused?.Invoke(this, EventArgs.Empty);
-        _mediaPlayer.Stopped += (_, _) => Stopped?.Invoke(this, EventArgs.Empty);
+        });
+        _mediaPlayer.Paused += (_, _) => RaiseOnUi(() => Paused?.Invoke(this, EventArgs.Empty));
+        _mediaPlayer.Stopped += (_, _) => RaiseOnUi(() => Stopped?.Invoke(this, EventArgs.Empty));
+    }
+
+    /// <summary>在 UI 线程执行（VLC 原生线程回调一律经此调度；无 Application 时同步执行，测试环境安全）。</summary>
+    private static void RaiseOnUi(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            action();
+        else
+            dispatcher.BeginInvoke(action);
     }
 
     private void OnMediaParsed()
