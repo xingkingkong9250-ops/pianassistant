@@ -4,13 +4,18 @@
 
 ## 快速开始
 
-### 首次启动准备
+### 普通用户
+
+直接使用安装包 `artifacts\installer\PianAssistant_Setup_v1.0.0.exe`，双击安装即可——
+**.NET 运行时、VLC、ffmpeg 已全部内置，无需任何额外环境**。
+
+详细安装与使用步骤见同目录下的 [《拉片助手 安装使用说明》](../拉片助手_安装使用说明_v1.0.0.md)。
+
+### 开发者
 
 1. 安装 .NET 10 SDK（Windows x64）
 2. 跑 `tools\download-ffmpeg.ps1` 下载 ffmpeg.exe / ffprobe.exe 到
    `src\PianAssistant\Tools\ffmpeg\`（首次 clone 必做，gitignored）
-
-### 构建
 
 ```powershell
 # 日常门禁：Release 0 警告 + 测试 + self-contained 发布
@@ -18,17 +23,21 @@
 
 # 直接运行（Debug）
 .\run.bat
+
+# 生成安装包（需先跑门禁，再用 Inno Setup 6 编译 installer\PianAssistant.iss）
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.0.0 installer\PianAssistant.iss
 ```
 
 ### 使用
 
 - 拖视频文件到窗口或菜单「打开」
 - **Space** 播放/暂停，**←/→** 逐帧，**Shift+←/→** ±1 秒，**Ctrl+←/→** ±10 秒
-- **I/O** 标记入/出点，**C** 截取片段
-- **S** 截图（PNG，文件名含时间码）
+- **I/O** 标记入/出点，**Ctrl+Shift+E** 截取片段
+- **C** 添加裁切点，**Ctrl+Shift+C** 清空全部标记（裁切点 + 截图）
+- **S** 截图（时间轴标记点 + ffmpeg 后台抽帧缩略图进笔记列表）
 - **F** 全屏，**Esc** 退出全屏
-- **+/-** 变速 0.25×~4×
-- 侧边栏顶部切换「播放列表 / 笔记」面板
+- **+/-** 变速 0.25×~8×（>4× 自动静音以保证画面流畅）
+- 侧边栏顶部切换「播放列表 / 拉片笔记」面板
 
 更多见 `docs\USER_GUIDE.md`。
 
@@ -41,6 +50,6 @@
 ## 技术栈
 
 - C# / .NET 10 (`net10.0-windows`) / WPF，纯 MVVM
-- LibVLCSharp.WPF（VLC 引擎，多格式播放 + TakeSnapshot 截图）
-- ffmpeg.exe 子进程（片段截取，流复制默认+重编码可选）
+- LibVLCSharp.WPF（VLC 引擎，多格式播放）
+- ffmpeg.exe 子进程（片段截取 + 截图抽帧，流复制默认+重编码可选）
 - 不引入 WebView2 / Electron / 第三方 MVVM 框架
