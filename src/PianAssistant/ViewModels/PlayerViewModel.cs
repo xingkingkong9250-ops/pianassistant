@@ -705,11 +705,11 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     /// <summary>
     /// 根据点击位置确定所属段：找到前后两个相邻裁切点。
     /// 若只有一个裁切点，段为 [该点, 视频尾]。
-    /// 若无裁切点，不选中。
+    /// 无裁切点时整片为一个片段（与自动选中一致）。
     /// </summary>
     public void SelectSegmentAt(TimeSpan position)
     {
-        if (CutPoints.Count == 0) return;
+        if (_length <= TimeSpan.Zero) return;
         // 找到 position 落在哪两个裁切点之间
         TimeSpan start = TimeSpan.Zero;
         TimeSpan end = _length;
@@ -733,22 +733,14 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// 播放头所在片段自动选中（v0.21.0）：仅当所在段边界与当前选中不同才更新，
-    /// 避免逐帧 SetProperty 触发时间轴重绘。无裁切点时清空选中。
+    /// 播放头所在片段自动选中：仅当所在段边界与当前选中不同才更新，
+    /// 避免逐帧 SetProperty 触发时间轴重绘。
+    /// 无裁切点时整片视为片段 1（与笔记面板 RecomputeSegments 分段一致）；
+    /// 时长未知（VLC 尚未解析）时不选中。
     /// </summary>
     private void UpdateSelectedSegmentFromPlayhead()
     {
-        if (CutPoints.Count == 0)
-        {
-            if (SelectedSegmentStart is not null || SelectedSegmentEnd is not null)
-            {
-                SelectedSegmentStart = null;
-                SelectedSegmentEnd = null;
-                ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
-                ((RelayCommand)ToggleMarkSelectedSegmentCommand).RaiseCanExecuteChanged();
-            }
-            return;
-        }
+        if (_length <= TimeSpan.Zero) return;
         TimeSpan start = TimeSpan.Zero, end = _length;
         foreach (var cp in CutPoints)
         {

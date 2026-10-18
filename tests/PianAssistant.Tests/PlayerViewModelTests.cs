@@ -286,7 +286,7 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
-    public void RemoveCutPoint_ClearsSelectedSegment()
+    public void RemoveCutPoint_FallsBackToFullVideoSelection()
     {
         var path = Path.Combine(_tempDir, "video.mp4");
         File.WriteAllText(path, "stub");
@@ -297,7 +297,10 @@ public class PlayerViewModelTests : IDisposable
 
         _vm.RemoveCutPoint(TimeSpan.FromSeconds(10));
 
-        Assert.False(_vm.HasSelectedSegment);
+        // 删除唯一裁切点后整片回退为片段 1（0 → 视频尾）
+        Assert.True(_vm.HasSelectedSegment);
+        Assert.Equal(TimeSpan.Zero, _vm.SelectedSegmentStart);
+        Assert.Equal(TimeSpan.FromMinutes(3), _vm.SelectedSegmentEnd);
     }
 
     // --- 播放头自动选中片段 + X 键标记（v0.21.0）---
@@ -321,13 +324,16 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
-    public void Playhead_NoCutPoints_NoAutoSelection()
+    public void Playhead_NoCutPoints_SelectsFullVideo()
     {
         var path = Path.Combine(_tempDir, "video.mp4");
         File.WriteAllText(path, "stub");
         _vm.Open(path);
         _playback.Seek(TimeSpan.FromSeconds(30));
-        Assert.False(_vm.HasSelectedSegment);
+        // 无裁切点时整片视为片段 1：高亮跟随 + X 可标记
+        Assert.True(_vm.HasSelectedSegment);
+        Assert.Equal(TimeSpan.Zero, _vm.SelectedSegmentStart);
+        Assert.Equal(TimeSpan.FromMinutes(3), _vm.SelectedSegmentEnd);
     }
 
     [Fact]
