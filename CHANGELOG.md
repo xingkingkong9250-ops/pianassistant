@@ -7,6 +7,16 @@
 
 ## [Unreleased]
 
+### v1.2.1 — 确认空格 = 播放/暂停（NO.P，2026-10-18）
+
+- 空格默认即播放/暂停快捷键（`PlayPause = Space`，自 v0.x 起生效），本次验证
+  全链路（默认表 → TryParseKeyModifiers → KeyBinding → PlayPauseCommand）并加
+  单测 `Defaults_PlayPauseIsSpace` 锁定防回归
+- 若按空格无反应：W2 设置「快捷键」里「播放/暂停」可能被自定义覆盖，
+  选中该行点「重置」（或「全部重置」）即可恢复空格
+
+---
+
 ### v1.2.0 — 导入数据自动重建缺失截图（NO.M，2026-10-18）
 
 > 需求：导入数据时截图行只有时间码没有 png 文件，导入后应按数据自动重新截取。
