@@ -14,10 +14,10 @@ public class HotkeyServiceTests
     }
 
     [Fact]
-    public void Defaults_MarkSelectedSegmentIsX()
+    public void Defaults_MarkSelectedSegmentIsV()
     {
-        // v0.21.0：X 键标记/取消标记当前选中片段（空格保留播放/暂停）
-        Assert.Equal("X", HotkeyService.Defaults[HotkeyAction.MarkSelectedSegment]);
+        // v1.1.3：标记片段改 V 键（X 让位给截图）
+        Assert.Equal("V", HotkeyService.Defaults[HotkeyAction.MarkSelectedSegment]);
     }
 
     [Fact]
@@ -47,9 +47,10 @@ public class HotkeyServiceTests
     }
 
     [Fact]
-    public void Defaults_ScreenshotIsS()
+    public void Defaults_ScreenshotIsX()
     {
-        Assert.Equal("S", HotkeyService.Defaults[HotkeyAction.CaptureScreenshot]);
+        // v1.1.3：截图改 X 键（原 S，与剪辑软件习惯对齐）
+        Assert.Equal("X", HotkeyService.Defaults[HotkeyAction.CaptureScreenshot]);
     }
 
     [Fact]

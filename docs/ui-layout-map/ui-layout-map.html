@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.1.0）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.1.3）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.1.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.1.3 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -180,7 +180,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-C1"><td class="num">W1-C1</td><td>播放列表面板</td><td>v0.12.0 起固定于视频左侧（220px）；v0.13.0 起可经 W1-R1-23 展开/收起（默认收起）；01 标题 · 02 列表（拖拽排序/双击播放）· 03 右键菜单（删除/复制路径/资源管理器）</td></tr>
 <tr data-num="W1-C2-D"><td class="num">W1-C2-D</td><td>笔记统一时间线</td><td>v0.14.0 起：截图/片段/裁切点按时间混排（绿/黄/红三色边框）；D-01 筛选栏 · D-02 工具栏 · D-03 统一列表 · D-04~06 右键菜单（详见 §3）</td></tr>
 <tr data-num="W1-C3"><td class="num">W1-C3</td><td>片段批量导出面板</td><td>01 搜索 · 02 计数 · 03 队列 · 04 全部导出 · 05 拼接导出 · 06 取消 · 07 总进度 · 08 百分比</td></tr>
-<tr data-num="W1-R3"><td class="num">W1-R3</td><td>时间轴</td><td>01 缩放指示 · 02 滚动容器 · 03 TimelineControl（白播放头/红裁切点 #E51400/绿截图点 #4EC9B0/蓝入出点/选中段白高亮自动跟随播放头/已标记片段黄带 #D7BA7D，X 键切换）</td></tr>
+<tr data-num="W1-R3"><td class="num">W1-R3</td><td>时间轴</td><td>01 缩放指示 · 02 滚动容器 · 03 TimelineControl（白播放头/红裁切点 #E51400/绿截图点 #4EC9B0/蓝入出点/选中段白高亮自动跟随播放头/已标记片段黄带 #D7BA7D，V 键切换）</td></tr>
 <tr data-num="W1-R4"><td class="num">W1-R4</td><td>底部控制栏</td><td>左：01~03 时间码/倍速标记 · 04~06 音量组 · 08 全屏 · 中：09~15 播放控制对称排列 · 右：R1-05/08/10/11 移入</td></tr>
 <tr data-num="W1-E-01"><td class="num">W1-E-01</td><td>通知提示条</td><td>右下角 ToastBorder，ShowToast 触发，默认 2.5s 淡出（会话恢复统计等轻提示）</td></tr>
 </tbody></table></div>
@@ -312,7 +312,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <text class="zone-lb" x="16" y="24" fill="var(--z-r3)">W1-R3 时间轴 · TimelineBorder</text>
   <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-01" data-name="缩放指示区" data-desc="「缩放」+ ZoomLabel 倍数"><rect x="16" y="32" width="80" height="22" rx="4"/><text x="56" y="44">R3-01</text></g>
   <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-02" data-name="滚动容器" data-desc="TimelineScroll"><rect x="100" y="32" width="1086" height="42" rx="4" stroke-dasharray="4 3"/><text x="643" y="44">R3-02 滚动容器</text></g>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-03" data-name="TimelineControl" data-desc="刻度/播放头(白)/裁切点(红#E51400)/截图点(绿#4EC9B0)/入出点(蓝)/选中段高亮(白@10%自动跟随)/黄带(X 键标记)；滚轮缩放 0.5~50×"><rect x="110" y="38" width="1066" height="30" rx="4"/><text x="643" y="54">R3-03 刻度 ┃ 播放头 ▼白 ┃ 裁切点 ▼红 ┃ 截图点 ■绿 ┃ 入出点 ┃ 选中段高亮 ┃ 已标记黄带</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-03" data-name="TimelineControl" data-desc="刻度/播放头(白)/裁切点(红#E51400)/截图点(绿#4EC9B0)/入出点(蓝)/选中段高亮(白@10%自动跟随)/黄带(V 键标记)；滚轮缩放 0.5~50×"><rect x="110" y="38" width="1066" height="30" rx="4"/><text x="643" y="54">R3-03 刻度 ┃ 播放头 ▼白 ┃ 裁切点 ▼红 ┃ 截图点 ■绿 ┃ 入出点 ┃ 选中段高亮 ┃ 已标记黄带</text></g>
   <text class="lbl-m" x="100" y="86">底部为横向滚动条（随缩放出现）</text>
   <rect class="wire" x="6" y="100" width="1188" height="84" rx="6"/>
   <text class="zone-lb" x="16" y="116" fill="var(--z-r4)">W1-R4 底部控制栏 · 高 56</text>
@@ -346,7 +346,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tbody>
 <tr data-num="W1-R3-01"><td class="num">W1-R3-01</td><td>缩放指示区</td><td>「缩放」+ ZoomLabel 当前倍数</td></tr>
 <tr data-num="W1-R3-02"><td class="num">W1-R3-02</td><td>滚动容器 TimelineScroll</td><td>横向滚动条</td></tr>
-<tr data-num="W1-R3-03"><td class="num">W1-R3-03</td><td>TimelineControl</td><td>刻度 / 白播放头 / 红裁切点 #E51400（8×8 三角）/ 绿截图点 #4EC9B0（6×6 圆角方块）/ 蓝入出点 / 选中段高亮（白 @10% + 灰边框，<strong>v1.1.0 起播放头所在片段自动选中</strong>）/ 已标记片段黄带 #D7BA7D（<strong>v1.1.0 新增 X 键</strong>：切换标记，与拉片笔记 ☑ 双向同步）；滚轮缩放 0.5~50×</td></tr>
+<tr data-num="W1-R3-03"><td class="num">W1-R3-03</td><td>TimelineControl</td><td>刻度 / 白播放头 / 红裁切点 #E51400（8×8 三角）/ 绿截图点 #4EC9B0（6×6 圆角方块）/ 蓝入出点 / 选中段高亮（白 @10% + 灰边框，<strong>v1.1.0 起播放头所在片段自动选中</strong>）/ 已标记片段黄带 #D7BA7D（<strong>V 键</strong>：切换标记，与拉片笔记 ☑ 双向同步；v1.1.3 前默认 X）；滚轮缩放 0.5~50×</td></tr>
 <tr data-num="W1-R4-01"><td class="num">W1-R4-01</td><td>当前时间码</td><td>TimeCodeDisplayString</td></tr>
 <tr data-num="W1-R4-02"><td class="num">W1-R4-02</td><td>总时长</td><td>LengthDisplayString</td></tr>
 <tr data-num="W1-R4-03"><td class="num">W1-R4-03</td><td>倍速标记</td><td>非 1.0× 时显示蓝色标签；<strong>点击恢复 1×</strong></td></tr>
@@ -422,7 +422,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W2-B-03"><td class="num">W2-B-03</td><td>按钮「全部重置」</td><td></td></tr>
 <tr data-num="W2-B-04"><td class="num">W2-B-04</td><td>按钮「重置」</td><td>当前动作</td></tr>
 <tr data-num="W2-B-05"><td class="num">W2-B-05</td><td>按钮「应用」</td><td>当前手势；保存后主窗即时重建绑定</td></tr>
-<tr data-num="W2-B-06"><td class="num">W2-B-06</td><td>动作列表 ListBox</td><td>39 条动作 + 手势（v1.1.0 新增「标记当前片段」X）</td></tr>
+<tr data-num="W2-B-06"><td class="num">W2-B-06</td><td>动作列表 ListBox</td><td>39 条动作 + 手势（v1.1.3 默认调整：截图 X、标记当前片段 V）</td></tr>
 <tr data-num="W2-D-01"><td class="num">W2-D-01</td><td>按钮「保存并关闭」</td><td>触发 SettingsViewModel.Saved</td></tr>
 </tbody></table></div>
 
