@@ -55,6 +55,7 @@ public sealed class HotkeyCommandMap
         Add(HotkeyAction.RemoveLastCutPoint, player.RemoveLastCutPointCommand);
         Add(HotkeyAction.ClearCutPoints, player.ClearCutPointsCommand);
         Add(HotkeyAction.ExportSelectedSegment, player.ExportSelectedSegmentCommand);
+        Add(HotkeyAction.MarkSelectedSegment, player.ToggleMarkSelectedSegmentCommand);
         // 视图 / 音量
         Add(HotkeyAction.ToggleFullscreen, player.ToggleFullscreenCommand);
         Add(HotkeyAction.ExitFullscreen, player.ExitFullscreenCommand);

@@ -46,6 +46,9 @@ public sealed class NotesViewModel : ObservableObject
     /// <summary>时间轴标记（仅截图小色块；裁切点已由时间轴红三角表示）。</summary>
     public ObservableCollection<TimelineMarker> Markers { get; } = new();
 
+    /// <summary>已勾选标记的片段集合（时间轴黄色带渲染源，与 IsMarked 同一数据源）。</summary>
+    public ObservableCollection<TimelineSegment> MarkedSegments { get; } = new();
+
     /// <summary>统一时间线条目（截图/片段/裁切点混排，Position 升序）。</summary>
     public ObservableCollection<TimelineListItem> Items { get; } = new();
 
@@ -334,6 +337,7 @@ public sealed class NotesViewModel : ObservableObject
             Items.Add(row);
         }
         RebuildMarkers();
+        RebuildMarkedSegments();
         RefreshFilter();
     }
 
@@ -341,8 +345,30 @@ public sealed class NotesViewModel : ObservableObject
     {
         if (e.PropertyName != nameof(TimelineListItem.IsMarked)) return;
         RaiseChanged(); // 勾选标记是记录信息，触发会话自动保存
+        if (sender is SegmentListItem segItem)
+            SyncMarkedSegment(segItem);
         if (_onlyMarked)
             RefreshFilter();
+    }
+
+    /// <summary>增量同步时间轴黄带集合：勾选加入（按 Start 排序）、取消移除。</summary>
+    private void SyncMarkedSegment(SegmentListItem item)
+    {
+        MarkedSegments.Remove(item.Segment);
+        if (item.IsMarked)
+        {
+            var index = MarkedSegments.TakeWhile(s => s.Start <= item.Segment.Start).Count();
+            MarkedSegments.Insert(index, item.Segment);
+        }
+    }
+
+    /// <summary>全量重建时间轴黄带集合（随统一列表重建调用）。</summary>
+    private void RebuildMarkedSegments()
+    {
+        MarkedSegments.Clear();
+        foreach (var seg in Items.OfType<SegmentListItem>()
+            .Where(i => i.IsMarked).Select(i => i.Segment).OrderBy(s => s.Start))
+            MarkedSegments.Add(seg);
     }
 
     /// <summary>时间轴标记只来自截图（裁切点时间轴已有红三角）。</summary>

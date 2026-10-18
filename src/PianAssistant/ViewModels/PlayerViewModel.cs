@@ -121,6 +121,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             () => ClearAllMarksRequested?.Invoke(this, EventArgs.Empty));
         ExportSelectedSegmentCommand = new AsyncRelayCommand(
             ExportSelectedSegmentAsync, () => !_isExtracting && HasSelectedSegment);
+        // X 键：标记/取消标记当前选中片段（经 Shell 桥接到笔记 ☑ 勾选）
+        ToggleMarkSelectedSegmentCommand = new RelayCommand(
+            ExecuteToggleSegmentMark, () => HasSelectedSegment);
 
         // 方向键自定义步长命令（支持长按连续触发）
         SeekBackwardCustomCommand = new RelayCommand(SeekBackwardCustom, () => HasMedia);
@@ -323,6 +326,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     /// <summary>清空全部标记请求（裁切点 + 截图标记）：由 Shell 层弹确认后执行。</summary>
     public event EventHandler? ClearAllMarksRequested;
 
+    /// <summary>标记/取消标记当前选中片段请求（X 键），携带段起止时间。</summary>
+    public event EventHandler<(TimeSpan Start, TimeSpan End)>? ToggleSegmentMarkRequested;
+
     /// <summary>所有裁切点（按时间排序）。</summary>
     public ObservableCollection<TimeSpan> CutPoints { get; } = new();
 
@@ -404,6 +410,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand RemoveLastCutPointCommand { get; }
     public ICommand ClearCutPointsCommand { get; }
     public AsyncRelayCommand ExportSelectedSegmentCommand { get; }
+    /// <summary>X 键：切换当前选中片段的标记状态（事件上行至 Shell → Notes）。</summary>
+    public ICommand ToggleMarkSelectedSegmentCommand { get; }
     // 方向键自定义步长命令
     public ICommand SeekBackwardCustomCommand { get; }
     public ICommand SeekForwardCustomCommand { get; }
@@ -645,6 +653,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             return;
         var index = CutPoints.TakeWhile(c => c < pos).Count();
         CutPoints.Insert(index, pos);
+        // 播放头恰在新裁切点上：所在片段自动切换为裁切点之后的段
+        UpdateSelectedSegmentFromPlayhead();
     }
 
     /// <summary>
@@ -663,14 +673,12 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     {
         if (CutPoints.Count > 0)
             CutPoints.RemoveAt(CutPoints.Count - 1);
-        SelectedSegmentStart = null;
-        SelectedSegmentEnd = null;
-        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+        UpdateSelectedSegmentFromPlayhead();
     }
 
     /// <summary>
     /// 按值删除裁切点（笔记面板裁切点行删除用，W1-C2-D-06）：
-    /// 容差 100ms 内取最近点；删除后清空段选中（上下片段随之合并）。
+    /// 容差 100ms 内取最近点；删除后播放头所在段自动重选（上下片段随之合并）。
     /// </summary>
     public bool RemoveCutPoint(TimeSpan pos)
     {
@@ -683,9 +691,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         }
         if (best < 0 || bestMs >= 100) return false;
         CutPoints.RemoveAt(best);
-        SelectedSegmentStart = null;
-        SelectedSegmentEnd = null;
-        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+        UpdateSelectedSegmentFromPlayhead();
         return true;
     }
 
@@ -693,9 +699,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public void ClearCutPoints()
     {
         CutPoints.Clear();
-        SelectedSegmentStart = null;
-        SelectedSegmentEnd = null;
-        ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+        UpdateSelectedSegmentFromPlayhead();
     }
 
     /// <summary>
@@ -725,6 +729,46 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         SelectedSegmentStart = start;
         SelectedSegmentEnd = end;
         ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+        ((RelayCommand)ToggleMarkSelectedSegmentCommand).RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// 播放头所在片段自动选中（v0.21.0）：仅当所在段边界与当前选中不同才更新，
+    /// 避免逐帧 SetProperty 触发时间轴重绘。无裁切点时清空选中。
+    /// </summary>
+    private void UpdateSelectedSegmentFromPlayhead()
+    {
+        if (CutPoints.Count == 0)
+        {
+            if (SelectedSegmentStart is not null || SelectedSegmentEnd is not null)
+            {
+                SelectedSegmentStart = null;
+                SelectedSegmentEnd = null;
+                ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+                ((RelayCommand)ToggleMarkSelectedSegmentCommand).RaiseCanExecuteChanged();
+            }
+            return;
+        }
+        TimeSpan start = TimeSpan.Zero, end = _length;
+        foreach (var cp in CutPoints)
+        {
+            if (cp <= _position) start = cp;
+            else { end = cp; break; }
+        }
+        if (SelectedSegmentStart != start || SelectedSegmentEnd != end)
+        {
+            SelectedSegmentStart = start;
+            SelectedSegmentEnd = end;
+            ExportSelectedSegmentCommand.RaiseCanExecuteChanged();
+            ((RelayCommand)ToggleMarkSelectedSegmentCommand).RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>X 键执行：上报当前选中段起止，由 Shell 桥接到笔记勾选标记。</summary>
+    private void ExecuteToggleSegmentMark()
+    {
+        if (!HasSelectedSegment) return;
+        ToggleSegmentMarkRequested?.Invoke(this, (_selectedSegmentStart!.Value, _selectedSegmentEnd!.Value));
     }
 
     private async Task ExportSelectedSegmentAsync()
@@ -765,6 +809,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         try
         {
             Position = e;
+            // v0.21.0：播放头所在片段自动选中（滑块停在片段中即选中该片段）
+            UpdateSelectedSegmentFromPlayhead();
         }
         finally
         {

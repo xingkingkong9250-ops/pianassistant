@@ -70,6 +70,18 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Player.ClearCutPoints();
     }
 
+    /// <summary>
+    /// 按起止时间切换片段的 ☑ 勾选标记（X 键桥接）：
+    /// 时间轴黄带 ⇋ 拉片笔记片段条目勾选双向同一数据源（IsMarked）。
+    /// </summary>
+    private void ToggleSegmentMark(TimeSpan start, TimeSpan end)
+    {
+        var item = Notes.Items.OfType<SegmentListItem>()
+            .FirstOrDefault(i => i.Segment.Start == start && i.Segment.End == end);
+        if (item is null) return;
+        item.IsMarked = !item.IsMarked;
+    }
+
     /// <summary>Currently visible sidebar panel (Playlist / Notes / Clips).</summary>
     public SidebarPanel ActivePanel
     {
@@ -179,6 +191,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             volumePersisted: OnVolumePersisted);
         // 清空全部标记（Ctrl+Shift+C / W1-R1-11）：先由 View 层确认再执行
         Player.ClearAllMarksRequested += (_, _) => RequestClearAllMarks();
+        // 标记/取消标记当前选中片段（X / W1-R3）：桥接到笔记 ☑ 勾选标记（时间轴黄带 ⇋ 拉片笔记）
+        Player.ToggleSegmentMarkRequested += (_, seg) => ToggleSegmentMark(seg.Start, seg.End);
         Playlist = new PlaylistViewModel();
         // Notes needs the current playback position to timestamp new notes.
         Notes = new NotesViewModel(() => Player.Position);

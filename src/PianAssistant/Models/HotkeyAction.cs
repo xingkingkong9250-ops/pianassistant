@@ -25,6 +25,7 @@ public enum HotkeyAction
     RemoveLastCutPoint,
     ClearCutPoints,
     ExportSelectedSegment,
+    MarkSelectedSegment, // X: 标记/取消标记当前选中片段（v0.21.0）
     ToggleFullscreen,
     ExitFullscreen,
     TogglePlayPauseLoop, // L: A/B-like loop toggle (M2+)

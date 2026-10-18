@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -73,6 +74,13 @@ public sealed class TimelineControl : Control
             new FrameworkPropertyMetadata(null,
                 FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>已标记片段集合（笔记 ☑ 勾选同步），绘制为黄色半透明段带。</summary>
+    public static readonly DependencyProperty MarkedSegmentsProperty =
+        DependencyProperty.Register(
+            nameof(MarkedSegments), typeof(IEnumerable<TimelineSegment>), typeof(TimelineControl),
+            new FrameworkPropertyMetadata(null,
+                FrameworkPropertyMetadataOptions.AffectsRender, OnMarkedSegmentsChanged));
+
     public static readonly DependencyProperty ScaleProperty =
         DependencyProperty.Register(
             nameof(Scale), typeof(double), typeof(TimelineControl),
@@ -130,6 +138,27 @@ public sealed class TimelineControl : Control
         get => (IEnumerable<TimelineMarker>)GetValue(MarkersProperty);
         set => SetValue(MarkersProperty, value);
     }
+
+    /// <summary>已标记片段集合（黄 = ☑ 勾选）。</summary>
+    public IEnumerable<TimelineSegment>? MarkedSegments
+    {
+        get => (IEnumerable<TimelineSegment>?)GetValue(MarkedSegmentsProperty);
+        set => SetValue(MarkedSegmentsProperty, value);
+    }
+
+    // AffectsRender 仅在 DP 值（集合实例）替换时触发；集合内容变化需显式订阅重绘。
+    private static void OnMarkedSegmentsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not TimelineControl control) return;
+        if (e.OldValue is INotifyCollectionChanged oldCol)
+            oldCol.CollectionChanged -= control.OnMarkedSegmentsCollectionChanged;
+        if (e.NewValue is INotifyCollectionChanged newCol)
+            newCol.CollectionChanged += control.OnMarkedSegmentsCollectionChanged;
+        control.InvalidateVisual();
+    }
+
+    private void OnMarkedSegmentsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => InvalidateVisual();
 
     /// <summary>缩放比例：1.0=适应宽度，越大越放大。范围 0.5~50。</summary>
     public double Scale
@@ -215,16 +244,20 @@ public sealed class TimelineControl : Control
         var len = Length;
         var lenMs = len.TotalMilliseconds;
 
-        // 画笔
+        // 画笔（色彩规范：裁切点红 #E51400 / 截图点绿 #4EC9B0 / 标记片段黄 #D7BA7D /
+        // 选中段白 10% / I/O 蓝 #009AEC / 播放头白 —— 与笔记列表 AccentColor 对齐）
         var bg = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A));
         var tickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A)), 1);
         var majorTickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)), 1);
         var playheadPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8)), 2);
         var inOutBrush = new SolidColorBrush(Color.FromRgb(0x00, 0x7A, 0xCC)) { Opacity = 0.25 };
         var inOutPen = new Pen(new SolidColorBrush(Color.FromRgb(0x00, 0x9A, 0xEC)), 1.5);
-        var selectedBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0x4B, 0x4B)) { Opacity = 0.15 };
-        var cutPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE0, 0x4B, 0x4B)), 1.5);
-        var cutCapBrush = new SolidColorBrush(Color.FromRgb(0xE0, 0x4B, 0x4B));
+        var selectedBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xFF, 0xFF)) { Opacity = 0.10 };
+        var selectedPen = new Pen(new SolidColorBrush(Color.FromRgb(0x9E, 0x9E, 0x9E)), 1);
+        var markedBrush = new SolidColorBrush(Color.FromRgb(0xD7, 0xBA, 0x7D)) { Opacity = 0.35 };
+        var markedPen = new Pen(new SolidColorBrush(Color.FromRgb(0xD7, 0xBA, 0x7D)), 1.5);
+        var cutPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE5, 0x14, 0x00)), 1.5);
+        var cutCapBrush = new SolidColorBrush(Color.FromRgb(0xE5, 0x14, 0x00));
         var labelBrush = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88));
         var typeface = new Typeface("Consolas");
 
@@ -233,6 +266,8 @@ public sealed class TimelineControl : Control
         majorTickPen.Freeze();
         playheadPen.Freeze();
         inOutPen.Freeze();
+        selectedPen.Freeze();
+        markedPen.Freeze();
         cutPen.Freeze();
         cutCapBrush.Freeze();
         labelBrush.Freeze();
@@ -281,12 +316,25 @@ public sealed class TimelineControl : Control
             }
         }
 
-        // --- 选中段高亮 ---
+        // --- 选中段高亮（播放头所在片段：白色 10% + 灰细边框） ---
         if (SelectedSegmentStart is { } selStart && SelectedSegmentEnd is { } selEnd && selEnd > selStart)
         {
             var sx = selStart.TotalMilliseconds / lenMs * w;
             var ex = selEnd.TotalMilliseconds / lenMs * w;
-            dc.DrawRectangle(selectedBrush, null, new Rect(sx, 0, ex - sx, h));
+            dc.DrawRectangle(selectedBrush, selectedPen, new Rect(sx, 0, Math.Max(0, ex - sx), h));
+        }
+
+        // --- 已标记片段（黄色半透明段带 + 黄边框，叠加于选中高亮之上） ---
+        if (MarkedSegments is not null)
+        {
+            foreach (var seg in MarkedSegments)
+            {
+                if (seg.End <= seg.Start || seg.End <= TimeSpan.Zero) continue;
+                var mx = seg.Start.TotalMilliseconds / lenMs * w;
+                var mex = seg.End.TotalMilliseconds / lenMs * w;
+                dc.DrawRectangle(markedBrush, markedPen,
+                    new Rect(mx, 0, Math.Max(0, mex - mx), h));
+            }
         }
 
         // --- I/O 入出点 ---
@@ -325,15 +373,15 @@ public sealed class TimelineControl : Control
             }
         }
 
-        // --- 标记（笔记/截图/片段小色块）---
-        // 位于播放头三角下方一行（y 10~16），不与裁切点红三角（y 0~8）冲突
+        // --- 标记（截图点：绿色统一 6×6 圆角小方块）---
+        // 位于播放头三角下方一行（y 9~15），不与裁切点红三角（y 0~8）冲突
         if (Markers is not null)
         {
             foreach (var marker in Markers)
             {
                 var x = marker.Position.TotalMilliseconds / lenMs * w;
-                dc.DrawRectangle(GetMarkerBrush(marker.ColorHex), null,
-                    new Rect(x - 1.5, 10, 3, 6));
+                dc.DrawRoundedRectangle(GetMarkerBrush(marker.ColorHex), null,
+                    new Rect(x - 3, 9, 6, 6), 1.5, 1.5);
             }
         }
 

@@ -38,6 +38,7 @@ public sealed class HotkeyService
             [HotkeyAction.RemoveLastCutPoint] = "Back",
             [HotkeyAction.ClearCutPoints] = "Ctrl+Shift+C",
             [HotkeyAction.ExportSelectedSegment] = "Ctrl+E",
+            [HotkeyAction.MarkSelectedSegment] = "X",
             [HotkeyAction.ToggleFullscreen] = "F",
             [HotkeyAction.ExitFullscreen] = "Esc",
             [HotkeyAction.TogglePlayPauseLoop] = "L",

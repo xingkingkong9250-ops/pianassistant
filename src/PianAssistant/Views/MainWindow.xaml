@@ -286,6 +286,7 @@
                         OutPoint="{Binding Player.OutPoint}"
                         CutPoints="{Binding Player.CutPoints}"
                         Markers="{Binding Notes.Markers}"
+                        MarkedSegments="{Binding Notes.MarkedSegments}"
                         SelectedSegmentStart="{Binding Player.SelectedSegmentStart, Mode=OneWay}"
                         SelectedSegmentEnd="{Binding Player.SelectedSegmentEnd, Mode=OneWay}"
                         SeekRequested="OnTimelineSeek"

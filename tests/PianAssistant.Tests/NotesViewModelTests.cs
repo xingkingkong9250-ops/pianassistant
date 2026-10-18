@@ -433,4 +433,55 @@ public class NotesViewModelTests : IDisposable
         _vm.ClearScreenshots();
         Assert.NotEmpty(_vm.Items); // 片段/裁切点不受影响
     }
+
+    // --- 时间轴黄带集合（MarkedSegments ⇋ IsMarked，v0.21.0）---
+
+    [Fact]
+    public void MarkedSegments_ToggleIsMarked_AddsAndRemovesSorted()
+    {
+        RecomputeWithCuts(10, 20, 30); // 片段 0-10、10-20、20-30、30-300
+        var seg2 = _vm.Items.OfType<SegmentListItem>().First(i => i.Segment.Index == 2);
+        var seg4 = _vm.Items.OfType<SegmentListItem>().First(i => i.Segment.Index == 4);
+
+        seg4.IsMarked = true;
+        seg2.IsMarked = true;
+        Assert.Equal(
+            new[] { seg2.Segment, seg4.Segment },
+            _vm.MarkedSegments.ToList()); // 按 Start 升序
+
+        seg2.IsMarked = false;
+        Assert.Equal(new[] { seg4.Segment }, _vm.MarkedSegments.ToList());
+    }
+
+    [Fact]
+    public void MarkedSegments_RebuildItems_PreservesMarkedState()
+    {
+        RecomputeWithCuts(10, 20);
+        var seg = _vm.Items.OfType<SegmentListItem>().First(i => i.Segment.Index == 2);
+        seg.IsMarked = true;
+
+        _vm.AddScreenshot(MakeScreenshot(TimeSpan.FromSeconds(5))); // 触发 RebuildItems
+
+        Assert.Single(_vm.MarkedSegments);
+        Assert.Equal(seg.Segment.Start, _vm.MarkedSegments[0].Start);
+        Assert.Equal(seg.Segment.End, _vm.MarkedSegments[0].End);
+    }
+
+    [Fact]
+    public void MarkedSegments_RecomputeSegments_RestoresByTimeBounds()
+    {
+        RecomputeWithCuts(10, 20);
+        _vm.Items.OfType<SegmentListItem>().First(i => i.Segment.Index == 2).IsMarked = true;
+        Assert.Single(_vm.MarkedSegments);
+
+        // 相同裁切点重算：黄带按 (Start, End) 恢复
+        RecomputeWithCuts(10, 20);
+        Assert.Single(_vm.MarkedSegments);
+        Assert.Equal(TimeSpan.FromSeconds(10), _vm.MarkedSegments[0].Start);
+        Assert.Equal(TimeSpan.FromSeconds(20), _vm.MarkedSegments[0].End);
+
+        // 裁切点删除后段合并：旧标记边界不再匹配，黄带随之消失
+        RecomputeWithCuts(10);
+        Assert.Empty(_vm.MarkedSegments);
+    }
 }

@@ -8,9 +8,16 @@ namespace PianAssistant.Tests;
 public class HotkeyServiceTests
 {
     [Fact]
-    public void Defaults_HaveAll38Actions()
+    public void Defaults_HaveAll39Actions()
     {
-        Assert.Equal(38, HotkeyService.Defaults.Count);
+        Assert.Equal(39, HotkeyService.Defaults.Count);
+    }
+
+    [Fact]
+    public void Defaults_MarkSelectedSegmentIsX()
+    {
+        // v0.21.0：X 键标记/取消标记当前选中片段（空格保留播放/暂停）
+        Assert.Equal("X", HotkeyService.Defaults[HotkeyAction.MarkSelectedSegment]);
     }
 
     [Fact]

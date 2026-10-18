@@ -300,6 +300,67 @@ public class PlayerViewModelTests : IDisposable
         Assert.False(_vm.HasSelectedSegment);
     }
 
+    // --- 播放头自动选中片段 + X 键标记（v0.21.0）---
+
+    [Fact]
+    public void Playhead_AutoSelectsSegmentOnPositionChange()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+
+        _playback.Seek(TimeSpan.FromSeconds(30));
+        Assert.True(_vm.HasSelectedSegment);
+        Assert.Equal(TimeSpan.Zero, _vm.SelectedSegmentStart);
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.SelectedSegmentEnd);
+
+        _playback.Seek(TimeSpan.FromSeconds(90));
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.SelectedSegmentStart);
+        Assert.Equal(TimeSpan.FromMinutes(3), _vm.SelectedSegmentEnd);
+    }
+
+    [Fact]
+    public void Playhead_NoCutPoints_NoAutoSelection()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _playback.Seek(TimeSpan.FromSeconds(30));
+        Assert.False(_vm.HasSelectedSegment);
+    }
+
+    [Fact]
+    public void ToggleMarkSelectedSegment_RaisesEventWithSegmentBounds()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+        _playback.Seek(TimeSpan.FromSeconds(30));
+
+        (TimeSpan Start, TimeSpan End)? received = null;
+        _vm.ToggleSegmentMarkRequested += (_, seg) => received = seg;
+
+        Assert.True(_vm.ToggleMarkSelectedSegmentCommand.CanExecute(null));
+        _vm.ToggleMarkSelectedSegmentCommand.Execute(null);
+
+        Assert.NotNull(received);
+        Assert.Equal(TimeSpan.Zero, received!.Value.Start);
+        Assert.Equal(TimeSpan.FromSeconds(60), received.Value.End);
+    }
+
+    [Fact]
+    public void ToggleMarkSelectedSegment_NoSelection_CannotExecuteAndNoEvent()
+    {
+        var raised = false;
+        _vm.ToggleSegmentMarkRequested += (_, _) => raised = true;
+
+        Assert.False(_vm.ToggleMarkSelectedSegmentCommand.CanExecute(null));
+        _vm.ToggleMarkSelectedSegmentCommand.Execute(null);
+        Assert.False(raised);
+    }
+
     private static string? FindBundledFfmpeg()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
