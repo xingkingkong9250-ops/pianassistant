@@ -7,6 +7,25 @@
 
 ## [Unreleased]
 
+### v1.0.0 — 首个正式版 + Inno Setup 安装包（NO.V，2026-10-18）
+
+> 用户确认发布正式版，并要求打包安装包、环境同步打包，保证更换电脑通用。
+
+#### 变更
+
+- **版本号 0.20.0 → 1.0.0**：首个正式交付版本
+- **发布形态：全自包含，换电脑免环境**
+  - self-contained win-x64 + ReadyToRun：内置 .NET 10 运行时，目标机无需安装 .NET
+  - LibVLC 原生库（VideoLAN.LibVLC.Windows）随包，无需安装 VLC
+  - ffmpeg/ffprobe 随包（Tools\ffmpeg），无需配置 PATH
+- **新增 Inno Setup 安装包**：`installer/PianAssistant.iss` 编译输出 `PianAssistant_Setup_v1.0.0.exe`
+  - 免管理员安装（默认 `%LocalAppData%\Programs\PianAssistant`）
+  - 简体中文安装向导、开始菜单 + 可选桌面快捷方式、标准卸载
+- 功能基线：视频播放（倍速≤8×、高倍速自动静音）、时间轴裁切点/截图标记、拉片笔记统一时间线（勾选标记/筛选/导出导入 .xlsx·CSV）、片段批量导出/拼接、批量指令、项目工程、播放列表、设置窗口
+- 测试合计 328 全过
+
+---
+
 ### v0.20.0 — ✂ 按钮改添加裁切点 + ✖ 清空全部标记 + 截图改 ffmpeg 抽帧（NO.M，2026-10-18）
 
 > 用户反馈：W1-R1-08 功能应为添加裁切点；W1-R1-11 清空需包含截图标记点；截图只需时间轴标记点 + 后台抽帧缩略图。
