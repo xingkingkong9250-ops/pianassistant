@@ -72,8 +72,23 @@ public sealed class VideoPlaybackService : IVideoPlayback
         };
         // LibVLC 事件从原生线程回调；统一 marshal 到 UI 线程，避免
         // ViewModel→集合→WPF 渲染链在非 UI 线程执行引发跨线程崩溃（v1.1.2）
-        _mediaPlayer.TimeChanged += (_, _) => RaiseOnUi(() => PositionChanged?.Invoke(this, Position));
-        _mediaPlayer.EndReached += (_, _) => RaiseOnUi(() => EndReached?.Invoke(this, EventArgs.Empty));
+        _mediaPlayer.TimeChanged += (_, e) => RaiseOnUi(() =>
+        {
+            // 用事件携带的精确毫秒而非 Position 比例换算：seek 后内部
+            // Position 比例可能尚未更新，比例换算会回报旧位置（回弹源之一）
+            var timeMs = e.Time;
+            var now = DateTime.UtcNow;
+            if (IsStaleSeekReport(timeMs, _pendingSeekTargetMs,
+                    (now - _pendingSeekAtUtc).TotalMilliseconds))
+                return; // seek 未到位的旧位置帧：抑制上报，避免播放头回弹
+            _pendingSeekTargetMs = -1; // 到位或超窗，恢复正常上报
+            PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(timeMs));
+        });
+        _mediaPlayer.EndReached += (_, _) => RaiseOnUi(() =>
+        {
+            _pendingSeekTargetMs = -1;
+            EndReached?.Invoke(this, EventArgs.Empty);
+        });
         // Parse track info (fps/dimensions) once playback starts — tracks
         // are demuxed by then. Replaces ESAdded (not available in 3.8.2).
         _mediaPlayer.Playing += (_, _) => RaiseOnUi(() =>
@@ -85,8 +100,33 @@ public sealed class VideoPlaybackService : IVideoPlayback
             Playing?.Invoke(this, EventArgs.Empty);
         });
         _mediaPlayer.Paused += (_, _) => RaiseOnUi(() => Paused?.Invoke(this, EventArgs.Empty));
-        _mediaPlayer.Stopped += (_, _) => RaiseOnUi(() => Stopped?.Invoke(this, EventArgs.Empty));
+        _mediaPlayer.Stopped += (_, _) => RaiseOnUi(() =>
+        {
+            _pendingSeekTargetMs = -1;
+            Stopped?.Invoke(this, EventArgs.Empty);
+        });
     }
+
+    // --- seek 回弹抑制（v1.2.2）---
+
+    // LibVLC 的 Time 赋值异步生效：赋值后 demux/解码管线仍会输出若干旧位置帧，
+    // TimeChanged 随之回报旧时间 → UI 播放头「回弹」（倍速下管线缓冲更大，更明显）。
+    // seek 后进入短抑制窗：窗内偏离目标超过容差的旧位置报告一律丢弃，
+    // 位置接近目标（到位）或超窗后恢复正常上报。
+    private const double SeekSettleWindowMs = 400;
+    private const long SeekSettleToleranceMs = 600;
+    private long _pendingSeekTargetMs = -1;
+    private DateTime _pendingSeekAtUtc;
+
+    /// <summary>
+    /// 判定 TimeChanged 报告是否为 seek 未到位的旧位置帧（应丢弃）。纯函数便于单测。
+    /// </summary>
+    public static bool IsStaleSeekReport(
+        long timeMs, long pendingTargetMs, double elapsedMs,
+        double windowMs = SeekSettleWindowMs, long toleranceMs = SeekSettleToleranceMs)
+        => pendingTargetMs >= 0
+           && elapsedMs <= windowMs
+           && Math.Abs(timeMs - pendingTargetMs) > toleranceMs;
 
     /// <summary>在 UI 线程执行（VLC 原生线程回调一律经此调度；无 Application 时同步执行，测试环境安全）。</summary>
     private static void RaiseOnUi(Action action)
@@ -144,12 +184,18 @@ public sealed class VideoPlaybackService : IVideoPlayback
     public void SeekRelative(TimeSpan delta)
     {
         if (Fps <= 0) return;
-        // Use Time API: more precise than Position for second-level jumps.
-        var targetMs = _mediaPlayer.Time + (long)delta.TotalMilliseconds;
+        // 连续触发（长按）时 Time 属性可能仍是上次 seek 前的旧值（赋值异步生效），
+        // 抑制窗内以上次 seek 目标为基准叠加，避免偏差累积与来回跳动。
+        var now = DateTime.UtcNow;
+        var baseMs = _pendingSeekTargetMs >= 0
+                     && (now - _pendingSeekAtUtc).TotalMilliseconds <= SeekSettleWindowMs
+            ? _pendingSeekTargetMs
+            : _mediaPlayer.Time;
+        var targetMs = baseMs + (long)delta.TotalMilliseconds;
         if (targetMs < 0) targetMs = 0;
         var lengthMs = _media?.Duration ?? long.MaxValue;
         if (targetMs > lengthMs) targetMs = lengthMs;
-        _mediaPlayer.Time = targetMs;
+        SeekToMs(targetMs);
     }
 
     public void SeekPercent(double percent)
@@ -168,6 +214,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
     private void SeekToMs(long targetMs)
     {
         var wasPlaying = _mediaPlayer.IsPlaying;
+        _pendingSeekTargetMs = targetMs;
+        _pendingSeekAtUtc = DateTime.UtcNow;
         _mediaPlayer.Time = targetMs;
         if (!wasPlaying)
         {

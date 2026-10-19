@@ -105,10 +105,13 @@ public sealed class FfmpegRunner
             throw new ArgumentException("outPoint must be after inPoint.", nameof(outPoint));
 
         var durationMs = (outPoint - inPoint).TotalMilliseconds;
+        // 关键：输出长度用输出选项 -t（时长）而非输入选项 -to（绝对时间戳）。
+        // 输入级 -ss 会重置输入时间轴，-to 放在 -i 前会相对 seek 后的起点解释，
+        // 导致导出片段时长与软件内片段起止对不上（v1.2.2 修复）。
         var args = new StringBuilder();
         args.Append("-ss ").Append(inPoint.TotalSeconds.ToString("0.###")).Append(' ');
-        args.Append("-to ").Append(outPoint.TotalSeconds.ToString("0.###")).Append(' ');
         args.Append("-i \"").Append(source).Append("\" ");
+        args.Append("-t ").Append(TimeSpan.FromMilliseconds(durationMs).TotalSeconds.ToString("0.###")).Append(' ');
         args.Append("-c copy -avoid_negative_ts make_zero ");
         args.Append('"').Append(outputPath).Append('"');
         RunWithProgress(args.ToString(), durationMs, cancellationToken, onProgress);
@@ -131,10 +134,12 @@ public sealed class FfmpegRunner
             throw new ArgumentException("outPoint must be after inPoint.", nameof(outPoint));
 
         var durationMs = (outPoint - inPoint).TotalMilliseconds;
+        // 输入级 -ss（转码时为精确 seek：解码丢帧到目标）+ 输出选项 -t 控制时长，
+        // 与流复制路径同一时间基准（v1.2.2：替换 -i 前的 -to，修起止偏差）
         var args = new StringBuilder();
         args.Append("-ss ").Append(inPoint.TotalSeconds.ToString("0.###")).Append(' ');
-        args.Append("-to ").Append(outPoint.TotalSeconds.ToString("0.###")).Append(' ');
         args.Append("-i \"").Append(source).Append("\" ");
+        args.Append("-t ").Append(TimeSpan.FromMilliseconds(durationMs).TotalSeconds.ToString("0.###")).Append(' ');
         args.Append("-c:v libx264 -preset fast -crf 18 ");
         args.Append("-c:a aac -b:a 192k ");
         args.Append('"').Append(outputPath).Append('"');
