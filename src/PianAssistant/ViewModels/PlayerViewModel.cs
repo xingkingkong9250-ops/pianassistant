@@ -596,9 +596,13 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private async Task CaptureScreenshotAsync()
     {
         if (_playback.CurrentPath is null) return;
+        // 第一时间在 UI 线程锁定截图时间点：Task.Run 排队 + 线程池启动期间
+        // 视频仍在播放，倍速下晚读会漂移数帧（8× 时窗口内可漂移 0.3s+），
+        // 导致截取的帧晚于用户按下按键时看到的画面（v1.2.3）
+        var position = _playback.Position;
         try
         {
-            var entry = await Task.Run(() => _screenshots.Capture());
+            var entry = await Task.Run(() => _screenshots.CaptureAt(position));
             ScreenshotCaptured?.Invoke(this, entry);
         }
         catch (Exception ex)

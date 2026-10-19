@@ -25,15 +25,11 @@ public sealed class VideoPlaybackService : IVideoPlayback
     public event EventHandler? Stopped;
 
     public bool IsPlaying => _mediaPlayer.IsPlaying;
-    public TimeSpan Position
-    {
-        get
-        {
-            var media = _mediaPlayer.Media;
-            if (media is null || media.Duration <= 0) return TimeSpan.Zero;
-            return TimeSpan.FromMilliseconds(media.Duration * _mediaPlayer.Position);
-        }
-    }
+    public TimeSpan Position =>
+        // 直读 VLC 内部精确毫秒（与 TimeChanged 上报同源）。原实现用
+        // Position 浮点比例 × Duration 换算，长视频下有舍入误差且
+        // seek 后内部比例可能滞后（v1.2.3 起与截图/播放头共用同一时间源）
+        TimeSpan.FromMilliseconds(Math.Max(0, _mediaPlayer.Time));
     public TimeSpan Length =>
         _media?.Duration > 0 ? TimeSpan.FromMilliseconds(_media.Duration) : TimeSpan.Zero;
     public double Rate
