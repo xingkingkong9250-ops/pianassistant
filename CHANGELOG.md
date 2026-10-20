@@ -7,6 +7,61 @@
 
 ## [Unreleased]
 
+### v1.3.0 — 正式版品牌图标 + 窗口视觉包装 + 深色按钮主题修复撞色（NO.M，2026-10-20）
+
+> 需求：① 用正式版 Logo 作为应用图标并重新包装软件窗口；② 完整排查 UI 底色/文字
+> 撞色，用户已发现「导入/导出数据点击高亮后文字与底色撞色」。
+
+#### 品牌图标与窗口包装
+
+- 新增 `src/PianAssistant/Assets/`：`app.ico`（16/24/32/48/64/128/256 七档，由 2048px
+  正式版 Logo 生成，清理了原图 8% 透明雾后按内容裁切、补正方形并留 3% 安全边距）
+  与 `logo.png`（256px，窗口品牌位）
+- `ApplicationIcon` 接入：exe 图标、任务栏、资源管理器、安装包与快捷方式统一为新 Logo
+- 主窗口顶栏 W1-R1-01 的占位「P」圆形徽标替换为正式 Logo 位图（28px，HighQuality 缩放）
+- 四个子窗口（设置 / 画廊 / 标注 / 批量）补 `Icon` 属性，标题栏与任务栏不再显示系统默认图标
+- Inno Setup 增加 `SetupIconFile`：安装向导图标与外层 exe 图标同步为正式版 Logo
+
+#### 深色按钮主题（修复撞色根因）
+
+- **根因**：NotesView 的筛选 chip 与「导出标记 / 导出数据 / 导入数据」工具栏按钮、
+  SettingsWindow 的按钮只覆盖了颜色而未提供 `ControlTemplate`，仍走系统默认 Aero2
+  模板——悬停/按下时模板触发器把背景刷成浅蓝 `#FFBEE6FD` / `#FFC4E5F6`，浅灰文字
+  压在浅蓝底上完全不可读
+- App.xaml 新增 `DarkButton`（完整深色模板）+ `GhostButton`（无底色变体）+ 隐式
+  `Style TargetType="Button"` 兜底：**悬停/按下用半透明白叠加层「提亮」而非替换底色**，
+  因此强调色 chip `#1A6B8A` 与金色「导出标记」`#D7BA7D` 在悬停时仍保持自身语义色
+- NotesView 8 个按钮（5 筛选 chip + 3 工具栏）与 SettingsWindow 全部按钮改走新模板
+- 显式 keyed 样式（IconButton / AccentButton / NavTab / PanelButton / ToolButton 等）
+  优先于隐式兜底，其余窗口外观不受影响
+
+#### 其余浅色系统模板一并深色化（全量撞色排查结论）
+
+- 全量排查后仅剩三处走系统浅色模板：`ToolTip`（浅底）、`ScrollBar`（浅灰渐变轨道）、
+  SettingsWindow「截图格式」下拉框显示为空
+- App.xaml 新增 `TargetType="ToolTip"` 完整深色模板（底 `#252526` / 字 `#E0E0E0`）
+- App.xaml 新增 `TargetType="ScrollBar"` 深色细轨模板（10px 圆角滑块，
+  按住拖拽 `#8A8A8A`、悬停 `#6A6A6A`），改造对象包括设置窗快捷键列表、
+  画廊/片段列表、笔记列表等所有滚动区
+- SettingsWindow「截图格式」原用 `<ComboBoxItem>` 子元素 + `SelectedItem` 绑定字符串，
+  字符串与 ComboBoxItem 实例不匹配导致下拉框长期显示为空；改为
+  `SelectedValue` + `SelectedValuePath="Content"`
+- 其余控件经核验本身即为深色：TextBox / DataGrid / ComboBox / TabItem / ListBox /
+  ContextMenu（GalleryWindow、ClipsView、BatchWindow 的输入框均自带深色
+  `Background/Foreground`），CheckBox 与列表选中态为深色底浅字，无撞色
+
+#### 验证
+
+- Release 编译 0 警告 0 错误；339 项单测全通过；exe 与程序集内图标资源已核验写入
+- **撞色实测**（PrintWindow 抓取 + 像素采样）：`导入数据` 按钮底色
+  常态 `(26,26,26)` → 悬停 `(54,54,54)` → 按下 `(72,72,72)`，全程为深灰提亮，
+  不再出现系统浅蓝 `#FFBEE6FD`；设置窗「保存并关闭」同样 `(60,60,61)` → `(77,77,77)`
+- 抓图核验：主窗口 Logo 位、拉片笔记面板（筛选 chip + 三个工具栏按钮）、
+  设置窗两个页签（截图格式显示 `png`、快捷键列表深色滚动条）均正常
+- 版本 1.2.5 → 1.3.0
+
+---
+
 ### v1.2.5 — 安装包重制 + 说明书升级版 + UI 图鉴同步（2026-10-19）
 
 - Inno Setup 安装包重制（`PianAssistant_Setup_v1.2.5.exe`，全自包含）

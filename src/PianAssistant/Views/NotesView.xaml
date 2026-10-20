@@ -122,26 +122,27 @@
         <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="6,5"
                 BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal">
-                <Button x:Name="ChipAll" Content="☰" Padding="10,3" FontSize="12"
-                        Background="#1A6B8A" Foreground="#E8E8E8" BorderThickness="0"
-                        Cursor="Hand" Focusable="False" Click="OnFilterAll"
+                <Button x:Name="ChipAll" Content="☰" FontSize="12" Padding="10,3"
+                        Style="{StaticResource GhostButton}"
+                        Background="#1A6B8A" Foreground="#E8E8E8"
+                        Click="OnFilterAll"
                         ToolTip="全部（截图 / 片段 / 裁切点）" />
-                <Button x:Name="ChipScreenshots" Content="📷" Padding="10,3" FontSize="12"
-                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
-                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterScreenshots"
+                <Button x:Name="ChipScreenshots" Content="📷" FontSize="12" Padding="10,3"
+                        Margin="6,0,0,0" Style="{StaticResource GhostButton}" Foreground="#888888"
+                        Click="OnFilterScreenshots"
                         ToolTip="仅截图" />
-                <Button x:Name="ChipSegments" Content="🎬" Padding="10,3" FontSize="12"
-                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
-                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterSegments"
+                <Button x:Name="ChipSegments" Content="🎬" FontSize="12" Padding="10,3"
+                        Margin="6,0,0,0" Style="{StaticResource GhostButton}" Foreground="#888888"
+                        Click="OnFilterSegments"
                         ToolTip="仅片段（含裁切点）" />
-                <Button x:Name="ChipCutPoints" Content="✂" Padding="10,3" FontSize="12"
-                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
-                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnFilterCutPointsOnly"
+                <Button x:Name="ChipCutPoints" Content="✂" FontSize="12" Padding="10,3"
+                        Margin="6,0,0,0" Style="{StaticResource GhostButton}" Foreground="#888888"
+                        Click="OnFilterCutPointsOnly"
                         ToolTip="仅裁切点" />
                 <!-- ⚑ 为叠加开关：与左侧基筛选组合，只看已勾选标记的条目 -->
-                <Button x:Name="ChipMarked" Content="⚑" Padding="10,3" FontSize="12"
-                        Margin="6,0,0,0" Background="Transparent" Foreground="#888888"
-                        BorderThickness="0" Cursor="Hand" Focusable="False" Click="OnToggleMarked"
+                <Button x:Name="ChipMarked" Content="⚑" FontSize="12" Padding="10,3"
+                        Margin="6,0,0,0" Style="{StaticResource GhostButton}" Foreground="#888888"
+                        Click="OnToggleMarked"
                         ToolTip="仅标记（叠加筛选：只看已勾选的条目）" />
             </StackPanel>
         </Border>
@@ -168,19 +169,16 @@
         <Border DockPanel.Dock="Top" Background="#1A1A1A" Padding="6,5"
                 BorderBrush="#2A2A2A" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal">
-                <Button Content="📤 导出标记" Padding="8,3" FontSize="12"
-                        Background="Transparent" Foreground="#D7BA7D" BorderThickness="0"
-                        Cursor="Hand" Focusable="False"
+                <Button Content="📤 导出标记" FontSize="12"
+                        Style="{StaticResource GhostButton}" Foreground="#D7BA7D"
                         Command="{Binding ExportMarkedCommand}"
                         ToolTip="把勾选标记的截图（复制 png）与片段（ffmpeg 切出 mp4）导出到指定目录" />
-                <Button Content="📋 导出数据" Padding="8,3" FontSize="12" Margin="6,0,0,0"
-                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                        Cursor="Hand" Focusable="False"
+                <Button Content="📋 导出数据" FontSize="12" Margin="6,0,0,0"
+                        Style="{StaticResource GhostButton}"
                         Command="{Binding ExportDataCommand}"
                         ToolTip="导出当前视频的裁切点、片段、截图与勾选标记为 Excel 表格（.xlsx，可人工编辑）" />
-                <Button Content="📥 导入数据" Padding="8,3" FontSize="12" Margin="6,0,0,0"
-                        Background="Transparent" Foreground="#CCCCCC" BorderThickness="0"
-                        Cursor="Hand" Focusable="False"
+                <Button Content="📥 导入数据" FontSize="12" Margin="6,0,0,0"
+                        Style="{StaticResource GhostButton}"
                         Command="{Binding ImportDataCommand}"
                         ToolTip="导入人工编辑过的 Excel（.xlsx）/ CSV 数据文件，覆盖当前视频的裁切点、截图与标记" />
             </StackPanel>

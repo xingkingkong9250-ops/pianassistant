@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- 版本号唯一来源；脚本与界面均从此读取，禁止在别处硬编码 -->
-    <Version>1.2.5</Version>
+    <Version>1.3.0</Version>
     <AssemblyName>PianAssistant</AssemblyName>
     <RootNamespace>PianAssistant</RootNamespace>
     <Product>拉片助手</Product>
@@ -16,10 +16,17 @@
     <Description>面向编导的视频拉片辅助工具：多格式播放、快速截图、片段截取、专业快捷键</Description>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <PlatformTarget>x64</PlatformTarget>
+    <!-- 正式版品牌图标（v1.3.0）：exe / 任务栏 / 安装包 / 快捷方式共用 -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="PianAssistant.Tests" />
+  </ItemGroup>
+
+  <!-- 品牌资产：窗口内 Logo 位图与图标资源（打包进程序集） -->
+  <ItemGroup>
+    <Resource Include="Assets\**" />
   </ItemGroup>
 
   <ItemGroup>

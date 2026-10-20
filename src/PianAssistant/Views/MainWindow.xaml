@@ -7,6 +7,7 @@
         Title="拉片助手 — PianAssistant"
         Width="1280" Height="800"
         WindowStartupLocation="CenterScreen"
+        Icon="/Assets/app.ico"
         Background="#0F0F0F"
         Foreground="#E8E8E8"
         FontFamily="Microsoft YaHei UI, Segoe UI"
@@ -114,10 +115,9 @@
             <DockPanel>
                 <!-- W1-R1-01 Logo + 标题 -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
-                    <Border Width="28" Height="28" CornerRadius="14" Background="#1A6B8A" Margin="0,0,10,0">
-                        <TextBlock Text="P" Foreground="White" FontWeight="Bold" FontSize="16"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <Image Source="/Assets/logo.png" Width="28" Height="28" Margin="0,0,10,0"
+                           RenderOptions.BitmapScalingMode="HighQuality"
+                           ToolTip="拉片助手 · PianAssistant" />
                     <TextBlock Text="拉片助手" Foreground="#E8E8E8" FontSize="15" FontWeight="SemiBold"
                                VerticalAlignment="Center" />
                 </StackPanel>

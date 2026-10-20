@@ -4,6 +4,7 @@
         Title="标注编辑 — 拉片助手"
         Width="1080" Height="760" MinWidth="720" MinHeight="520"
         WindowStartupLocation="CenterOwner"
+        Icon="/Assets/app.ico"
         Background="#0F0F0F" Foreground="#E8E8E8"
         FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="13">
 

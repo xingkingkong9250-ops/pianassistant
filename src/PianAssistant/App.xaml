@@ -151,5 +151,134 @@
             </Setter>
         </Style>
 
+        <!-- ═══ 深色按钮主题（v1.3.0）═══
+             问题背景：NotesView 的筛选 chip 与「导出标记 / 导出数据 / 导入数据」工具栏按钮、
+             SettingsWindow 的按钮只覆盖了颜色却没提供 ControlTemplate，于是沿用系统默认
+             Aero2 模板——鼠标悬停/按下时模板触发器把背景刷成浅蓝 #FFBEE6FD / #FFC4E5F6，
+             浅灰文字压在浅蓝底上完全不可读（用户报的「点击高亮后文字与底色撞色」）。
+             对策：统一提供深色模板；悬停/按下用半透明白叠加层「提亮」而非替换底色，
+             这样强调色 chip（#1A6B8A）与金色按钮（#D7BA7D）在悬停时也不会丢失自身语义色。 -->
+        <Style x:Key="DarkButton" TargetType="Button">
+            <Setter Property="Background" Value="#2D2D2D" />
+            <Setter Property="Foreground" Value="#E0E0E0" />
+            <Setter Property="BorderBrush" Value="#3F3F46" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4" />
+                            <!-- 悬停/按下提亮层：位于内容之下，不遮挡文字 -->
+                            <Border x:Name="Glow" Background="#1FFFFFFF"
+                                    CornerRadius="4" Opacity="0" IsHitTestVisible="False" />
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Glow" Property="Opacity" Value="1" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Glow" Property="Background" Value="#33FFFFFF" />
+                                <Setter TargetName="Glow" Property="Opacity" Value="1" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 幽灵按钮：无底色无边框，用于工具栏与筛选 chip（悬停仍是提亮暗底，不刷浅蓝） -->
+        <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource DarkButton}">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="Padding" Value="8,3" />
+        </Style>
+
+        <!-- 兜底：所有未显式指定 Style 的 Button 一律使用深色模板（显式 Style 优先，不受影响） -->
+        <Style TargetType="Button" BasedOn="{StaticResource DarkButton}" />
+
+        <!-- ═══ ToolTip / ScrollBar 深色化（v1.3.0）═══
+             两者都沿用系统浅色模板：ToolTip 是浅底深字、ScrollBar 是浅灰轨道，
+             放在深色窗口里要么刺眼要么像未完成。统一为深色，保证与整体一致。 -->
+
+        <!-- ToolTip：深底浅字（完整模板，避免系统模板硬编码浅底） -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Foreground" Value="#E0E0E0" />
+            <Setter Property="Background" Value="#252526" />
+            <Setter Property="BorderBrush" Value="#3F3F46" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollBar：深色细轨 + 圆角滑块（默认模板为浅色渐变，深色界面里最刺眼） -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Width" Value="10" />
+            <Setter Property="MinWidth" Value="10" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBd" Background="#4A4A4A"
+                                                        CornerRadius="3" Margin="2" />
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBd" Property="Background" Value="#6A6A6A" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBd" Property="Background" Value="#8A8A8A" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter Property="Width" Value="Auto" />
+                                <Setter Property="MinWidth" Value="0" />
+                                <Setter Property="Height" Value="10" />
+                                <Setter Property="MinHeight" Value="10" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Application.Resources>
 </Application>

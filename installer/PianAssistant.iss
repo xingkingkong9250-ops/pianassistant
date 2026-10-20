@@ -28,6 +28,8 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 DisableProgramGroupPage=yes
+; 正式版品牌图标：安装向导图标 + exe/快捷方式/卸载项图标（v1.3.0）
+SetupIconFile=..\src\PianAssistant\Assets\app.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible

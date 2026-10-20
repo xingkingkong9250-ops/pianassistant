@@ -4,6 +4,7 @@
         Title="设置 — 拉片助手"
         Width="560" Height="660"
         WindowStartupLocation="CenterOwner"
+        Icon="/Assets/app.ico"
         Background="#1E1E1E" Foreground="#E0E0E0"
         FontFamily="Microsoft YaHei UI, Segoe UI" FontSize="13">
     <Window.Resources>
@@ -18,12 +19,8 @@
             <Setter Property="BorderBrush" Value="#3F3F46" />
             <Setter Property="Padding" Value="4,2" />
         </Style>
-        <Style TargetType="Button">
-            <Setter Property="Background" Value="#2D2D2D" />
-            <Setter Property="Foreground" Value="#E0E0E0" />
-            <Setter Property="Padding" Value="8,4" />
-            <Setter Property="Margin" Value="2" />
-        </Style>
+        <!-- Button 深色模板由 App.xaml 的 DarkButton 兜底提供（v1.3.0）：
+             原此处仅覆盖颜色、沿用系统默认 Aero2 模板，悬停/按下会刷浅蓝底与浅色文字撞色 -->
     </Window.Resources>
 
     <DockPanel Margin="12">
@@ -64,7 +61,8 @@
 
                     <Label Grid.Row="1" Content="截图格式：" />
                     <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,2"
-                              SelectedItem="{Binding SnapshotFormat, Mode=TwoWay}">
+                              SelectedValue="{Binding SnapshotFormat, Mode=TwoWay}"
+                              SelectedValuePath="Content">
                         <ComboBoxItem Content="png" />
                         <ComboBoxItem Content="jpg" />
                     </ComboBox>
