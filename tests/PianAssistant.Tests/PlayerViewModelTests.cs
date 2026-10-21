@@ -480,3 +480,127 @@ public class PlayerViewModelVolumeTests : IDisposable
         Assert.Single(vm.CutPoints); // 未被直接清空，等待 Shell 确认后执行
     }
 }
+
+/// <summary>轨道选择与外挂字幕（v1.5.0）：菜单选项构建、切换命令、自动匹配、会话内记忆恢复。</summary>
+public class PlayerViewModelTrackTests : IDisposable
+{
+    private readonly string _tempDir;
+    private readonly StubVideoPlayback _playback;
+    private readonly PlayerViewModel _vm;
+
+    public PlayerViewModelTrackTests()
+    {
+        _tempDir = Path.Combine(Path.GetTempPath(), $"pian-track-test-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_tempDir);
+        var ffmpegPath = Path.Combine(_tempDir, "ffmpeg.exe");
+        var ffprobePath = Path.Combine(_tempDir, "ffprobe.exe");
+        File.WriteAllText(ffmpegPath, "stub");
+        File.WriteAllText(ffprobePath, "stub");
+        var ffmpeg = new FfmpegRunner(ffmpegPath, ffprobePath);
+        _playback = new StubVideoPlayback();
+        _vm = new PlayerViewModel(
+            _playback,
+            new ScreenshotService(_playback, ffmpeg, _tempDir, "png"),
+            new ClipExtractionService(ffmpeg, _tempDir),
+            () => 5, () => 0.25, () => 8.0);
+    }
+
+    public void Dispose()
+    {
+        _vm.Dispose();
+        try { Directory.Delete(_tempDir, true); } catch { }
+    }
+
+    private string CreateVideo(string name = "movie.mp4")
+    {
+        var path = Path.Combine(_tempDir, name);
+        File.WriteAllText(path, "stub");
+        return path;
+    }
+
+    private void SimulateTracksAvailable()
+    {
+        _playback.AudioTracks.Add(new TrackInfo(0, "音轨 1"));
+        _playback.AudioTracks.Add(new TrackInfo(1, "音轨 2"));
+        _playback.SubtitleTracks.Add(new TrackInfo(0, "内嵌字幕"));
+        _playback.SetAudioTrack(0);
+        _playback.SetSubtitleTrack(0);
+        _playback.RaiseTracksChanged();
+    }
+
+    [Fact]
+    public void TracksChanged_BuildsAudioAndSubtitleOptions()
+    {
+        _vm.Open(CreateVideo());
+        SimulateTracksAvailable();
+        Assert.Equal(2, _vm.AudioTrackOptions.Count);
+        // 字幕菜单：固定「关闭字幕」+ 各轨
+        Assert.Equal(2, _vm.SubtitleTrackOptions.Count);
+        Assert.Equal(-1, _vm.SubtitleTrackOptions[0].Id);
+        Assert.Equal(0, _vm.SelectedAudioTrackId);
+        Assert.Equal(0, _vm.SelectedSubtitleTrackId);
+        Assert.True(_vm.AudioTrackOptions[0].IsSelected);
+        Assert.True(_vm.SubtitleTrackOptions[1].IsSelected);
+    }
+
+    [Fact]
+    public void SelectSubtitleTrack_MinusOne_ClosesSubtitle()
+    {
+        _vm.Open(CreateVideo());
+        SimulateTracksAvailable();
+        _vm.SelectSubtitleTrackCommand.Execute(_vm.SubtitleTrackOptions[0]);
+        Assert.Equal(-1, _playback.CurrentSubtitleTrack);
+        Assert.Equal(-1, _vm.SelectedSubtitleTrackId);
+        Assert.True(_vm.SubtitleTrackOptions[0].IsSelected);
+    }
+
+    [Fact]
+    public void SelectAudioTrack_SwitchesStubTrack()
+    {
+        _vm.Open(CreateVideo());
+        SimulateTracksAvailable();
+        _vm.SelectAudioTrackCommand.Execute(_vm.AudioTrackOptions[1]);
+        Assert.Equal(1, _playback.CurrentAudioTrack);
+        Assert.Equal(1, _vm.SelectedAudioTrackId);
+    }
+
+    [Fact]
+    public void Open_AutoLoadsMatchingExternalSubtitles()
+    {
+        var video = CreateVideo();
+        File.WriteAllText(Path.Combine(_tempDir, "movie.srt"), "stub");
+        File.WriteAllText(Path.Combine(_tempDir, "movie.zh.ass"), "stub");
+        File.WriteAllText(Path.Combine(_tempDir, "unrelated.srt"), "stub");
+        _vm.Open(video);
+        Assert.Equal(2, _vm.LoadedExternalSubtitles.Count);
+        Assert.Contains(_vm.LoadedExternalSubtitles, p => p.EndsWith("movie.srt"));
+        Assert.Contains(_vm.LoadedExternalSubtitles, p => p.EndsWith("movie.zh.ass"));
+    }
+
+    [Fact]
+    public void LoadSubtitle_DedupesSamePath()
+    {
+        _vm.Open(CreateVideo());
+        _vm.LoadSubtitle(Path.Combine(_tempDir, "extra.srt"));
+        _vm.LoadSubtitle(Path.Combine(_tempDir, "extra.srt"));
+        Assert.Single(_vm.LoadedExternalSubtitles);
+    }
+
+    [Fact]
+    public void TrackChoice_RestoredWhenReopeningSameFile()
+    {
+        var video = CreateVideo();
+        _vm.Open(video);
+        SimulateTracksAvailable();
+        _vm.SelectAudioTrackCommand.Execute(_vm.AudioTrackOptions[1]);
+        _vm.SelectSubtitleTrackCommand.Execute(_vm.SubtitleTrackOptions[0]); // 关闭
+
+        // 重新打开同一素材：stub 模拟同样的轨到集合
+        _playback.AudioTracks.Clear();
+        _playback.SubtitleTracks.Clear();
+        _vm.Open(video);
+        SimulateTracksAvailable();
+        Assert.Equal(1, _vm.SelectedAudioTrackId);
+        Assert.Equal(-1, _vm.SelectedSubtitleTrackId);
+    }
+}

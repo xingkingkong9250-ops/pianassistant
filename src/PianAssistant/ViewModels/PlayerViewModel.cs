@@ -23,6 +23,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private bool _disposed;
     // 每个文件路径独立保存的播放倍速
     private readonly Dictionary<string, double> _rateMemory = new();
+    // 每个文件路径独立记忆的音轨/字幕轨选择（会话内，v1.5.0）
+    private readonly Dictionary<string, (int Audio, int Subtitle)> _trackMemory = new();
+    // 打开新文件后待恢复的轨道选择（轨道列表在首次 Playing 事件后才可用）
+    private (int Audio, int Subtitle)? _pendingTrackRestore;
 
     // Position binding state:
     // _isUpdatingFromPlayback guards against Seek→PositionChanged→Seek loops.
@@ -77,6 +81,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _playback.Paused += OnPaused;
         _playback.Stopped += OnStopped;
         _playback.EndReached += OnEndReached;
+        _playback.TracksChanged += OnTracksChanged;
 
         // Commands.
         PlayPauseCommand = new RelayCommand(() => _playback.TogglePlayPause());
@@ -132,6 +137,11 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         DecreaseRateCustomCommand = new RelayCommand(DecreaseRateCustom);
         // 字幕加载命令（接收文件路径参数）
         LoadSubtitleCommand = new AsyncRelayCommand<string>(LoadSubtitleAsync);
+        // 轨道切换命令（v1.5.0）：参数为 TrackOption（null 无法触发，见守卫）
+        SelectAudioTrackCommand = new RelayCommand(
+            p => { if (p is TrackOption t) SelectAudioTrack(t); });
+        SelectSubtitleTrackCommand = new RelayCommand(
+            p => { if (p is TrackOption t) SelectSubtitleTrack(t); });
         // 百分比跳转命令（D1~D9）：参数为 0..1 的比例
         SeekPercentCommand = new RelayCommand(ExecuteSeekPercent);
     }
@@ -381,6 +391,99 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public string? CurrentPath => _playback.CurrentPath;
     public bool HasMedia => _playback.CurrentPath is not null;
 
+    // --- 轨道选择与外挂字幕（v1.5.0）---
+
+    /// <summary>音轨菜单选项（开始播放后填充）。</summary>
+    public ObservableCollection<TrackOption> AudioTrackOptions { get; } = new();
+
+    /// <summary>字幕菜单选项：固定含「关闭字幕」(Id=-1)，其后为内嵌字幕轨与已加载外挂字幕。</summary>
+    public ObservableCollection<TrackOption> SubtitleTrackOptions { get; } = new();
+
+    /// <summary>当前选中的音轨 id（-1 表示无）。</summary>
+    public int SelectedAudioTrackId { get; private set; } = -1;
+
+    /// <summary>当前选中的字幕轨 id（-1 表示关闭）。</summary>
+    public int SelectedSubtitleTrackId { get; private set; } = -1;
+
+    /// <summary>已加载的外挂字幕文件路径（用于菜单展示与去重）。</summary>
+    public ObservableCollection<string> LoadedExternalSubtitles { get; } = new();
+
+    private void SelectAudioTrack(TrackOption option)
+    {
+        _playback.SetAudioTrack(option.Id);
+        SelectedAudioTrackId = option.Id;
+        OnPropertyChanged(nameof(SelectedAudioTrackId));
+        MarkSelected(AudioTrackOptions, option.Id);
+        SaveTrackSelection();
+    }
+
+    private void SelectSubtitleTrack(TrackOption option)
+    {
+        _playback.SetSubtitleTrack(option.Id);
+        SelectedSubtitleTrackId = option.Id;
+        OnPropertyChanged(nameof(SelectedSubtitleTrackId));
+        MarkSelected(SubtitleTrackOptions, option.Id);
+        SaveTrackSelection();
+    }
+
+    private static void MarkSelected(IEnumerable<TrackOption> options, int id)
+    {
+        foreach (var o in options)
+            o.IsSelected = o.Id == id;
+    }
+
+    /// <summary>把当前轨到选择记入会话记忆（切回同一素材时可恢复）。</summary>
+    private void SaveTrackSelection()
+    {
+        var path = _playback.CurrentPath;
+        if (path is null) return;
+        _trackMemory[path] = (SelectedAudioTrackId, SelectedSubtitleTrackId);
+    }
+
+    /// <summary>轨道列表就绪/变化：重建菜单选项、应用待恢复选择。</summary>
+    private void OnTracksChanged(object? sender, EventArgs e) => RefreshTrackOptions();
+
+    /// <summary>
+    /// 从播放服务拉取最新轨到列表重建菜单。首次构建时应用
+    /// 待恢复的轨到选择（会话记忆）；外部字幕加载后保持当前选择不变。
+    /// </summary>
+    private void RefreshTrackOptions()
+    {
+        var restore = _pendingTrackRestore;
+        _pendingTrackRestore = null;
+
+        AudioTrackOptions.Clear();
+        foreach (var t in _playback.GetAudioTracks())
+            AudioTrackOptions.Add(new TrackOption(t.Id, t.Name));
+        SubtitleTrackOptions.Clear();
+        SubtitleTrackOptions.Add(new TrackOption(-1, "关闭字幕"));
+        foreach (var t in _playback.GetSubtitleTracks())
+            SubtitleTrackOptions.Add(new TrackOption(t.Id, t.Name));
+
+        var audioId = _playback.CurrentAudioTrack;
+        var subtitleId = _playback.CurrentSubtitleTrack;
+        if (restore is { } r)
+        {
+            // 恢复记忆选择：仅当目标轨仍存在才生效
+            if (AudioTrackOptions.Any(o => o.Id == r.Audio))
+            {
+                _playback.SetAudioTrack(r.Audio);
+                audioId = r.Audio;
+            }
+            if (SubtitleTrackOptions.Any(o => o.Id == r.Subtitle))
+            {
+                _playback.SetSubtitleTrack(r.Subtitle);
+                subtitleId = r.Subtitle;
+            }
+        }
+        SelectedAudioTrackId = audioId;
+        SelectedSubtitleTrackId = subtitleId;
+        OnPropertyChanged(nameof(SelectedAudioTrackId));
+        OnPropertyChanged(nameof(SelectedSubtitleTrackId));
+        MarkSelected(AudioTrackOptions, audioId);
+        MarkSelected(SubtitleTrackOptions, subtitleId);
+    }
+
     // --- Commands ---
 
     public ICommand PlayPauseCommand { get; }
@@ -419,6 +522,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand DecreaseRateCustomCommand { get; }
     // 字幕加载命令（参数为字幕文件路径）
     public AsyncRelayCommand<string> LoadSubtitleCommand { get; }
+    /// <summary>选择音轨（v1.5.0，参数为 TrackOption）。</summary>
+    public ICommand SelectAudioTrackCommand { get; }
+    /// <summary>选择字幕轨（v1.5.0，参数为 TrackOption；Id=-1 关闭字幕）。</summary>
+    public ICommand SelectSubtitleTrackCommand { get; }
     /// <summary>百分比跳转命令（D1~D9，参数为 0..1 的比例）。</summary>
     public ICommand SeekPercentCommand { get; }
 
@@ -441,11 +548,14 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public void Open(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        // 先保存当前视频的倍速到记忆表
+        // 先保存当前视频的倍速与轨到选择
         SaveCurrentRate();
+        SaveTrackSelection();
         _playback.Open(path);
-        // 再从记忆表加载新视频的倍速（无记录则重置为 1.0）
+        // 恢复新视频的倍速与轨到选择
         LoadRate(path);
+        _trackMemory.TryGetValue(path, out var trackChoice);
+        _pendingTrackRestore = trackChoice;
         Length = _playback.Length;
         Position = TimeSpan.Zero;
         InPoint = null;
@@ -453,12 +563,22 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         CutPoints.Clear();
         SelectedSegmentStart = null;
         SelectedSegmentEnd = null;
+        AudioTrackOptions.Clear();
+        SubtitleTrackOptions.Clear();
+        SelectedAudioTrackId = -1;
+        SelectedSubtitleTrackId = -1;
+        LoadedExternalSubtitles.Clear();
+        OnPropertyChanged(nameof(SelectedAudioTrackId));
+        OnPropertyChanged(nameof(SelectedSubtitleTrackId));
         OnPropertyChanged(nameof(HasMedia));
         OnPropertyChanged(nameof(CurrentPath));
         OnPropertyChanged(nameof(Fps));
         OnPropertyChanged(nameof(VideoWidth));
         OnPropertyChanged(nameof(VideoHeight));
         OnPropertyChanged(nameof(LengthDisplayString));
+
+        // 自动匹配同目录同主名的外挂字幕并加载（v1.5.0）
+        TryAutoLoadExternalSubtitles(path);
     }
 
     /// <summary>将当前视频的倍速保存到记忆表（按路径索引）。</summary>
@@ -476,17 +596,44 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         Rate = _rateMemory.TryGetValue(path, out var rate) ? rate : 1.0;
     }
 
-    /// <summary>加载外挂字幕文件到当前媒体。</summary>
+    /// <summary>加载外挂字幕文件到当前媒体（手动选择 / 拖放入口）。</summary>
     public void LoadSubtitle(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (LoadedExternalSubtitles.Contains(path)) return;
         _playback.LoadSubtitle(path);
+        LoadedExternalSubtitles.Add(path);
+        // 外挂字幕默认选中（VLC AddSlave 会设为当前轨），手动刷新一次
+        // 让菜单的「当前选中」标记与 VLC 内部状态保持一致
+        RefreshTrackOptions();
     }
 
     private async Task LoadSubtitleAsync(string path)
     {
         if (string.IsNullOrEmpty(path)) return;
-        await Task.Run(() => _playback.LoadSubtitle(path));
+        await Task.Run(() => LoadSubtitle(path));
+    }
+
+    /// <summary>
+    /// 打开视频时自动加载同目录同主名的外挂字幕（如 movie.srt、movie.zh.ass）。
+    /// 所有匹配项全部挂载（LibVLC 会把最后一条 AddSlave 设为当前轨，
+    /// 用户可随时在菜单切换）。
+    /// </summary>
+    private void TryAutoLoadExternalSubtitles(string videoPath)
+    {
+        try
+        {
+            foreach (var sub in SubtitleTrackMatcher.FindMatchingSubtitles(videoPath))
+            {
+                _playback.LoadSubtitle(sub);
+                LoadedExternalSubtitles.Add(sub);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 自动匹配失败不影响播放：仅记日志（如目录权限、IO 异常）
+            AppLog.Error("[PlayerVM] 自动匹配外挂字幕失败", ex);
+        }
     }
 
     /// <summary>Seek to a percentage of the total length (0..1).</summary>
@@ -849,6 +996,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _playback.Paused -= OnPaused;
         _playback.Stopped -= OnStopped;
         _playback.EndReached -= OnEndReached;
+        _playback.TracksChanged -= OnTracksChanged;
     }
 }
 
@@ -869,4 +1017,27 @@ public sealed class ClipExtractedEventArgs : EventArgs
 public sealed record RateOption(double Value)
 {
     public string Label => $"{Value:0.0#}×";
+}
+
+/// <summary>
+/// 音轨/字幕轨菜单选项（v1.5.0）：Id 为 VLC 内部轨到 id（-1 表示关闭字幕），
+/// Label 为菜单显示文本，IsSelected 用于菜单打勾。
+/// </summary>
+public sealed class TrackOption : ObservableObject
+{
+    public TrackOption(int id, string label)
+    {
+        Id = id;
+        Label = label;
+    }
+
+    public int Id { get; }
+    public string Label { get; }
+
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
 }

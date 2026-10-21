@@ -330,6 +330,16 @@
                     <!-- W1-R4-06 音量百分比 -->
                     <TextBlock Text="{Binding Player.Volume, StringFormat={}{0}%}" Foreground="#999999"
                                FontFamily="Consolas" FontSize="12" MinWidth="30" VerticalAlignment="Center" />
+                    <!-- W1-R4-16 字幕轨选择（v1.5.0）：弹出内嵌/外挂字幕轨菜单，含「关闭字幕」与「加载字幕文件…」 -->
+                    <Button x:Name="SubtitleMenuButton" Content="CC" Style="{StaticResource IconButton}"
+                            Padding="6,4" FontSize="12" FontWeight="Bold" Margin="6,0,0,0"
+                            Click="OnSubtitleMenuButtonClick"
+                            ToolTip="字幕选择（点击展开轨道列表 / 加载外挂字幕）" />
+                    <!-- W1-R4-17 音轨选择（v1.5.0）：弹出音轨菜单（双语片源切换） -->
+                    <Button x:Name="AudioTrackMenuButton" Content="♪" Style="{StaticResource IconButton}"
+                            Padding="6,4" FontSize="14" Margin="2,0,0,0"
+                            Click="OnAudioTrackMenuButtonClick"
+                            ToolTip="音轨选择（多音轨片源切换）" />
                     <!-- W1-R4-08 全屏 -->
                     <Button Content="⛶" Style="{StaticResource IconButton}" Padding="6,4" FontSize="18"
                             Command="{Binding Player.ToggleFullscreenCommand}" ToolTip="全屏 (F)" />

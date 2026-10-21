@@ -275,6 +275,84 @@ public partial class MainWindow : Window
         }
     }
 
+    // --- 字幕轨 / 音轨选择菜单（W1-R4-16 / W1-R4-17，v1.5.0）---
+
+    private void OnSubtitleMenuButtonClick(object sender, RoutedEventArgs e)
+    {
+        var player = Shell?.Player;
+        if (sender is not Button button || player is null) return;
+
+        var menu = new ContextMenu();
+        foreach (var option in player.SubtitleTrackOptions)
+        {
+            var opt = option;
+            var item = new MenuItem
+            {
+                Header = BuildTrackMenuHeader(opt.Label, opt.IsSelected),
+                IsChecked = opt.IsSelected,
+            };
+            item.Click += (_, _) => player.SelectSubtitleTrackCommand.Execute(opt);
+            menu.Items.Add(item);
+        }
+        if (player.SubtitleTrackOptions.Count > 0)
+            menu.Items.Add(new Separator());
+        var loadItem = new MenuItem { Header = "加载字幕文件…" };
+        loadItem.Click += (_, _) => OnLoadSubtitleFileClick();
+        menu.Items.Add(loadItem);
+        menu.PlacementTarget = button;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    private void OnAudioTrackMenuButtonClick(object sender, RoutedEventArgs e)
+    {
+        var player = Shell?.Player;
+        if (sender is not Button button || player is null) return;
+
+        var menu = new ContextMenu();
+        if (player.AudioTrackOptions.Count == 0)
+        {
+            menu.Items.Add(new MenuItem { Header = "（当前媒体无可用音轨）", IsEnabled = false });
+        }
+        else
+        {
+            foreach (var option in player.AudioTrackOptions)
+            {
+                var opt = option;
+                var item = new MenuItem
+                {
+                    Header = BuildTrackMenuHeader(opt.Label, opt.IsSelected),
+                    IsChecked = opt.IsSelected,
+                };
+                item.Click += (_, _) => player.SelectAudioTrackCommand.Execute(opt);
+                menu.Items.Add(item);
+            }
+        }
+        menu.PlacementTarget = button;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
+
+    /// <summary>「加载字幕文件…」菜单项：弹文件对话框后走 VM 命令加载。</summary>
+    private void OnLoadSubtitleFileClick()
+    {
+        var player = Shell?.Player;
+        if (player is null) return;
+        var dlg = new OpenFileDialog
+        {
+            Title = "选择外挂字幕文件",
+            Filter = "字幕文件 (*.srt;*.ass;*.ssa;*.vtt;*.sub)|*.srt;*.ass;*.ssa;*.vtt;*.sub|所有文件 (*.*)|*.*",
+            Multiselect = true,
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        foreach (var path in dlg.FileNames)
+            player.LoadSubtitle(path);
+    }
+
+    /// <summary>轨道菜单文本：选中项前缀「✓」，未选中保持两空格缩进对齐。</summary>
+    private static string BuildTrackMenuHeader(string label, bool isSelected)
+        => isSelected ? $"✓ {label}" : $"   {label}";
+
     protected override void OnClosed(EventArgs e)
     {
         // 窗口关闭时注销全局热键
@@ -475,17 +553,8 @@ public partial class MainWindow : Window
             Shell?.ExecuteClearAllMarks();
     }
 
-    // 支持的字幕扩展名
-    private static readonly HashSet<string> SubtitleExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".srt", ".ass", ".ssa", ".vtt", ".sub"
-    };
-
-    private static bool IsSubtitleFile(string path)
-    {
-        var ext = System.IO.Path.GetExtension(path);
-        return SubtitleExtensions.Contains(ext);
-    }
+    // 支持的字幕扩展名清单统一由 SubtitleTrackMatcher 维护（v1.5.0 起与自动匹配共用）
+    private static bool IsSubtitleFile(string path) => SubtitleTrackMatcher.IsSubtitleFile(path);
 
     private void OnVideoDragOver(object sender, DragEventArgs e)
     {

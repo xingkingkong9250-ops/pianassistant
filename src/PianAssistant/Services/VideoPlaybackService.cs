@@ -23,6 +23,7 @@ public sealed class VideoPlaybackService : IVideoPlayback
     public event EventHandler? Playing;
     public event EventHandler? Paused;
     public event EventHandler? Stopped;
+    public event EventHandler? TracksChanged;
 
     public bool IsPlaying => _mediaPlayer.IsPlaying;
     public TimeSpan Position =>
@@ -93,6 +94,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
             // 音轨此刻才完成选择：若当前处于高速档（如打开时按倍速记忆恢复 8×），
             // 需再次应用音轨策略禁用音频，解除 4× 时钟钳制
             ApplyHighRateAudioPolicy(Rate);
+            // 播放开始后 demux 完成，音轨/字幕轨列表可用
+            TracksChanged?.Invoke(this, EventArgs.Empty);
             Playing?.Invoke(this, EventArgs.Empty);
         });
         _mediaPlayer.Paused += (_, _) => RaiseOnUi(() => Paused?.Invoke(this, EventArgs.Empty));
@@ -269,7 +272,48 @@ public sealed class VideoPlaybackService : IVideoPlayback
             throw new FileNotFoundException("Subtitle file not found.", path);
         var uri = new Uri(path).AbsoluteUri;
         _mediaPlayer.AddSlave(MediaSlaveType.Subtitle, uri, true);
+        // AddSlave 后字幕轨立即进入 SpuDescription（同一事件循环），
+        // 通知 VM 层刷新轨道菜单
+        RaiseOnUi(() => TracksChanged?.Invoke(this, EventArgs.Empty));
     }
+
+    // --- 轨道枚举与切换（v1.5.0）---
+
+    public IReadOnlyList<TrackInfo> GetAudioTracks()
+    {
+        // 未播放/无媒体时 native 返回空数组，无需额外守卫
+        return _mediaPlayer.AudioTrackDescription
+            .Select(t => new TrackInfo(t.Id, t.Name))
+            .ToList();
+    }
+
+    public IReadOnlyList<TrackInfo> GetSubtitleTracks()
+    {
+        // VLC 的 SpuDescription 自带 id=-1「Disable」项，VM 层统一跳过，
+        // 由「关闭字幕」入口表达，避免重复
+        return _mediaPlayer.SpuDescription
+            .Where(t => t.Id >= 0)
+            .Select(t => new TrackInfo(t.Id, t.Name))
+            .ToList();
+    }
+
+    public int CurrentAudioTrack => _mediaPlayer.AudioTrack;
+    public int CurrentSubtitleTrack => _mediaPlayer.Spu;
+
+    public void SetAudioTrack(int id)
+    {
+        // 高倍速禁音轨策略期间（>4×）：真实音轨被禁用，仅记录用户选择，
+        // 回落到 ≤4× 时由 ApplyHighRateAudioPolicy 恢复该选择
+        if (Rate > HighRateAudioLimit)
+        {
+            _savedAudioTrack = id;
+            return;
+        }
+        _savedAudioTrack = null; // 用户显式选择后，策略记忆失效
+        _mediaPlayer.SetAudioTrack(id);
+    }
+
+    public void SetSubtitleTrack(int id) => _mediaPlayer.SetSpu(id);
 
     public void Dispose()
     {

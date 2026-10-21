@@ -87,6 +87,28 @@ public sealed class StubVideoPlayback : IVideoPlayback
         LastSubtitlePath = path;
     }
 
+    // --- 轨道枚举与切换（v1.5.0 stub）---
+
+    public event EventHandler? TracksChanged;
+
+    /// <summary>Stub: 可注入的音轨列表。</summary>
+    public List<TrackInfo> AudioTracks { get; } = new();
+
+    /// <summary>Stub: 可注入的字幕轨列表。</summary>
+    public List<TrackInfo> SubtitleTracks { get; } = new();
+
+    public int CurrentAudioTrack { get; private set; } = -1;
+    public int CurrentSubtitleTrack { get; private set; } = -1;
+
+    public IReadOnlyList<TrackInfo> GetAudioTracks() => AudioTracks;
+    public IReadOnlyList<TrackInfo> GetSubtitleTracks() => SubtitleTracks;
+
+    public void SetAudioTrack(int id) => CurrentAudioTrack = id;
+    public void SetSubtitleTrack(int id) => CurrentSubtitleTrack = id;
+
+    /// <summary>测试辅助：触发 TracksChanged 事件。</summary>
+    public void RaiseTracksChanged() => TracksChanged?.Invoke(this, EventArgs.Empty);
+
     /// <summary>Simulate playback advancing the position.</summary>
     public void SimulatePositionChange(TimeSpan newPos)
     {
