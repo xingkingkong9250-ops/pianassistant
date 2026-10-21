@@ -114,7 +114,8 @@ public sealed class BatchExecutionService
         var outputPath = Path.Combine(outputDir, $"{stamp}{label}.{_settings.SnapshotFormat}");
         outputPath = MakeUnique(outputPath);
 
-        _ffmpeg.CaptureSingleFrame(videoPath, instruction.Start, outputPath);
+        _ffmpeg.CaptureSingleFrame(videoPath, instruction.Start, outputPath,
+            ExportPresets.BuildScaleFilter(_settings.SnapshotResolution));
         return outputPath;
     }
 

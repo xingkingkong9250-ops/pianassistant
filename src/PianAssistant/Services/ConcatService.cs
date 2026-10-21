@@ -12,11 +12,13 @@ namespace PianAssistant.Services;
 public sealed class ConcatService
 {
     private readonly FfmpegRunner _ffmpeg;
+    private readonly AppSettingsService? _settings;
 
-    public ConcatService(FfmpegRunner ffmpeg)
+    public ConcatService(FfmpegRunner ffmpeg, AppSettingsService? settings = null)
     {
         ArgumentNullException.ThrowIfNull(ffmpeg);
         _ffmpeg = ffmpeg;
+        _settings = settings;
     }
 
     /// <summary>
@@ -48,8 +50,8 @@ public sealed class ConcatService
             var totalSteps = ranges.Count + 1;
             var tempClips = new List<string>(ranges.Count);
 
-            // 第 1..N 步：逐段流复制导出到临时目录
-            var tempExtractor = new ClipExtractionService(_ffmpeg, tempRoot);
+            // 第 1..N 步：逐段导出到临时目录（按导出预设统一格式/分辨率）
+            var tempExtractor = new ClipExtractionService(_ffmpeg, tempRoot, settings: _settings);
             for (int i = 0; i < ranges.Count; i++)
             {
                 var index = i;

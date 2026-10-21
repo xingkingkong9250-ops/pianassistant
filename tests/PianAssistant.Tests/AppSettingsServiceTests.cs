@@ -44,6 +44,38 @@ public class AppSettingsServiceTests : IDisposable
     }
 
     [Fact]
+    public void Defaults_ExportPresets_AreMp4_1080p_1080p()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        Assert.Equal("mp4", svc.VideoExportFormat);
+        Assert.Equal("1080p", svc.VideoExportResolution);
+        Assert.Equal("1080p", svc.SnapshotResolution);
+    }
+
+    [Fact]
+    public void ExportPresetSetters_PersistAcrossInstances()
+    {
+        var svc1 = new AppSettingsService(_tempDir);
+        svc1.SetVideoExportFormat("mkv");
+        svc1.SetVideoExportResolution("source");
+        svc1.SetSnapshotResolution("720p");
+
+        var svc2 = new AppSettingsService(_tempDir);
+        Assert.Equal("mkv", svc2.VideoExportFormat);
+        Assert.Equal("source", svc2.VideoExportResolution);
+        Assert.Equal("720p", svc2.SnapshotResolution);
+    }
+
+    [Fact]
+    public void ExportPresetSetters_InvalidValue_Throws()
+    {
+        var svc = new AppSettingsService(_tempDir);
+        Assert.Throws<ArgumentException>(() => svc.SetVideoExportFormat("avi"));
+        Assert.Throws<ArgumentException>(() => svc.SetVideoExportResolution("4k"));
+        Assert.Throws<ArgumentException>(() => svc.SetSnapshotResolution("4k"));
+    }
+
+    [Fact]
     public void AddRecentFile_InsertsAtFront()
     {
         var svc = new AppSettingsService(_tempDir);

@@ -172,7 +172,7 @@
                 <Button Content="📤 导出标记" FontSize="12"
                         Style="{StaticResource GhostButton}" Foreground="#D7BA7D"
                         Command="{Binding ExportMarkedCommand}"
-                        ToolTip="把勾选标记的截图（复制 png）与片段（ffmpeg 切出 mp4）导出到指定目录" />
+                        ToolTip="把勾选标记的截图与片段按「输出设置」的格式/分辨率预设导出到指定目录" />
                 <Button Content="📋 导出数据" FontSize="12" Margin="6,0,0,0"
                         Style="{StaticResource GhostButton}"
                         Command="{Binding ExportDataCommand}"

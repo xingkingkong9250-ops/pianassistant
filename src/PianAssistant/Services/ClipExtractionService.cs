@@ -13,9 +13,11 @@ public sealed class ClipExtractionService
     private readonly string _outputDirectory;
     private readonly bool _organizeByDate;
     private readonly string? _projectSubfolder;
+    private readonly AppSettingsService? _settings;
 
     public ClipExtractionService(FfmpegRunner ffmpeg, string outputDirectory,
-        bool organizeByDate = false, string? projectSubfolder = null)
+        bool organizeByDate = false, string? projectSubfolder = null,
+        AppSettingsService? settings = null)
     {
         ArgumentNullException.ThrowIfNull(ffmpeg);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputDirectory);
@@ -23,6 +25,7 @@ public sealed class ClipExtractionService
         _outputDirectory = outputDirectory;
         _organizeByDate = organizeByDate;
         _projectSubfolder = projectSubfolder;
+        _settings = settings;
     }
 
     public string OutputDirectory => _outputDirectory;
@@ -74,13 +77,22 @@ public sealed class ClipExtractionService
         var sourceName = Path.GetFileNameWithoutExtension(range.SourcePath);
         var inStamp = TimeCodeFormatter.ToFileNameFragment(range.InPoint);
         var outStamp = TimeCodeFormatter.ToFileNameFragment(range.OutPoint!.Value);
-        var outName = $"{sourceName}_{inStamp}-{outStamp}{(reencode ? "_rec" : "")}.mp4";
+
+        // 导出预设每次调用实时读取（设置窗保存后立即生效）。
+        // 无 settings（测试直构）时保持旧行为：mp4 + 源分辨率（流复制）。
+        var format = _settings?.VideoExportFormat ?? ExportPresets.DefaultVideoFormat;
+        var scaleFilter = _settings is null
+            ? null
+            : ExportPresets.BuildScaleFilter(_settings.VideoExportResolution);
+        // 分辨率预设非「源」时必须重编码：流复制无法改变分辨率。
+        var mustReencode = reencode || scaleFilter is not null;
+        var outName = $"{sourceName}_{inStamp}-{outStamp}{(mustReencode ? "_rec" : "")}.{format}";
         var outputPath = Path.Combine(outputDir, outName);
         outputPath = MakeUnique(outputPath);
 
-        if (reencode)
+        if (mustReencode)
             _ffmpeg.ExtractClipReencode(range.SourcePath, range.InPoint, range.OutPoint.Value,
-                outputPath, cancellationToken, onProgress);
+                outputPath, cancellationToken, onProgress, scaleFilter);
         else
             _ffmpeg.ExtractClipStreamCopy(range.SourcePath, range.InPoint, range.OutPoint.Value,
                 outputPath, cancellationToken, onProgress);

@@ -182,7 +182,7 @@ public partial class NotesView : UserControl
         (Window.GetWindow(this) as MainWindow)?.ShowClipsPanel();
     }
 
-    // --- 标记导出：截图复制 png，片段 ffmpeg 切出 mp4 ---
+    // --- 标记导出：截图与片段按「输出设置」的导出预设输出 ---
 
     private void OnExportMarkedRequested(object? sender, EventArgs e)
     {

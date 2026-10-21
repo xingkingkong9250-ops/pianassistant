@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
+using PianAssistant.Services;
 using PianAssistant.ViewModels;
 
 namespace PianAssistant.Views;
@@ -40,11 +41,14 @@ public partial class ClipsView : UserControl
     {
         var vm = Vm;
         if (vm is null) return;
+        // 默认扩展名跟随「视频格式」导出预设（v1.4.0）
+        var format = (Window.GetWindow(this) as MainWindow)?.Shell?.Services.Settings.VideoExportFormat
+                     ?? ExportPresets.DefaultVideoFormat;
         var dlg = new SaveFileDialog
         {
             Title = "拼接导出片段",
-            FileName = $"{vm.ConcatSourceName}_拼接.mp4",
-            Filter = "视频文件|*.mp4|所有文件|*.*",
+            FileName = $"{vm.ConcatSourceName}_拼接.{format}",
+            Filter = $"{format.ToUpperInvariant()} 视频|*.{format}|所有文件|*.*",
         };
         if (dlg.ShowDialog() != true) return;
         _ = vm.ConcatSelectedAsync(dlg.FileName);

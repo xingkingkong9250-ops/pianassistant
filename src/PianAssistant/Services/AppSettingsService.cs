@@ -72,8 +72,20 @@ public sealed class AppSettingsService
 
     public string SnapshotFormat =>
         string.IsNullOrWhiteSpace(_settings.SnapshotFormat)
-            ? "png"
+            ? ExportPresets.DefaultSnapshotFormat
             : _settings.SnapshotFormat!;
+
+    /// <summary>截图分辨率预设（source / 1080p / 720p / 480p），默认 1080p。</summary>
+    public string SnapshotResolution =>
+        ExportPresets.NormalizeResolution(_settings.SnapshotResolution);
+
+    /// <summary>片段导出容器格式（mp4 / mkv / mov），默认 mp4。</summary>
+    public string VideoExportFormat =>
+        ExportPresets.NormalizeVideoFormat(_settings.VideoExportFormat);
+
+    /// <summary>片段导出分辨率预设（source / 1080p / 720p / 480p），默认 1080p。</summary>
+    public string VideoExportResolution =>
+        ExportPresets.NormalizeResolution(_settings.VideoExportResolution);
 
     /// <summary>方向键左右移动帧数（1~600）。</summary>
     public int SeekStepFrames
@@ -170,6 +182,30 @@ public sealed class AppSettingsService
         Save();
     }
 
+    /// <summary>设置截图分辨率预设（source / 1080p / 720p / 480p）。</summary>
+    public void SetSnapshotResolution(string resolution)
+    {
+        ExportPresets.EnsureValidResolution(resolution);
+        _settings.SnapshotResolution = ExportPresets.NormalizeResolution(resolution);
+        Save();
+    }
+
+    /// <summary>设置片段导出容器格式（mp4 / mkv / mov）。</summary>
+    public void SetVideoExportFormat(string format)
+    {
+        ExportPresets.EnsureValidVideoFormat(format);
+        _settings.VideoExportFormat = ExportPresets.NormalizeVideoFormat(format);
+        Save();
+    }
+
+    /// <summary>设置片段导出分辨率预设（source / 1080p / 720p / 480p）。</summary>
+    public void SetVideoExportResolution(string resolution)
+    {
+        ExportPresets.EnsureValidResolution(resolution);
+        _settings.VideoExportResolution = ExportPresets.NormalizeResolution(resolution);
+        Save();
+    }
+
     public void SetHotkeyOverride(HotkeyAction action, string gesture)
     {
         _settings.HotkeyOverrides[action] = gesture;
@@ -218,6 +254,12 @@ public sealed class AppSettings
     public string? ScreenshotsDirectory { get; set; }
     public string? ClipsDirectory { get; set; }
     public string? SnapshotFormat { get; set; }
+    /// <summary>截图分辨率预设（source / 1080p / 720p / 480p；null 表示默认 1080p）。</summary>
+    public string? SnapshotResolution { get; set; }
+    /// <summary>片段导出容器格式（mp4 / mkv / mov；null 表示默认 mp4）。</summary>
+    public string? VideoExportFormat { get; set; }
+    /// <summary>片段导出分辨率预设（source / 1080p / 720p / 480p；null 表示默认 1080p）。</summary>
+    public string? VideoExportResolution { get; set; }
     public List<string> RecentFiles { get; set; } = new();
     public Dictionary<HotkeyAction, string> HotkeyOverrides { get; set; } = new();
     /// <summary>方向键左右每次移动帧数（1~600，默认5）。</summary>

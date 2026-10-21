@@ -61,7 +61,9 @@ public sealed class FfmpegRunner
     /// Capture a single still frame at the given position using ffmpeg.
     /// Used as a fallback when LibVLC TakeSnapshot fails.
     /// </summary>
-    public void CaptureSingleFrame(string source, TimeSpan position, string outputPath)
+    /// <param name="scaleFilter">可选缩放滤镜（导出分辨率预设）；null 保持源分辨率。</param>
+    public void CaptureSingleFrame(string source, TimeSpan position, string outputPath,
+        string? scaleFilter = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
@@ -69,6 +71,7 @@ public sealed class FfmpegRunner
         args.Append("-ss ").Append(position.TotalSeconds.ToString("0.###")).Append(' ');
         args.Append("-i \"").Append(source).Append("\" ");
         args.Append("-frames:v 1 ");
+        AppendScaleFilter(args, scaleFilter);
         var ext = Path.GetExtension(outputPath).ToLowerInvariant();
         args.Append(ext switch
         {
@@ -120,13 +123,15 @@ public sealed class FfmpegRunner
     /// <summary>
     /// Extract a clip with re-encoding for millisecond precision.
     /// </summary>
+    /// <param name="scaleFilter">可选缩放滤镜（导出分辨率预设）；null 保持源分辨率。</param>
     public void ExtractClipReencode(
         string source,
         TimeSpan inPoint,
         TimeSpan outPoint,
         string outputPath,
         CancellationToken cancellationToken,
-        Action<double>? onProgress = null)
+        Action<double>? onProgress = null,
+        string? scaleFilter = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
@@ -140,10 +145,22 @@ public sealed class FfmpegRunner
         args.Append("-ss ").Append(inPoint.TotalSeconds.ToString("0.###")).Append(' ');
         args.Append("-i \"").Append(source).Append("\" ");
         args.Append("-t ").Append(TimeSpan.FromMilliseconds(durationMs).TotalSeconds.ToString("0.###")).Append(' ');
-        args.Append("-c:v libx264 -preset fast -crf 18 ");
+        args.Append("-c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p ");
+        AppendScaleFilter(args, scaleFilter);
         args.Append("-c:a aac -b:a 192k ");
+        // mp4/mov 打开 faststart：便于边下边播；mkv 不支持该选项
+        var ext = Path.GetExtension(outputPath).ToLowerInvariant();
+        if (ext is ".mp4" or ".mov")
+            args.Append("-movflags +faststart ");
         args.Append('"').Append(outputPath).Append('"');
         RunWithProgress(args.ToString(), durationMs, cancellationToken, onProgress);
+    }
+
+    /// <summary>追加 -vf 缩放滤镜（空值不追加）。</summary>
+    private static void AppendScaleFilter(StringBuilder args, string? scaleFilter)
+    {
+        if (string.IsNullOrWhiteSpace(scaleFilter)) return;
+        args.Append("-vf \"").Append(scaleFilter).Append("\" ");
     }
 
     /// <summary>

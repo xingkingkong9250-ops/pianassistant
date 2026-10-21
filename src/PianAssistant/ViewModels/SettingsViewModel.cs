@@ -16,6 +16,9 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly AppSettingsService _settings;
     private readonly HotkeyService _hotkeys;
     private string _snapshotFormat;
+    private string _snapshotResolution;
+    private string _videoExportFormat;
+    private string _videoExportResolution;
     private HotkeyAction _selectedAction;
     private string _editingGesture = string.Empty;
     private bool _globalHotkeysEnabled;
@@ -41,6 +44,9 @@ public sealed class SettingsViewModel : ObservableObject
         _restoreSession = settings.RestoreSession;
         _restorePlaybackPosition = settings.RestorePlaybackPosition;
         _snapshotFormat = settings.SnapshotFormat;
+        _snapshotResolution = settings.SnapshotResolution;
+        _videoExportFormat = settings.VideoExportFormat;
+        _videoExportResolution = settings.VideoExportResolution;
         _selectedAction = HotkeyAction.PlayPause;
         _globalHotkeysEnabled = settings.GlobalHotkeysEnabled;
         _organizeByDate = settings.OrganizeByDate;
@@ -64,6 +70,27 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _snapshotFormat;
         set => SetProperty(ref _snapshotFormat, value);
+    }
+
+    /// <summary>截图分辨率预设（source / 1080p / 720p / 480p）。</summary>
+    public string SnapshotResolution
+    {
+        get => _snapshotResolution;
+        set => SetProperty(ref _snapshotResolution, value);
+    }
+
+    /// <summary>片段导出容器格式（mp4 / mkv / mov）。</summary>
+    public string VideoExportFormat
+    {
+        get => _videoExportFormat;
+        set => SetProperty(ref _videoExportFormat, value);
+    }
+
+    /// <summary>片段导出分辨率预设（source / 1080p / 720p / 480p）。</summary>
+    public string VideoExportResolution
+    {
+        get => _videoExportResolution;
+        set => SetProperty(ref _videoExportResolution, value);
     }
 
     /// <summary>是否启用全局热键（应用失焦时按 S 截图）。</summary>
@@ -251,6 +278,9 @@ public sealed class SettingsViewModel : ObservableObject
             StringComparison.OrdinalIgnoreCase);
 
         _settings.SetSnapshotFormat(_snapshotFormat);
+        _settings.SetSnapshotResolution(_snapshotResolution);
+        _settings.SetVideoExportFormat(_videoExportFormat);
+        _settings.SetVideoExportResolution(_videoExportResolution);
         _settings.GlobalHotkeysEnabled = _globalHotkeysEnabled;
         _settings.SetOrganizationOptions(_organizeByDate, _projectSubfolderName);
         _settings.MaxRate = MaxRate;

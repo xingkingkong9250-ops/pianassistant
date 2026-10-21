@@ -767,7 +767,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>
     /// 把指定片段导出到用户选定的目录（笔记面板「导出此段/导出选中」用）：
-    /// 走 ffmpeg 流拷贝切出 mp4，文件名沿用自动命名规则。
+    /// 按「输出设置」的导出预设切出片段（格式/分辨率），文件名沿用自动命名规则。
     /// </summary>
     public string ExportSegmentTo(TimelineSegment segment, string targetDirectory)
     {

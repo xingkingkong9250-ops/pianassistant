@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.3.0）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.4.0）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.3.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.4.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -389,6 +389,9 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-12" data-name="浏览…(数据目录)" data-desc="选择数据根目录"><rect x="338" y="250" width="60" height="22" rx="4"/><text x="368" y="262">A-12</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-13" data-name="恢复上次拉片记录" data-desc="复选框，默认开；内容哈希识别同一素材"><rect x="20" y="276" width="200" height="20" rx="4"/><text x="120" y="287">A-13</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-14" data-name="恢复播放位置与倍速" data-desc="复选框，默认开；仅 A-13 开启时生效"><rect x="20" y="300" width="200" height="20" rx="4"/><text x="120" y="311">A-14</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-15" data-name="视频格式" data-desc="下拉 mp4/mkv/mov，默认 mp4；片段导出容器格式（v1.4.0）"><rect x="20" y="324" width="200" height="20" rx="4"/><text x="120" y="335">A-15 视频格式</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-16" data-name="视频分辨率" data-desc="源/1080P/720P/480P，默认 1080P；非源档强制重编码（v1.4.0）"><rect x="20" y="348" width="200" height="20" rx="4"/><text x="120" y="359">A-16 视频分辨率</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-17" data-name="截图分辨率" data-desc="源/1080P/720P/480P，默认 1080P；长边封顶、只缩不放（v1.4.0）"><rect x="20" y="372" width="200" height="20" rx="4"/><text x="120" y="383">A-17 截图分辨率</text></g>
   <text class="lbl-m" x="480" y="66">右列（快捷键 W2-B）</text>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-01" data-name="启用全局热键" data-desc="失焦时 X 截图 / Space 播放"><rect x="480" y="74" width="150" height="20" rx="4"/><text x="555" y="85">B-01</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-02" data-name="手势编辑框" data-desc="EditingGesture，只读"><rect x="480" y="98" width="150" height="20" rx="4"/><text x="555" y="109">B-02</text></g>
@@ -398,7 +401,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-06" data-name="动作列表" data-desc="39 条动作 + 手势；深底浅字 ListBox"><rect x="480" y="148" width="420" height="240" rx="4"/><text x="690" y="260">B-06 动作列表（39 条）</text></g>
   <g class="chip" style="--z:var(--z-e)" data-num="W2-D-01" data-name="保存并关闭" data-desc="底部右侧主按钮"><rect x="1050" y="420" width="120" height="26" rx="5"/><text x="1110" y="434">D-01</text></g>
 </svg>
-<figcaption>图 5 · W2 设置窗口（左：输出设置 A-01~14；右：快捷键 B-01~06；右下：D-01）</figcaption>
+<figcaption>图 5 · W2 设置窗口（左：输出设置 A-01~17；右：快捷键 B-01~06；右下：D-01）</figcaption>
 </figure>
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明</th></tr></thead>
@@ -417,6 +420,9 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W2-A-12"><td class="num">W2-A-12</td><td>按钮「浏览…」（数据目录）</td><td>选择数据根目录</td></tr>
 <tr data-num="W2-A-13"><td class="num">W2-A-13</td><td>复选框「恢复上次拉片记录」</td><td>默认开；同一素材（内容哈希识别）自动还原</td></tr>
 <tr data-num="W2-A-14"><td class="num">W2-A-14</td><td>复选框「恢复播放位置与倍速」</td><td>默认开；仅 A-13 开启时生效</td></tr>
+<tr data-num="W2-A-15"><td class="num">W2-A-15</td><td>视频格式下拉框</td><td>mp4 / mkv / mov，默认 <strong>mp4</strong>；片段导出容器格式（v1.4.0）</td></tr>
+<tr data-num="W2-A-16"><td class="num">W2-A-16</td><td>视频分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；非「源」档自动重编码（v1.4.0）</td></tr>
+<tr data-num="W2-A-17"><td class="num">W2-A-17</td><td>截图分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；长边封顶、只缩不放（v1.4.0）</td></tr>
 <tr data-num="W2-B-01"><td class="num">W2-B-01</td><td>复选框「启用全局热键」</td><td>应用失焦时 X 仍可截图、Space 仍可播放</td></tr>
 <tr data-num="W2-B-02"><td class="num">W2-B-02</td><td>手势编辑框</td><td>EditingGesture，只读</td></tr>
 <tr data-num="W2-B-03"><td class="num">W2-B-03</td><td>按钮「全部重置」</td><td></td></tr>

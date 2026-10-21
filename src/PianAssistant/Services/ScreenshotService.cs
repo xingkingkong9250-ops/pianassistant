@@ -16,9 +16,10 @@ public sealed class ScreenshotService
     private readonly IVideoPlayback _playback;
     private readonly FfmpegRunner _ffmpeg;
     private readonly string _outputDirectory;
-    private readonly string _format; // "png" or "jpg"
+    private readonly string _format; // 构造时的回退格式（无 settings 时使用）
     private readonly bool _organizeByDate;
     private readonly string? _projectSubfolder;
+    private readonly AppSettingsService? _settings;
 
     public ScreenshotService(
         IVideoPlayback playback,
@@ -26,7 +27,8 @@ public sealed class ScreenshotService
         string outputDirectory,
         string format = "png",
         bool organizeByDate = false,
-        string? projectSubfolder = null)
+        string? projectSubfolder = null,
+        AppSettingsService? settings = null)
     {
         ArgumentNullException.ThrowIfNull(playback);
         ArgumentNullException.ThrowIfNull(ffmpeg);
@@ -39,10 +41,13 @@ public sealed class ScreenshotService
         _format = format;
         _organizeByDate = organizeByDate;
         _projectSubfolder = projectSubfolder;
+        _settings = settings;
     }
 
     public string OutputDirectory => _outputDirectory;
-    public string Format => _format;
+
+    /// <summary>截图格式：有 settings 时实时读取（设置窗保存后立即生效）。</summary>
+    public string Format => _settings?.SnapshotFormat ?? _format;
 
     /// <summary>
     /// Captures a screenshot at the current player position (ffmpeg 单帧抽帧)
@@ -64,12 +69,16 @@ public sealed class ScreenshotService
         Directory.CreateDirectory(outputDir);
 
         var source = Path.GetFileNameWithoutExtension(_playback.CurrentPath);
-        var stamp = $"{source}_{TimeCodeFormatter.ToFileNameFragment(position)}_{DateTime.Now:yyyyMMddHHmmss}.{_format}";
+        var stamp = $"{source}_{TimeCodeFormatter.ToFileNameFragment(position)}_{DateTime.Now:yyyyMMddHHmmss}.{Format}";
         var outputPath = Path.Combine(outputDir, stamp);
         outputPath = MakeUnique(outputPath);
 
-        // 后台 ffmpeg 抽帧：从源视频按时间点取原始帧（不依赖播放器状态）
-        _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, position, outputPath);
+        // 后台 ffmpeg 抽帧：从源视频按时间点取帧（不依赖播放器状态）；
+        // 分辨率预设非「源」时按长边封顶缩放（v1.4.0）。
+        var scaleFilter = _settings is null
+            ? null
+            : ExportPresets.BuildScaleFilter(_settings.SnapshotResolution);
+        _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, position, outputPath, scaleFilter);
 
         return new ScreenshotEntry(_playback.CurrentPath, outputPath, position, DateTime.Now, label);
     }

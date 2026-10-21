@@ -68,10 +68,10 @@ public sealed class ServiceRegistry
         var playback = new VideoPlaybackService();
         var screenshots = new ScreenshotService(
             playback, ffmpeg, settings.ScreenshotsDirectory, settings.SnapshotFormat,
-            settings.OrganizeByDate, settings.ProjectSubfolderName);
+            settings.OrganizeByDate, settings.ProjectSubfolderName, settings);
         var clips = new ClipExtractionService(ffmpeg, settings.ClipsDirectory,
-            settings.OrganizeByDate, settings.ProjectSubfolderName);
-        var concats = new ConcatService(ffmpeg);
+            settings.OrganizeByDate, settings.ProjectSubfolderName, settings);
+        var concats = new ConcatService(ffmpeg, settings);
         var batches = new BatchExecutionService(ffmpeg, clips, settings);
         var hotkeys = new HotkeyService();
         foreach (var kv in settings.GetHotkeyOverrides())
