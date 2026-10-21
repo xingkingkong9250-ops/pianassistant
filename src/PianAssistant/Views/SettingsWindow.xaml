@@ -174,7 +174,7 @@
                                         <ColumnDefinition Width="240" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Action}" />
+                                    <TextBlock Grid.Column="0" Text="{Binding ActionLabel}" />
                                     <TextBlock Grid.Column="1" Text="{Binding Gesture}"
                                                FontFamily="Consolas" />
                                 </Grid>

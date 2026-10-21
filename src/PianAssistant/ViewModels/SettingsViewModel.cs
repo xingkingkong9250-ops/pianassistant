@@ -313,9 +313,71 @@ public sealed class HotkeyEntry
     public HotkeyAction Action { get; }
     public string Gesture { get; set; }
 
+    /// <summary>列表显示的中文功能名（v1.5.2 起，原枚举英文仅作内部标识）。</summary>
+    public string ActionLabel => HotkeyActionLabels.Get(Action);
+
     public HotkeyEntry(HotkeyAction action, string gesture)
     {
         Action = action;
         Gesture = gesture;
     }
+}
+
+/// <summary>
+/// 快捷键功能的中文显示名映射（设置窗快捷键页列表用）。
+/// 必须覆盖 <see cref="HotkeyAction"/> 全部枚举值，由单测锁定完整性。
+/// </summary>
+public static class HotkeyActionLabels
+{
+    private static readonly IReadOnlyDictionary<HotkeyAction, string> Labels =
+        new Dictionary<HotkeyAction, string>
+        {
+            [HotkeyAction.PlayPause] = "播放 / 暂停",
+            [HotkeyAction.NextFrame] = "下一帧",
+            [HotkeyAction.PreviousFrame] = "上一帧",
+            [HotkeyAction.SeekBackward1Second] = "后退 1 秒",
+            [HotkeyAction.SeekForward1Second] = "前进 1 秒",
+            [HotkeyAction.SeekBackward10Seconds] = "后退 10 秒",
+            [HotkeyAction.SeekForward10Seconds] = "前进 10 秒",
+            [HotkeyAction.SeekToStart] = "跳到开头",
+            [HotkeyAction.SeekToEnd] = "跳到结尾",
+            [HotkeyAction.IncreaseRate] = "提高倍速",
+            [HotkeyAction.DecreaseRate] = "降低倍速",
+            [HotkeyAction.MarkIn] = "标记入点",
+            [HotkeyAction.MarkOut] = "标记出点",
+            [HotkeyAction.ClearInOut] = "清除入出点",
+            [HotkeyAction.CaptureScreenshot] = "截图",
+            [HotkeyAction.ExtractClip] = "截取入出点片段",
+            [HotkeyAction.AddCutPoint] = "添加裁切点",
+            [HotkeyAction.RemoveLastCutPoint] = "撤销裁切点",
+            [HotkeyAction.ClearCutPoints] = "清空全部标记",
+            [HotkeyAction.ExportSelectedSegment] = "导出选中分段",
+            [HotkeyAction.MarkSelectedSegment] = "标记 / 取消标记当前片段",
+            [HotkeyAction.ToggleFullscreen] = "全屏切换",
+            [HotkeyAction.ExitFullscreen] = "退出全屏",
+            [HotkeyAction.TogglePlayPauseLoop] = "循环播放开关",
+            [HotkeyAction.SeekPercent10] = "跳到 10% 位置",
+            [HotkeyAction.SeekPercent20] = "跳到 20% 位置",
+            [HotkeyAction.SeekPercent30] = "跳到 30% 位置",
+            [HotkeyAction.SeekPercent40] = "跳到 40% 位置",
+            [HotkeyAction.SeekPercent50] = "跳到 50% 位置",
+            [HotkeyAction.SeekPercent60] = "跳到 60% 位置",
+            [HotkeyAction.SeekPercent70] = "跳到 70% 位置",
+            [HotkeyAction.SeekPercent80] = "跳到 80% 位置",
+            [HotkeyAction.SeekPercent90] = "跳到 90% 位置",
+            [HotkeyAction.ToggleSidebarPanel] = "切换右侧边栏面板",
+            [HotkeyAction.ToggleMute] = "静音开关",
+            [HotkeyAction.VolumeUp] = "音量 +10",
+            [HotkeyAction.VolumeDown] = "音量 -10",
+            [HotkeyAction.PreviousNote] = "上一个活动标记",
+            [HotkeyAction.NextNote] = "下一个活动标记",
+        };
+
+    /// <summary>取功能中文名；未登记的枚举值回退为枚举名（防御，正常不会发生，有单测锁定）。</summary>
+    public static string Get(HotkeyAction action)
+        => Labels.TryGetValue(action, out var label) ? label : action.ToString();
+
+    /// <summary>全部枚举值是否均有中文名（单测用）。</summary>
+    public static bool CoversAllActions()
+        => Enum.GetValues<HotkeyAction>().All(Labels.ContainsKey);
 }

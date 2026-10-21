@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using PianAssistant.Models;
 using PianAssistant.Services;
+using PianAssistant.ViewModels;
 using Xunit;
 
 namespace PianAssistant.Tests;
@@ -197,5 +198,24 @@ public class HotkeyServiceTests
         Assert.Equal(Key.Up, up.Key);
         Assert.True(HotkeyService.TryParseGesture("OemOpenBrackets", out var bracket));
         Assert.Equal(Key.OemOpenBrackets, bracket.Key);
+    }
+
+    // --- 中文显示名（v1.5.2）---
+
+    [Fact]
+    public void HotkeyActionLabels_CoversAllEnumValues()
+    {
+        // 每个枚举值都必须在中文映射表中登记，防止新增动作后漏翻。
+        Assert.True(HotkeyActionLabels.CoversAllActions(),
+            "存在未在 HotkeyActionLabels 登记的枚举值");
+    }
+
+    [Fact]
+    public void HotkeyActionLabels_KeyActions_AreChinese()
+    {
+        Assert.Equal("播放 / 暂停", HotkeyActionLabels.Get(HotkeyAction.PlayPause));
+        Assert.Equal("截图", HotkeyActionLabels.Get(HotkeyAction.CaptureScreenshot));
+        Assert.Equal("添加裁切点", HotkeyActionLabels.Get(HotkeyAction.AddCutPoint));
+        Assert.Equal("标记 / 取消标记当前片段", HotkeyActionLabels.Get(HotkeyAction.MarkSelectedSegment));
     }
 }
