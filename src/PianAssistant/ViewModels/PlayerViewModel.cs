@@ -339,6 +339,13 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     /// <summary>标记/取消标记当前选中片段请求（X 键），携带段起止时间。</summary>
     public event EventHandler<(TimeSpan Start, TimeSpan End)>? ToggleSegmentMarkRequested;
 
+    /// <summary>
+    /// 裁切点集合即将变更（撤回快照用，v1.6.0）：在添加/删除/清空裁切点
+    /// 之前触发，Shell 层据此记录撤回检查点。批量导入/会话还原/撤回恢复
+    /// 等不应记录的场景由 Shell 层抑制，本事件不区分调用来源。
+    /// </summary>
+    public event EventHandler? NotesMutating;
+
     /// <summary>所有裁切点（按时间排序）。</summary>
     public ObservableCollection<TimeSpan> CutPoints { get; } = new();
 
@@ -803,6 +810,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         if (CutPoints.Any(c => Math.Abs((c - pos).TotalMilliseconds) < 100))
             return;
         var index = CutPoints.TakeWhile(c => c < pos).Count();
+        NotesMutating?.Invoke(this, EventArgs.Empty);
         CutPoints.Insert(index, pos);
         // 播放头恰在新裁切点上：所在片段自动切换为裁切点之后的段
         UpdateSelectedSegmentFromPlayhead();
@@ -823,7 +831,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private void RemoveLastCutPoint()
     {
         if (CutPoints.Count > 0)
+        {
+            NotesMutating?.Invoke(this, EventArgs.Empty);
             CutPoints.RemoveAt(CutPoints.Count - 1);
+        }
         UpdateSelectedSegmentFromPlayhead();
     }
 
@@ -841,6 +852,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             if (ms < bestMs) { bestMs = ms; best = i; }
         }
         if (best < 0 || bestMs >= 100) return false;
+        NotesMutating?.Invoke(this, EventArgs.Empty);
         CutPoints.RemoveAt(best);
         UpdateSelectedSegmentFromPlayhead();
         return true;
@@ -849,6 +861,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     /// <summary>清空裁切点与选中段（不含截图标记；Shell 确认后调用）。</summary>
     public void ClearCutPoints()
     {
+        if (CutPoints.Count > 0)
+            NotesMutating?.Invoke(this, EventArgs.Empty);
         CutPoints.Clear();
         UpdateSelectedSegmentFromPlayhead();
     }

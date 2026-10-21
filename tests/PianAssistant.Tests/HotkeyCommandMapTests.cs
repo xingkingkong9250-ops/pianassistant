@@ -38,6 +38,7 @@ public class HotkeyCommandMapTests : IDisposable
             _player,
             new RelayCommand(() => { }),
             new RelayCommand(() => { }),
+            new RelayCommand(() => { }),
             new RelayCommand(() => { }));
     }
 

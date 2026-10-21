@@ -334,12 +334,22 @@ public sealed class NotesViewModel : ObservableObject
             }
             // 选中/标记态变化需实时刷新叠加筛选
             row.PropertyChanged += OnItemPropertyChanged;
+            row.IsMarkedChanging += OnItemIsMarkedChanging;
             Items.Add(row);
         }
         RebuildMarkers();
         RebuildMarkedSegments();
         RefreshFilter();
     }
+
+    /// <summary>
+    /// 条目勾选标记即将变化（撤回快照用，v1.6.0）：仅用户勾选路径触发；
+    /// 列表重建期的标记恢复在事件订阅之前完成，不会触发本事件。
+    /// </summary>
+    public event EventHandler? ItemMarkToggling;
+
+    private void OnItemIsMarkedChanging(object? sender, EventArgs e) =>
+        ItemMarkToggling?.Invoke(this, EventArgs.Empty);
 
     private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {

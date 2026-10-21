@@ -45,8 +45,19 @@ public abstract class TimelineListItem : ObservableObject
     public bool IsMarked
     {
         get => _isMarked;
-        set => SetProperty(ref _isMarked, value);
+        set
+        {
+            if (_isMarked == value) return;
+            IsMarkedChanging?.Invoke(this, EventArgs.Empty);
+            SetProperty(ref _isMarked, value);
+        }
     }
+
+    /// <summary>
+    /// 勾选标记即将变化（撤回快照用，v1.6.0）：仅在值真正变化前触发；
+    /// 列表重建期的标记恢复在事件订阅之前完成，不会触发本事件。
+    /// </summary>
+    public event EventHandler? IsMarkedChanging;
 
     private protected TimelineListItem(
         TimelineItemKind kind, int kindSortOrder, TimeSpan position,

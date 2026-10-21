@@ -37,6 +37,49 @@ public class PlayerViewModelTests : IDisposable
         try { Directory.Delete(_tempDir, true); } catch { }
     }
 
+    // --- 撤回检查点事件（v1.6.0）---
+
+    [Fact]
+    public void AddCutPointAt_RaisesNotesMutating_BeforeInsert()
+    {
+        int raised = 0;
+        _vm.NotesMutating += (_, _) =>
+        {
+            raised++;
+            Assert.Empty(_vm.CutPoints); // 事件触发时集合尚未变更
+        };
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        Assert.Equal(1, raised);
+        Assert.Single(_vm.CutPoints);
+    }
+
+    [Fact]
+    public void AddCutPointAt_DuplicateWithin100ms_DoesNotRaiseNotesMutating()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        int raised = 0;
+        _vm.NotesMutating += (_, _) => raised++;
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10).Add(TimeSpan.FromMilliseconds(50)));
+        Assert.Equal(0, raised);
+        Assert.Single(_vm.CutPoints);
+    }
+
+    [Fact]
+    public void RemoveCutPoint_AndClear_RaiseNotesMutating_OnlyWhenEffective()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        int raised = 0;
+        _vm.NotesMutating += (_, _) => raised++;
+
+        Assert.True(_vm.RemoveCutPoint(TimeSpan.FromSeconds(10)));
+        Assert.Equal(1, raised);
+
+        // 无可删内容时不触发
+        Assert.False(_vm.RemoveCutPoint(TimeSpan.FromSeconds(99)));
+        _vm.ClearCutPoints();
+        Assert.Equal(1, raised);
+    }
+
     [Fact]
     public void Open_SetsCurrentPathAndResetsPosition()
     {

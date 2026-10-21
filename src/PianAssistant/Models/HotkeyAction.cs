@@ -44,4 +44,5 @@ public enum HotkeyAction
     VolumeDown,         // Ctrl+Down: 音量 -10
     PreviousNote,       // [ 键：跳到上一个活动标记
     NextNote,           // ] 键：跳到下一个活动标记
+    Undo,               // Ctrl+Z：撤回上一步笔记操作（v1.6.0）
 }

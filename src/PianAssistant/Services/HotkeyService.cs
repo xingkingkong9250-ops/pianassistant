@@ -57,6 +57,7 @@ public sealed class HotkeyService
             [HotkeyAction.VolumeDown] = "Ctrl+Down",
             [HotkeyAction.PreviousNote] = "OemOpenBrackets",
             [HotkeyAction.NextNote] = "OemCloseBrackets",
+            [HotkeyAction.Undo] = "Ctrl+Z",
         };
 
     private readonly Dictionary<HotkeyAction, string> _active;

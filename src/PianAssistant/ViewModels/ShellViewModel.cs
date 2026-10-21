@@ -27,6 +27,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _disposed;
     // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。
     private bool _isRestoring;
+    // 撤回历史（v1.6.0）：笔记操作前压栈快照，Ctrl+Z / ↩ 按钮弹出恢复。
+    private readonly UndoHistoryService _undo;
+    // >0 时抑制撤回检查点记录（撤回恢复/导入覆盖/清空执行内部等批量变更）。
+    private int _undoSuppress;
     // 片段入点(毫秒) → 导出输出路径：项目保存时回查用（统一时间线后不再经活动流记录）。
     private readonly Dictionary<double, string> _clipOutputPaths = new();
     // 音量防抖落库：拖动滑块高频变化时只在停止 500ms 后写 config.json。
@@ -65,10 +69,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public void ExecuteClearAllMarks()
     {
         if (_isRestoring) return;
-        foreach (var entry in Notes.Screenshots.ToList())
-            Screenshots.Remove(entry);
-        Notes.ClearScreenshots();
-        Player.ClearCutPoints();
+        RecordUndoCheckpoint();
+        RunWithoutUndoRecording(() =>
+        {
+            foreach (var entry in Notes.Screenshots.ToList())
+                Screenshots.Remove(entry);
+            Notes.ClearScreenshots();
+            Player.ClearCutPoints();
+        });
     }
 
     /// <summary>
@@ -137,6 +145,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand PreviousNoteCommand { get; }
     /// <summary>跳到下一个活动标记（] 键）。</summary>
     public ICommand NextNoteCommand { get; }
+    /// <summary>撤回上一步笔记操作（Ctrl+Z / 底栏 ↩ 按钮，v1.6.0）。</summary>
+    public ICommand UndoCommand { get; }
     /// <summary>打开批量文本操作窗口（View 层订阅事件创建窗口）。</summary>
     public ICommand ShowBatchCommand { get; }
 
@@ -182,6 +192,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         ArgumentNullException.ThrowIfNull(services);
         _services = services;
         _ownsServices = ownsServices;
+        _undo = new UndoHistoryService(() => services.Settings.MaxUndoSteps);
+        _undo.Changed += (_, _) => ((RelayCommand)UndoCommand).RaiseCanExecuteChanged();
 
         Player = new PlayerViewModel(
             services.Playback, services.Screenshots, services.Clips,
@@ -215,6 +227,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // Wire Player → panel VMs（统一时间线：截图进笔记列表；片段只记录输出路径供项目保存回查）.
         Player.ScreenshotCaptured += (_, entry) =>
         {
+            RecordUndoCheckpoint(); // 截图入列表前记录撤回检查点（v1.6.0）
             Screenshots.Add(entry);
             Notes.AddScreenshot(entry);
         };
@@ -231,6 +244,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
         // 裁切点变化 → 重算分段并重建统一时间线列表
         Player.CutPoints.CollectionChanged += OnCutPointsChanged;
+        // 撤回检查点（v1.6.0）：裁切点增删清 / 笔记条目勾选变化前各记录一次
+        Player.NotesMutating += (_, _) => RecordUndoCheckpoint();
+        Notes.ItemMarkToggling += (_, _) => RecordUndoCheckpoint();
         // 会话还原时 VLC 尚未解析出时长（Length=0），分段被跳过；
         // 时长就绪后（0 → 实际值）若已有裁切点则补算一次分段。
         Player.PropertyChanged += OnPlayerLengthChanged;
@@ -285,6 +301,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 上/下一个活动标记跳转（转发到 Notes）
         PreviousNoteCommand = new RelayCommand(Notes.JumpToPrevious);
         NextNoteCommand = new RelayCommand(Notes.JumpToNext);
+        // 撤回上一步笔记操作（Ctrl+Z / 底栏 ↩ 按钮，v1.6.0）
+        UndoCommand = new RelayCommand(Undo, () => _undo.CanUndo);
         // 批量文本操作窗口入口
         ShowBatchCommand = new RelayCommand(() => ShowBatchRequested?.Invoke(this, EventArgs.Empty));
         // 项目文件入口（View 层订阅后弹对话框）
@@ -294,7 +312,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         ImportProjectCommand = new RelayCommand(() => ImportProjectRequested?.Invoke(this, EventArgs.Empty));
 
         // 动作名 → 命令 映射（供 MainWindow 动态重建 InputBindings）。
-        _hotkeyMap = new HotkeyCommandMap(Player, ToggleSidebarPanelCommand, PreviousNoteCommand, NextNoteCommand);
+        _hotkeyMap = new HotkeyCommandMap(
+            Player, ToggleSidebarPanelCommand, PreviousNoteCommand, NextNoteCommand, UndoCommand);
     }
 
     /// <summary>
@@ -359,6 +378,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             // 切换前先把上一个素材的会话落库（M7）。
             _services.Sessions.EndSession();
+            // 撤回历史不跨素材保留（v1.6.0）。
+            _undo.Clear();
             // 重载过程中抑制变更上报，避免把清空动作本身写回数据库（M7）。
             _isRestoring = true;
             try
@@ -451,11 +472,17 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// ② 文件截图清单未列出的现有截图记录移除（png 文件保留不删）；
     /// ③ 重建完成后以文件为标记真值源，逐条设置截图/片段勾选标记；
     /// ④ 文件缺失的截图行按时间码后台 ffmpeg 重新抽帧（v1.2.0）。
+    /// 导入为一次撤回单位（v1.6.0）：覆盖前记录一个检查点，过程内部变更不逐项记录。
     /// </summary>
     public void ImportNotesData(NotesExportData data)
     {
         ArgumentNullException.ThrowIfNull(data);
+        RecordUndoCheckpoint();
+        RunWithoutUndoRecording(() => ImportNotesDataCore(data));
+    }
 
+    private void ImportNotesDataCore(NotesExportData data)
+    {
         // 1. 截图行分类：① 文件路径在磁盘存在 → 保留/回填（不抽帧）；
         //    ② 文件列空或 png 缺失 → 记时间码待后台重建；③ 时间码无效的行丢弃。
         var keptFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -554,14 +581,14 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     var entry = screenshotService.CaptureAt(pos);
                     if (!File.Exists(entry.OutputPath))
                         throw new InvalidOperationException("抽帧产物未生成（时间码可能超出视频时长）");
-                    await dispatcher.InvokeAsync(() =>
+                    await dispatcher.InvokeAsync(() => RunWithoutUndoRecording(() =>
                     {
                         Screenshots.Add(entry);
                         Notes.AddScreenshot(entry);
                         var item = Notes.Items.OfType<ScreenshotListItem>()
                             .FirstOrDefault(i => i.Entry.Position == entry.Position);
                         if (item is not null) item.IsMarked = marked;
-                    });
+                    }));
                     ok++;
                 }
                 catch (Exception ex)
@@ -764,6 +791,104 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>按片段入点回查其导出输出路径（本次会话内经 ClipExtracted/SegmentExported 记录）。</summary>
     private string? FindClipOutputPath(ClipRange clip) =>
         _clipOutputPaths.TryGetValue(clip.InPoint.TotalMilliseconds, out var path) ? path : null;
+
+    // --- 笔记操作撤回（v1.6.0）---
+
+    /// <summary>
+    /// 记录撤回检查点：采集当前笔记数据快照压入历史栈。
+    /// 在会话还原、撤回恢复、导入覆盖等批量变更期间被抑制（不记录）。
+    /// </summary>
+    public void RecordUndoCheckpoint()
+    {
+        if (_isRestoring || _undoSuppress > 0 || _disposed) return;
+        _undo.Push(CaptureNotesSnapshot());
+    }
+
+    /// <summary>批量变更期间抑制撤回检查点（恢复/导入/清空等内部多步变更合并为一个检查点）。</summary>
+    private void RunWithoutUndoRecording(Action action)
+    {
+        _undoSuppress++;
+        try { action(); }
+        finally { _undoSuppress--; }
+    }
+
+    /// <summary>采集当前笔记数据快照（裁切点 + 截图清单 + 全部勾选标记）。</summary>
+    private NotesSnapshot CaptureNotesSnapshot()
+    {
+        return new NotesSnapshot
+        {
+            CutPoints = Player.CutPoints.ToList(),
+            Screenshots = Notes.Screenshots
+                .Select(e => new NotesSnapshotScreenshot
+                {
+                    SourcePath = e.SourcePath,
+                    OutputPath = e.OutputPath,
+                    Position = e.Position,
+                    CapturedAt = e.CapturedAt,
+                    Label = e.Label,
+                })
+                .ToList(),
+            MarkedSegments = Notes.Items.OfType<SegmentListItem>()
+                .Where(i => i.IsMarked)
+                .Select(i => (i.Segment.Start.Ticks, i.Segment.End.Ticks))
+                .ToHashSet(),
+            MarkedScreenshotPaths = Notes.Items.OfType<ScreenshotListItem>()
+                .Where(i => i.IsMarked)
+                .Select(i => i.Entry.OutputPath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase),
+            MarkedCutPointMs = Notes.Items.OfType<CutPointListItem>()
+                .Where(i => i.IsMarked)
+                .Select(i => (long)i.Position.TotalMilliseconds)
+                .ToHashSet(),
+        };
+    }
+
+    /// <summary>撤回上一步笔记操作：弹出最近快照并整体恢复（Ctrl+Z / 底栏 ↩）。</summary>
+    private void Undo()
+    {
+        var snapshot = _undo.Pop();
+        if (snapshot is null) return;
+        RunWithoutUndoRecording(() => ApplyNotesSnapshot(snapshot));
+        ToastRequested?.Invoke(this, "已撤回上一步操作");
+    }
+
+    /// <summary>
+    /// 把快照整体覆盖回当前会话：裁切点（触发分段与列表重建）→ 截图清单
+    /// （画廊与笔记同步，png 文件不做任何磁盘操作）→ 三类勾选标记。
+    /// 标记恢复经 IsMarked 正常 setter 链路，时间轴黄带与自动保存随之更新。
+    /// </summary>
+    private void ApplyNotesSnapshot(NotesSnapshot snapshot)
+    {
+        Player.SetCutPoints(snapshot.CutPoints);
+
+        foreach (var entry in Notes.Screenshots.ToList())
+            Screenshots.Remove(entry);
+        Notes.ClearScreenshots();
+        foreach (var s in snapshot.Screenshots)
+        {
+            var entry = new ScreenshotEntry(s.SourcePath, s.OutputPath, s.Position, s.CapturedAt, s.Label);
+            Screenshots.Add(entry);
+            Notes.AddScreenshot(entry);
+        }
+
+        foreach (var item in Notes.Items)
+        {
+            switch (item)
+            {
+                case SegmentListItem seg:
+                    seg.IsMarked = snapshot.MarkedSegments.Contains(
+                        (seg.Segment.Start.Ticks, seg.Segment.End.Ticks));
+                    break;
+                case ScreenshotListItem shot:
+                    shot.IsMarked = snapshot.MarkedScreenshotPaths.Contains(shot.Entry.OutputPath);
+                    break;
+                case CutPointListItem cut:
+                    cut.IsMarked = snapshot.MarkedCutPointMs.Contains(
+                        (long)cut.Position.TotalMilliseconds);
+                    break;
+            }
+        }
+    }
 
     /// <summary>
     /// 把指定片段导出到用户选定的目录（笔记面板「导出此段/导出选中」用）：

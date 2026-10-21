@@ -25,7 +25,8 @@ public sealed class HotkeyCommandMap
         PlayerViewModel player,
         ICommand toggleSidebarPanel,
         ICommand previousNote,
-        ICommand nextNote)
+        ICommand nextNote,
+        ICommand undo)
     {
         ArgumentNullException.ThrowIfNull(player);
 
@@ -77,6 +78,8 @@ public sealed class HotkeyCommandMap
         Add(HotkeyAction.ToggleSidebarPanel, toggleSidebarPanel);
         Add(HotkeyAction.PreviousNote, previousNote);
         Add(HotkeyAction.NextNote, nextNote);
+        // 撤回（v1.6.0）
+        Add(HotkeyAction.Undo, undo);
     }
 
     /// <summary>返回动作对应的命令绑定；未映射返回 null。</summary>

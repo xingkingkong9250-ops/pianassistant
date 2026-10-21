@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.5.3）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.6.0）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.5.3 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.6.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -170,7 +170,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="S；v0.20.0 起为时间轴截图标记 + ffmpeg 后台抽帧"><rect x="1000" y="580" width="30" height="22" rx="4"/><text x="1015" y="592">05</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 添加裁切点" data-desc="C；v0.20.0 起由截取片段变更"><rect x="1034" y="580" width="30" height="22" rx="4"/><text x="1049" y="592">08</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩 标记片段" data-desc="v1.5.3 新增；V 标记/取消标记当前片段，与笔记 ☑ 同步"><rect x="1068" y="580" width="30" height="22" rx="4"/><text x="1083" y="592">25</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩ 撤销裁切" data-desc="Backspace，从 R1 移入"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">10</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-26" data-name="↩ 撤回" data-desc="Ctrl+Z，撤回上一步笔记操作（v1.6.0，替换原 W1-R1-10）"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">26</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="Ctrl+Shift+C；v0.20.0 起含截图标记点，确认框后执行"><rect x="1136" y="580" width="30" height="22" rx="4"/><text x="1151" y="592">11</text></g>
 </svg>
 <figcaption>图 1 · W1 主窗口总览（点击编号芯片查看说明；虚线 = 浮层/容器）</figcaption>
@@ -341,7 +341,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷" data-desc="S 截图；v0.20.0 起时间轴标记 + ffmpeg 抽帧"><rect x="1000" y="124" width="30" height="24" rx="4"/><text x="1015" y="137">05</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂" data-desc="C 添加裁切点（v0.20.0）"><rect x="1034" y="124" width="30" height="24" rx="4"/><text x="1049" y="137">08</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩" data-desc="v1.5.3 新增；V 标记片段"><rect x="1068" y="124" width="30" height="24" rx="4"/><text x="1083" y="137">25</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩" data-desc="Backspace"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">10</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-26" data-name="↩" data-desc="Ctrl+Z 撤回（v1.6.0，替换原 W1-R1-10）"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">26</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖" data-desc="Ctrl+Shift+C 清空全部标记（v0.20.0）"><rect x="1136" y="124" width="30" height="24" rx="4"/><text x="1151" y="137">11</text></g>
   <text class="lbl-m" x="624" y="163">居中播放控制组（09~15）对称排列，右端为 R1 移入按钮</text>
 </svg>
@@ -372,23 +372,24 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-R1-05"><td class="num">W1-R1-05</td><td>按钮「📷」</td><td><strong>从 R1 移入</strong>；截图（S）：时间轴添加截图标记点，后台 ffmpeg 抽帧生成缩略图进笔记列表（v0.20.0）</td></tr>
 <tr data-num="W1-R1-08"><td class="num">W1-R1-08</td><td>按钮「✂」</td><td><strong>从 R1 移入</strong>；添加裁切点（C）——v0.20.0 起功能由「截取片段」变更（截取片段保留 Ctrl+Shift+E）</td></tr>
 <tr data-num="W1-R1-25"><td class="num">W1-R1-25</td><td>按钮「🚩」</td><td><strong>v1.5.3 新增</strong>；标记/取消标记当前片段（V），与笔记列表 ☑ 勾选同步</td></tr>
-<tr data-num="W1-R1-10"><td class="num">W1-R1-10</td><td>按钮「↩」</td><td><strong>从 R1 移入</strong>；撤销裁切点（Backspace）</td></tr>
+<tr data-num="W1-R1-26"><td class="num">W1-R1-26</td><td>按钮「↩」</td><td><strong>v1.6.0 替换原 W1-R1-10</strong>；撤回上一步笔记操作（Ctrl+Z），步数上限见 W2-A-18；Backspace 撤销裁切点快捷键保留</td></tr>
 <tr data-num="W1-R1-11"><td class="num">W1-R1-11</td><td>按钮「✖」</td><td><strong>从 R1 移入</strong>；清空全部标记：裁切点 + 截图标记点（Ctrl+Shift+C，确认框后执行）——v0.20.0 起由「清空裁切点」扩展</td></tr>
 </tbody></table></div>
 
 <h2 id="w2"><span class="no">§5</span>W2 设置窗口</h2>
-<p class="lead">两个页签：<strong>A 输出设置</strong>（A-01~04 已废弃，现 10 项）与 <strong>B 快捷键</strong>（6 项），底部 <strong>D-01 保存并关闭</strong>。数据目录为唯一路径（A-11），截图/片段子目录自动派生。</p>
+<p class="lead">v1.5.3 起拆分为三个页签：<strong>A 通用</strong>（A-01~04 已废弃，A-06~A-14 + A-18 共 10 项）、<strong>C 输出</strong>（A-05、A-15~A-17 迁入，编号保留）与 <strong>B 快捷键</strong>（6 项），底部 <strong>D-01 保存并关闭</strong>。数据目录为唯一路径（A-11），截图/片段子目录自动派生。</p>
 <figure>
 <svg viewBox="0 0 1200 480" role="img" aria-label="W2 设置窗口布局图">
   <rect class="wire" x="6" y="8" width="1188" height="464" rx="6"/>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabA" data-name="页签「输出设置」" data-desc="W2-A 共 14 项"><rect x="20" y="20" width="90" height="24" rx="4"/><text x="65" y="33">Tab A</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabB" data-name="页签「快捷键」" data-desc="W2-B 共 6 项"><rect x="114" y="20" width="80" height="24" rx="4"/><text x="154" y="33">Tab B</text></g>
-  <text class="lbl-m" x="20" y="66">左列（输出设置 W2-A）：标签+输入行</text>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabA" data-name="页签「通用」" data-desc="W2-A 共 10 项（v1.5.3 起）"><rect x="20" y="20" width="90" height="24" rx="4"/><text x="65" y="33">Tab A</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabC" data-name="页签「输出」" data-desc="W2-C（v1.5.3 起；A-05/15/16/17 迁入，编号保留）"><rect x="114" y="20" width="80" height="24" rx="4"/><text x="154" y="33">Tab C</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabB" data-name="页签「快捷键」" data-desc="W2-B 共 6 项"><rect x="198" y="20" width="80" height="24" rx="4"/><text x="238" y="33">Tab B</text></g>
+  <text class="lbl-m" x="20" y="66">左列（通用 W2-A；A-05/15/16/17 已迁至输出页 W2-C）：标签+输入行</text>
   <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-01" data-name="截图目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="20" y="74" width="250" height="20" rx="4"/><text x="145" y="85">A-01（废）</text></g>
   <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-02" data-name="浏览…(截图)（已废弃）" data-desc=""><rect x="274" y="74" width="60" height="20" rx="4"/><text x="304" y="85">A-02</text></g>
   <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-03" data-name="片段目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="20" y="98" width="250" height="20" rx="4"/><text x="145" y="109">A-03（废）</text></g>
   <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-04" data-name="浏览…(片段)（已废弃）" data-desc=""><rect x="274" y="98" width="60" height="20" rx="4"/><text x="304" y="109">A-04</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-05" data-name="截图格式" data-desc="下拉 png/jpg"><rect x="20" y="122" width="120" height="20" rx="4"/><text x="80" y="133">A-05</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-05" data-name="截图格式（迁至 W2-C）" data-desc="下拉 png/jpg；v1.5.3 起在输出页"><rect x="20" y="122" width="120" height="20" rx="4"/><text x="80" y="133">A-05→C</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-06" data-name="按日期分目录" data-desc="复选框 yyyyMMdd"><rect x="150" y="122" width="120" height="20" rx="4"/><text x="210" y="133">A-06</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-07" data-name="项目名" data-desc="二级子目录，留空不启用"><rect x="20" y="146" width="120" height="20" rx="4"/><text x="80" y="157">A-07</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-08" data-name="最高倍率" data-desc="2×~32×，默认 8×"><rect x="20" y="170" width="120" height="20" rx="4"/><text x="80" y="181">A-08</text></g>
@@ -398,19 +399,20 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-12" data-name="浏览…(数据目录)" data-desc="选择数据根目录"><rect x="338" y="250" width="60" height="22" rx="4"/><text x="368" y="262">A-12</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-13" data-name="恢复上次拉片记录" data-desc="复选框，默认开；内容哈希识别同一素材"><rect x="20" y="276" width="200" height="20" rx="4"/><text x="120" y="287">A-13</text></g>
   <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-14" data-name="恢复播放位置与倍速" data-desc="复选框，默认开；仅 A-13 开启时生效"><rect x="20" y="300" width="200" height="20" rx="4"/><text x="120" y="311">A-14</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-15" data-name="视频格式" data-desc="下拉 mp4/mkv/mov，默认 mp4；片段导出容器格式（v1.4.0）"><rect x="20" y="324" width="200" height="20" rx="4"/><text x="120" y="335">A-15 视频格式</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-16" data-name="视频分辨率" data-desc="源/1080P/720P/480P，默认 1080P；非源档强制重编码（v1.4.0）"><rect x="20" y="348" width="200" height="20" rx="4"/><text x="120" y="359">A-16 视频分辨率</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-17" data-name="截图分辨率" data-desc="源/1080P/720P/480P，默认 1080P；长边封顶、只缩不放（v1.4.0）"><rect x="20" y="372" width="200" height="20" rx="4"/><text x="120" y="383">A-17 截图分辨率</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-15" data-name="视频格式（迁至 W2-C）" data-desc="下拉 mp4/mkv/mov，默认 mp4；片段导出容器格式（v1.4.0）；v1.5.3 起在输出页"><rect x="20" y="324" width="200" height="20" rx="4"/><text x="120" y="335">A-15 视频格式→C</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-16" data-name="视频分辨率（迁至 W2-C）" data-desc="源/1080P/720P/480P，默认 1080P；非源档强制重编码（v1.4.0）；v1.5.3 起在输出页"><rect x="20" y="348" width="200" height="20" rx="4"/><text x="120" y="359">A-16 视频分辨率→C</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-17" data-name="截图分辨率（迁至 W2-C）" data-desc="源/1080P/720P/480P，默认 1080P；长边封顶、只缩不放（v1.4.0）；v1.5.3 起在输出页"><rect x="20" y="372" width="200" height="20" rx="4"/><text x="120" y="383">A-17 截图分辨率→C</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-18" data-name="撤回步数上限" data-desc="1~50，默认 5（v1.6.0；Ctrl+Z 撤回深度）"><rect x="20" y="396" width="200" height="20" rx="4"/><text x="120" y="407">A-18 撤回步数上限</text></g>
   <text class="lbl-m" x="480" y="66">右列（快捷键 W2-B）</text>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-01" data-name="启用全局热键" data-desc="失焦时 X 截图 / Space 播放"><rect x="480" y="74" width="150" height="20" rx="4"/><text x="555" y="85">B-01</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-02" data-name="手势编辑框" data-desc="EditingGesture，只读"><rect x="480" y="98" width="150" height="20" rx="4"/><text x="555" y="109">B-02</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-03" data-name="全部重置" data-desc=""><rect x="480" y="122" width="70" height="20" rx="4"/><text x="515" y="133">B-03</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-04" data-name="重置" data-desc="当前动作"><rect x="554" y="122" width="56" height="20" rx="4"/><text x="582" y="133">B-04</text></g>
   <g class="chip" style="--z:var(--z-c)" data-num="W2-B-05" data-name="应用" data-desc="当前手势"><rect x="614" y="122" width="56" height="20" rx="4"/><text x="642" y="133">B-05</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-06" data-name="动作列表" data-desc="39 条动作 + 手势；深底浅字 ListBox"><rect x="480" y="148" width="420" height="240" rx="4"/><text x="690" y="260">B-06 动作列表（39 条）</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-06" data-name="动作列表" data-desc="40 条动作 + 手势；深底浅字 ListBox"><rect x="480" y="148" width="420" height="240" rx="4"/><text x="690" y="260">B-06 动作列表（40 条）</text></g>
   <g class="chip" style="--z:var(--z-e)" data-num="W2-D-01" data-name="保存并关闭" data-desc="底部右侧主按钮"><rect x="1050" y="420" width="120" height="26" rx="5"/><text x="1110" y="434">D-01</text></g>
 </svg>
-<figcaption>图 5 · W2 设置窗口（左：输出设置 A-01~17；右：快捷键 B-01~06；右下：D-01）</figcaption>
+<figcaption>图 5 · W2 设置窗口（左：通用 A-01~18；输出页 W2-C：A-05/15/16/17 迁入；右：快捷键 B-01~06；右下：D-01）</figcaption>
 </figure>
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明</th></tr></thead>
@@ -419,7 +421,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W2-A-02"><td class="num">W2-A-02</td><td>按钮「浏览…」（截图目录）</td><td><strong>已废弃（v0.11.0）</strong></td></tr>
 <tr data-num="W2-A-03"><td class="num">W2-A-03</td><td>片段目录输入框</td><td><strong>已废弃（v0.11.0）</strong>：片段目录统一从数据根派生</td></tr>
 <tr data-num="W2-A-04"><td class="num">W2-A-04</td><td>按钮「浏览…」（片段目录）</td><td><strong>已废弃（v0.11.0）</strong></td></tr>
-<tr data-num="W2-A-05"><td class="num">W2-A-05</td><td>截图格式下拉框</td><td>png / jpg；<strong>v1.3.0 修复 SelectedValue 绑定导致下拉框长期空显示</strong></td></tr>
+<tr data-num="W2-A-05"><td class="num">W2-A-05</td><td>截图格式下拉框</td><td>png / jpg；<strong>v1.3.0 修复 SelectedValue 绑定导致下拉框长期空显示</strong>；v1.5.3 起迁至输出页签（W2-C）</td></tr>
 <tr data-num="W2-A-06"><td class="num">W2-A-06</td><td>复选框「按日期分目录」</td><td>yyyyMMdd 子目录</td></tr>
 <tr data-num="W2-A-07"><td class="num">W2-A-07</td><td>项目名输入框</td><td>二级子目录，留空不启用</td></tr>
 <tr data-num="W2-A-08"><td class="num">W2-A-08</td><td>最高倍率下拉框</td><td>2×~32×，默认 8×；联动 ± 按钮步进上限</td></tr>
@@ -429,15 +431,16 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W2-A-12"><td class="num">W2-A-12</td><td>按钮「浏览…」（数据目录）</td><td>选择数据根目录</td></tr>
 <tr data-num="W2-A-13"><td class="num">W2-A-13</td><td>复选框「恢复上次拉片记录」</td><td>默认开；同一素材（内容哈希识别）自动还原</td></tr>
 <tr data-num="W2-A-14"><td class="num">W2-A-14</td><td>复选框「恢复播放位置与倍速」</td><td>默认开；仅 A-13 开启时生效</td></tr>
-<tr data-num="W2-A-15"><td class="num">W2-A-15</td><td>视频格式下拉框</td><td>mp4 / mkv / mov，默认 <strong>mp4</strong>；片段导出容器格式（v1.4.0）</td></tr>
-<tr data-num="W2-A-16"><td class="num">W2-A-16</td><td>视频分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；非「源」档自动重编码（v1.4.0）</td></tr>
-<tr data-num="W2-A-17"><td class="num">W2-A-17</td><td>截图分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；长边封顶、只缩不放（v1.4.0）</td></tr>
+<tr data-num="W2-A-15"><td class="num">W2-A-15</td><td>视频格式下拉框</td><td>mp4 / mkv / mov，默认 <strong>mp4</strong>；片段导出容器格式（v1.4.0）；v1.5.3 起迁至输出页签（W2-C）</td></tr>
+<tr data-num="W2-A-16"><td class="num">W2-A-16</td><td>视频分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；非「源」档自动重编码（v1.4.0）；v1.5.3 起迁至输出页签（W2-C）</td></tr>
+<tr data-num="W2-A-17"><td class="num">W2-A-17</td><td>截图分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；长边封顶、只缩不放（v1.4.0）；v1.5.3 起迁至输出页签（W2-C）</td></tr>
+<tr data-num="W2-A-18"><td class="num">W2-A-18</td><td>撤回步数上限输入框</td><td>1~50，默认 5；Ctrl+Z 撤回深度（v1.6.0，通用页签）</td></tr>
 <tr data-num="W2-B-01"><td class="num">W2-B-01</td><td>复选框「启用全局热键」</td><td>应用失焦时 X 仍可截图、Space 仍可播放</td></tr>
 <tr data-num="W2-B-02"><td class="num">W2-B-02</td><td>手势编辑框</td><td>EditingGesture，只读</td></tr>
 <tr data-num="W2-B-03"><td class="num">W2-B-03</td><td>按钮「全部重置」</td><td></td></tr>
 <tr data-num="W2-B-04"><td class="num">W2-B-04</td><td>按钮「重置」</td><td>当前动作</td></tr>
 <tr data-num="W2-B-05"><td class="num">W2-B-05</td><td>按钮「应用」</td><td>当前手势；保存后主窗即时重建绑定</td></tr>
-<tr data-num="W2-B-06"><td class="num">W2-B-06</td><td>动作列表 ListBox</td><td>39 条动作 + 手势（v1.1.3 默认调整：截图 X、标记当前片段 V）</td></tr>
+<tr data-num="W2-B-06"><td class="num">W2-B-06</td><td>动作列表 ListBox</td><td>40 条动作 + 手势（v1.1.3 默认调整：截图 X、标记当前片段 V；v1.6.0 新增撤回 Ctrl+Z）</td></tr>
 <tr data-num="W2-D-01"><td class="num">W2-D-01</td><td>按钮「保存并关闭」</td><td>触发 SettingsViewModel.Saved</td></tr>
 </tbody></table></div>
 

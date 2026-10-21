@@ -27,6 +27,7 @@ public sealed class SettingsViewModel : ObservableObject
     private double _maxRate;
     private int _seekStepFrames;
     private double _rateStep;
+    private int _maxUndoSteps;
     private string _dataRoot;
     private readonly string _originalDataRoot;
     private bool _restoreSession;
@@ -54,6 +55,7 @@ public sealed class SettingsViewModel : ObservableObject
         _maxRate = settings.MaxRate;
         _seekStepFrames = settings.SeekStepFrames;
         _rateStep = settings.RateStep;
+        _maxUndoSteps = settings.MaxUndoSteps;
 
         BrowseDataRootCommand = new RelayCommand(BrowseDataRoot);
         SaveCommand = new RelayCommand(Save);
@@ -137,6 +139,13 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _rateStep;
         set => SetProperty(ref _rateStep, Math.Clamp(value, 0.05, 1.0));
+    }
+
+    /// <summary>撤回步数上限（1~50，默认 5，v1.6.0）。</summary>
+    public int MaxUndoSteps
+    {
+        get => _maxUndoSteps;
+        set => SetProperty(ref _maxUndoSteps, Math.Clamp(value, 1, 50));
     }
 
     /// <summary>数据路径（数据根）；修改后需重启生效，不搬迁任何文件。</summary>
@@ -286,6 +295,7 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.MaxRate = MaxRate;
         _settings.SeekStepFrames = SeekStepFrames;
         _settings.RateStep = RateStep;
+        _settings.MaxUndoSteps = MaxUndoSteps;
         _settings.RestoreSession = _restoreSession;
         _settings.RestorePlaybackPosition = _restorePlaybackPosition;
         if (dataRootChanged)
@@ -371,6 +381,7 @@ public static class HotkeyActionLabels
             [HotkeyAction.VolumeDown] = "音量 -10",
             [HotkeyAction.PreviousNote] = "上一个活动标记",
             [HotkeyAction.NextNote] = "下一个活动标记",
+            [HotkeyAction.Undo] = "撤回上一步笔记操作",
         };
 
     /// <summary>取功能中文名；未登记的枚举值回退为枚举名（防御，正常不会发生，有单测锁定）。</summary>

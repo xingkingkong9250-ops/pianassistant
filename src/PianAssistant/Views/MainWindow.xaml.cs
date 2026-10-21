@@ -539,6 +539,7 @@ public partial class MainWindow : Window
     {
         var shell = Shell;
         if (shell is null) return;
+        shell.RecordUndoCheckpoint(); // 删除截图前记录撤回检查点（v1.6.0）
         shell.Screenshots.Remove(entry);
         shell.Notes.RemoveScreenshot(entry);
     }

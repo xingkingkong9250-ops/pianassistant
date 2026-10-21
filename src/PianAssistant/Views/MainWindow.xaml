@@ -356,9 +356,9 @@
                     <!-- W1-R1-25 标记/取消标记当前片段（v1.5.1 新增；对应 V 快捷键，与笔记 ☑ 勾选同步） -->
                     <Button Content="🚩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.ToggleMarkSelectedSegmentCommand}" ToolTip="标记/取消标记当前片段 (V)" />
-                    <!-- W1-R1-10 撤销裁切点 -->
+                    <!-- W1-R1-26 撤回上一步笔记操作（v1.6.0 起替换原 W1-R1-10 撤销裁切点按钮；对应 Ctrl+Z） -->
                     <Button Content="↩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
-                            Command="{Binding Player.RemoveLastCutPointCommand}" ToolTip="撤销裁切点 (Backspace)" />
+                            Command="{Binding UndoCommand}" ToolTip="撤回上一步笔记操作 (Ctrl+Z)" />
                     <!-- W1-R1-11 清空全部标记（v0.20.0 起包含截图标记点，确认后执行） -->
                     <Button Content="✖" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.ClearCutPointsCommand}" ToolTip="清空全部标记：裁切点 + 截图标记 (Ctrl+Shift+C)" />

@@ -108,6 +108,13 @@ public sealed class AppSettingsService
         set { _settings.MaxRate = Math.Clamp(value, 2.0, 32.0); Save(); }
     }
 
+    /// <summary>撤回步数上限（1~50，默认 5；实时生效）。</summary>
+    public int MaxUndoSteps
+    {
+        get => Math.Clamp(_settings.MaxUndoSteps, 1, 50);
+        set { _settings.MaxUndoSteps = Math.Clamp(value, 1, 50); Save(); }
+    }
+
     /// <summary>全局热键开关（启用时应用失焦状态下按 S 也可截图）。</summary>
     public bool GlobalHotkeysEnabled
     {
@@ -282,6 +289,8 @@ public sealed class AppSettings
     public bool RestorePlaybackPosition { get; set; } = true;
     /// <summary>音量（0~100，软件级记忆，默认 100）。</summary>
     public int Volume { get; set; } = 100;
+    /// <summary>撤回步数上限（1~50，默认 5；超出丢弃最旧快照）。</summary>
+    public int MaxUndoSteps { get; set; } = 5;
 }
 
 [JsonSerializable(typeof(AppSettings))]

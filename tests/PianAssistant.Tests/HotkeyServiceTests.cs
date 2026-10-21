@@ -9,9 +9,9 @@ namespace PianAssistant.Tests;
 public class HotkeyServiceTests
 {
     [Fact]
-    public void Defaults_HaveAll39Actions()
+    public void Defaults_HaveAll40Actions()
     {
-        Assert.Equal(39, HotkeyService.Defaults.Count);
+        Assert.Equal(40, HotkeyService.Defaults.Count);
     }
 
     [Fact]

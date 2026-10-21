@@ -48,6 +48,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <!-- 统一数据根目录：截图/片段/数据库/日志均在此目录下自动创建子文件夹 -->
@@ -97,6 +98,12 @@
                               IsChecked="{Binding RestorePlaybackPosition, Mode=TwoWay}"
                               Foreground="#E0E0E0"
                               ToolTip="恢复上次播放的位置与倍速；仅在「恢复上次拉片记录」开启时生效" />
+
+                    <!-- W2-A-18 撤回步数上限（v1.6.0）：超出上限丢弃最旧记录 -->
+                    <Label Grid.Row="8" Content="撤回步数上限：" />
+                    <TextBox Grid.Row="8" Grid.Column="1"
+                             Text="{Binding MaxUndoSteps, Mode=TwoWay}" Margin="0,2"
+                             ToolTip="Ctrl+Z / ↩ 可撤回的笔记操作步数（1~50，默认 5）；超出上限自动丢弃最旧记录" />
                 </Grid>
             </TabItem>
 
