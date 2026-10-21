@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.5.0）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.5.1）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.5.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.5.1 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -169,8 +169,9 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <!-- 右侧：从 R1 移入 -->
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="S；v0.20.0 起为时间轴截图标记 + ffmpeg 后台抽帧"><rect x="1000" y="580" width="30" height="22" rx="4"/><text x="1015" y="592">05</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 添加裁切点" data-desc="C；v0.20.0 起由截取片段变更"><rect x="1034" y="580" width="30" height="22" rx="4"/><text x="1049" y="592">08</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩ 撤销裁切" data-desc="Backspace，从 R1 移入"><rect x="1068" y="580" width="30" height="22" rx="4"/><text x="1083" y="592">10</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="Ctrl+Shift+C；v0.20.0 起含截图标记点，确认框后执行"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">11</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩 标记片段" data-desc="v1.5.1 新增；V 标记/取消标记当前片段，与笔记 ☑ 同步"><rect x="1068" y="580" width="30" height="22" rx="4"/><text x="1083" y="592">25</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩ 撤销裁切" data-desc="Backspace，从 R1 移入"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">10</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="Ctrl+Shift+C；v0.20.0 起含截图标记点，确认框后执行"><rect x="1136" y="580" width="30" height="22" rx="4"/><text x="1151" y="592">11</text></g>
 </svg>
 <figcaption>图 1 · W1 主窗口总览（点击编号芯片查看说明；虚线 = 浮层/容器）</figcaption>
 </figure>
@@ -339,8 +340,9 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <!-- R4 右侧：从 R1 移入 -->
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷" data-desc="S 截图；v0.20.0 起时间轴标记 + ffmpeg 抽帧"><rect x="1000" y="124" width="30" height="24" rx="4"/><text x="1015" y="137">05</text></g>
   <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂" data-desc="C 添加裁切点（v0.20.0）"><rect x="1034" y="124" width="30" height="24" rx="4"/><text x="1049" y="137">08</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩" data-desc="Backspace"><rect x="1068" y="124" width="30" height="24" rx="4"/><text x="1083" y="137">10</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖" data-desc="Ctrl+Shift+C 清空全部标记（v0.20.0）"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">11</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩" data-desc="v1.5.1 新增；V 标记片段"><rect x="1068" y="124" width="30" height="24" rx="4"/><text x="1083" y="137">25</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-10" data-name="↩" data-desc="Backspace"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">10</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖" data-desc="Ctrl+Shift+C 清空全部标记（v0.20.0）"><rect x="1136" y="124" width="30" height="24" rx="4"/><text x="1151" y="137">11</text></g>
   <text class="lbl-m" x="624" y="163">居中播放控制组（09~15）对称排列，右端为 R1 移入按钮</text>
 </svg>
 <figcaption>图 4 · R3 时间轴（上）与 R4 底部控制栏（下）</figcaption>
@@ -369,6 +371,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-R4-13"><td class="num">W1-R4-13</td><td>按钮「⏭」</td><td>跳到结尾（End）</td></tr>
 <tr data-num="W1-R1-05"><td class="num">W1-R1-05</td><td>按钮「📷」</td><td><strong>从 R1 移入</strong>；截图（S）：时间轴添加截图标记点，后台 ffmpeg 抽帧生成缩略图进笔记列表（v0.20.0）</td></tr>
 <tr data-num="W1-R1-08"><td class="num">W1-R1-08</td><td>按钮「✂」</td><td><strong>从 R1 移入</strong>；添加裁切点（C）——v0.20.0 起功能由「截取片段」变更（截取片段保留 Ctrl+Shift+E）</td></tr>
+<tr data-num="W1-R1-25"><td class="num">W1-R1-25</td><td>按钮「🚩」</td><td><strong>v1.5.1 新增</strong>；标记/取消标记当前片段（V），与笔记列表 ☑ 勾选同步</td></tr>
 <tr data-num="W1-R1-10"><td class="num">W1-R1-10</td><td>按钮「↩」</td><td><strong>从 R1 移入</strong>；撤销裁切点（Backspace）</td></tr>
 <tr data-num="W1-R1-11"><td class="num">W1-R1-11</td><td>按钮「✖」</td><td><strong>从 R1 移入</strong>；清空全部标记：裁切点 + 截图标记点（Ctrl+Shift+C，确认框后执行）——v0.20.0 起由「清空裁切点」扩展</td></tr>
 </tbody></table></div>

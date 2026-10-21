@@ -6,7 +6,7 @@
 
 ### 普通用户
 
-直接使用安装包 `artifacts\installer\PianAssistant_Setup_v1.5.0.exe`，双击安装即可——
+直接使用安装包 `artifacts\installer\PianAssistant_Setup_v1.5.1.exe`，双击安装即可——
 **.NET 运行时、VLC、ffmpeg 已全部内置，无需任何额外环境**。
 
 详细安装与使用步骤见 `docs\USER_GUIDE.md`（与版本同步更新）。
@@ -25,7 +25,7 @@
 .\run.bat
 
 # 生成安装包（需先跑门禁，再用 Inno Setup 6 编译 installer\PianAssistant.iss）
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.5.0 installer\PianAssistant.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.5.1 installer\PianAssistant.iss
 ```
 
 ### 使用

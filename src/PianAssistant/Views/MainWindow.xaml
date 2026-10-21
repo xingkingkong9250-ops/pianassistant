@@ -353,6 +353,9 @@
                     <!-- W1-R1-08 添加裁切点（v0.20.0 起由「截取片段」改为「添加裁切点」；截取片段保留快捷键 Ctrl+Shift+E） -->
                     <Button Content="✂" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.AddCutPointCommand}" ToolTip="添加裁切点 (C)" />
+                    <!-- W1-R1-25 标记/取消标记当前片段（v1.5.1 新增；对应 V 快捷键，与笔记 ☑ 勾选同步） -->
+                    <Button Content="🚩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                            Command="{Binding Player.ToggleMarkSelectedSegmentCommand}" ToolTip="标记/取消标记当前片段 (V)" />
                     <!-- W1-R1-10 撤销裁切点 -->
                     <Button Content="↩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.RemoveLastCutPointCommand}" ToolTip="撤销裁切点 (Backspace)" />
