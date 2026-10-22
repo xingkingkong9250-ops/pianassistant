@@ -9,10 +9,27 @@ using PianAssistant.Models;
 
 namespace PianAssistant.Views.Controls;
 
+/// <summary>时间轴标记拖拽事件参数（v1.7.0）。</summary>
+public sealed class MarkerDragEventArgs : EventArgs
+{
+    public MarkerDragEventArgs(TimeSpan originalPosition, TimeSpan newPosition)
+    {
+        OriginalPosition = originalPosition;
+        NewPosition = newPosition;
+    }
+
+    /// <summary>拖拽前标记位置。</summary>
+    public TimeSpan OriginalPosition { get; }
+
+    /// <summary>松手时标记位置。</summary>
+    public TimeSpan NewPosition { get; }
+}
+
 /// <summary>
 /// 时间轴控件：可缩放、刻度+时间标签、PR 风格播放头（白色竖线+顶部三角）、
 /// I/O 入出点高亮、PR 风格裁切线（红色）、选中段。
 /// 鼠标滚轮缩放，点击/拖动 seek，释放时触发段选中。
+/// v1.7.0：裁切点/截图标记支持选中拖拽修改（虚影 + 实时 seek 预览，松手提交）。
 /// </summary>
 public sealed class TimelineControl : Control
 {
@@ -187,7 +204,21 @@ public sealed class TimelineControl : Control
     /// <summary>缩放变化时触发，值为新的 Scale。</summary>
     public event EventHandler<double>? ScaleChanged;
 
-    private bool _isDragging;
+    /// <summary>裁切点拖拽提交（原位置 → 新位置），由 Shell 落数据并纳入撤回（v1.7.0）。</summary>
+    public event EventHandler<MarkerDragEventArgs>? CutPointDragged;
+
+    /// <summary>截图标记拖拽提交（原位置 → 新位置），由 Shell 落数据并纳入撤回（v1.7.0）。</summary>
+    public event EventHandler<MarkerDragEventArgs>? ScreenshotDragged;
+
+    /// <summary>拖拽模式：普通 seek / 裁切点 / 截图标记。</summary>
+    private enum DragMode { None, Seek, CutPoint, Screenshot }
+
+    private DragMode _dragMode = DragMode.None;
+    private TimeSpan _dragOriginal;   // 被拖标记原位置
+    private TimeSpan _dragCurrent;    // 虚影当前位置
+    private double _dragStartX;       // 按下时 X（判定是否构成拖拽）
+    private bool _dragMoved;          // 位移 >3px 才算拖拽
+    private const double HitTolerancePx = 6;
     private double _viewportWidth; // ScrollViewer 可见宽度
     // 标记颜色画笔缓存（ColorHex → 冻结画笔）
     private readonly Dictionary<string, SolidColorBrush> _markerBrushCache = new();
@@ -394,6 +425,35 @@ public sealed class TimelineControl : Control
             }
         }
 
+        // --- 拖拽虚影 + 时间码气泡（v1.7.0 标记拖拽；播放头之下一层） ---
+        if (_dragMoved && _dragMode is DragMode.CutPoint or DragMode.Screenshot)
+        {
+            var gx = _dragCurrent.TotalMilliseconds / lenMs * w;
+            if (_dragMode == DragMode.CutPoint)
+            {
+                var ghostPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE5, 0x14, 0x00)), 2.5);
+                dc.DrawLine(ghostPen, new Point(gx, 8), new Point(gx, h));
+                dc.DrawLine(ghostPen, new Point(gx - 5, 0), new Point(gx + 5, 0));
+            }
+            else
+            {
+                dc.DrawRoundedRectangle(GetMarkerBrush("#4EC9B0"), null,
+                    new Rect(gx - 4, 8, 8, 8), 2, 2);
+            }
+            // 时间码气泡（半透明黑底白字，跟随虚影）
+            var dragLabel = _dragCurrent.TotalHours >= 1
+                ? _dragCurrent.ToString(@"h\:mm\:ss\.f")
+                : _dragCurrent.ToString(@"mm\:ss\.f");
+            var bubbleBrush = new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8));
+            var bubbleBg = new SolidColorBrush(Color.FromRgb(0x00, 0x00, 0x00)) { Opacity = 0.75 };
+            var dragFt = new FormattedText(dragLabel, CultureInfo.InvariantCulture,
+                FlowDirection.LeftToRight, typeface, 10, bubbleBrush,
+                VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            var bx = Math.Clamp(gx - dragFt.Width / 2, 0, Math.Max(0, w - dragFt.Width));
+            dc.DrawRectangle(bubbleBg, null, new Rect(bx - 3, 16, dragFt.Width + 6, dragFt.Height + 4));
+            dc.DrawText(dragFt, new Point(bx, 18));
+        }
+
         // --- 播放头（白色竖线 + 顶部三角，PR 风格） ---
         var phX = PositionRatio * w;
         dc.DrawLine(playheadPen, new Point(phX, 0), new Point(phX, h));
@@ -413,26 +473,118 @@ public sealed class TimelineControl : Control
 
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
-        _isDragging = true;
+        _dragStartX = e.GetPosition(this).X;
+        _dragMoved = false;
+
+        // 命中检测优先：命中裁切点/截图标记 → 拖拽模式（不 seek）
+        if (TryHitTestMarker(e, out var mode, out var hitPos))
+        {
+            _dragMode = mode;
+            _dragOriginal = hitPos;
+            _dragCurrent = hitPos;
+            CaptureMouse();
+            Cursor = Cursors.SizeWE;
+            e.Handled = true;
+            return;
+        }
+
+        _dragMode = DragMode.Seek;
         CaptureMouse();
         SeekToMouse(e);
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
-        if (_isDragging)
+        if (_dragMode is DragMode.CutPoint or DragMode.Screenshot)
+        {
+            _dragCurrent = MouseToTime(e);
+            if (Math.Abs(e.GetPosition(this).X - _dragStartX) > 3)
+                _dragMoved = true;
+            // 实时 seek 预览：播放头与画面跟随拖拽位置
             SeekToMouse(e);
+            InvalidateVisual();
+        }
+        else if (_dragMode == DragMode.Seek)
+        {
+            SeekToMouse(e);
+        }
     }
 
     protected override void OnMouseUp(MouseButtonEventArgs e)
     {
-        _isDragging = false;
+        var mode = _dragMode;
+        _dragMode = DragMode.None;
         ReleaseMouseCapture();
+        Cursor = null;
+
+        if (mode is DragMode.CutPoint or DragMode.Screenshot)
+        {
+            if (_dragMoved)
+            {
+                // 拖拽提交：只触发一次数据落盘事件（不触发段选中）
+                var final = MouseToTime(e);
+                if (mode == DragMode.CutPoint)
+                    CutPointDragged?.Invoke(this, new MarkerDragEventArgs(_dragOriginal, final));
+                else
+                    ScreenshotDragged?.Invoke(this, new MarkerDragEventArgs(_dragOriginal, final));
+                InvalidateVisual();
+                e.Handled = true;
+                return;
+            }
+            // 未构成拖拽：按普通点击处理（seek + 段选中）
+            SeekToMouse(e);
+        }
+
         if (CutPoints is not null && Length > TimeSpan.Zero)
         {
             var time = MouseToTime(e);
             SegmentSelected?.Invoke(this, time);
         }
+    }
+
+    /// <summary>
+    /// 命中检测（v1.7.0）：容差约 6px 换算为时间。裁切点优先于截图标记；
+    /// 截图标记限制纵向命中带（y 4~20），避免与贯穿整行的裁切线混淆。
+    /// </summary>
+    private bool TryHitTestMarker(MouseEventArgs e, out DragMode mode, out TimeSpan hitPos)
+    {
+        mode = DragMode.None;
+        hitPos = default;
+        if (ActualWidth <= 0 || Length <= TimeSpan.Zero) return false;
+
+        var toleranceMs = HitTolerancePx / ActualWidth * Length.TotalMilliseconds;
+        var mouseTime = MouseToTime(e);
+
+        if (CutPoints is not null)
+        {
+            var list = CutPoints as IReadOnlyList<TimeSpan> ?? CutPoints.ToList();
+            var idx = TimelineHitTest.FindNearest(list, mouseTime, toleranceMs);
+            if (idx >= 0)
+            {
+                mode = DragMode.CutPoint;
+                hitPos = list[idx];
+                return true;
+            }
+        }
+
+        if (Markers is not null && e.GetPosition(this).Y is >= 4 and <= 20)
+        {
+            TimelineMarker? bestMarker = null;
+            var bestMs = double.MaxValue;
+            foreach (var m in Markers)
+            {
+                if (m.Kind != MarkerKind.Screenshot) continue;
+                var ms = Math.Abs((m.Position - mouseTime).TotalMilliseconds);
+                if (ms < bestMs) { bestMs = ms; bestMarker = m; }
+            }
+            if (bestMarker is not null && bestMs <= toleranceMs)
+            {
+                mode = DragMode.Screenshot;
+                hitPos = bestMarker.Position;
+                return true;
+            }
+        }
+        return false;
     }
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)

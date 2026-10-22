@@ -193,7 +193,6 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         _services = services;
         _ownsServices = ownsServices;
         _undo = new UndoHistoryService(() => services.Settings.MaxUndoSteps);
-        _undo.Changed += (_, _) => ((RelayCommand)UndoCommand).RaiseCanExecuteChanged();
 
         Player = new PlayerViewModel(
             services.Playback, services.Screenshots, services.Clips,
@@ -303,6 +302,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         NextNoteCommand = new RelayCommand(Notes.JumpToNext);
         // 撤回上一步笔记操作（Ctrl+Z / 底栏 ↩ 按钮，v1.6.0）
         UndoCommand = new RelayCommand(Undo, () => _undo.CanUndo);
+        _undo.Changed += (_, _) => ((RelayCommand)UndoCommand).RaiseCanExecuteChanged();
         // 批量文本操作窗口入口
         ShowBatchCommand = new RelayCommand(() => ShowBatchRequested?.Invoke(this, EventArgs.Empty));
         // 项目文件入口（View 层订阅后弹对话框）
@@ -888,6 +888,56 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// 时间轴拖拽移动裁切点（W1-R3，v1.7.0）：Player.MoveCutPoint 自身触发一次
+    /// NotesMutating（一步撤回）；原裁切点的勾选标记随移到落点。
+    /// </summary>
+    public void MoveCutPoint(TimeSpan oldPos, TimeSpan newPos)
+    {
+        var wasMarked = Notes.Items.OfType<CutPointListItem>()
+            .FirstOrDefault(i => i.Position == oldPos)?.IsMarked == true;
+        var applied = Player.MoveCutPoint(oldPos, newPos);
+        if (applied is null || !wasMarked) return;
+        RunWithoutUndoRecording(() =>
+        {
+            var item = Notes.Items.OfType<CutPointListItem>()
+                .FirstOrDefault(i => i.Position == applied.Value);
+            if (item is not null) item.IsMarked = true;
+        });
+    }
+
+    /// <summary>
+    /// 时间轴拖拽移动截图标记（W1-R3，v1.7.0）：只改时间码记录，png 文件与
+    /// 缩略图不动；画廊原位替换、笔记列表按新时间码重排；勾选标记随迁；一步撤回。
+    /// </summary>
+    public void MoveScreenshot(ScreenshotEntry entry, TimeSpan newPos)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        var length = Player.Length;
+        if (newPos < TimeSpan.Zero) newPos = TimeSpan.Zero;
+        if (length > TimeSpan.Zero && newPos > length) newPos = length;
+        if (newPos == entry.Position) return;
+
+        var wasMarked = Notes.Items.OfType<ScreenshotListItem>()
+            .FirstOrDefault(i => ReferenceEquals(i.Entry, entry))?.IsMarked == true;
+
+        RecordUndoCheckpoint();
+        var moved = new ScreenshotEntry(entry.SourcePath, entry.OutputPath, newPos,
+            entry.CapturedAt, entry.Label, entry.Id);
+        var galleryIndex = Screenshots.Items.IndexOf(entry);
+        if (galleryIndex >= 0) Screenshots.Items[galleryIndex] = moved;
+        Notes.RemoveScreenshot(entry);
+        Notes.AddScreenshot(moved);
+
+        if (wasMarked)
+            RunWithoutUndoRecording(() =>
+            {
+                var item = Notes.Items.OfType<ScreenshotListItem>()
+                    .FirstOrDefault(i => ReferenceEquals(i.Entry, moved));
+                if (item is not null) item.IsMarked = true;
+            });
     }
 
     /// <summary>

@@ -80,6 +80,61 @@ public class PlayerViewModelTests : IDisposable
         Assert.Equal(1, raised);
     }
 
+    // --- 裁切点拖拽移动（v1.7.0）---
+
+    [Fact]
+    public void MoveCutPoint_MovesAndKeepsSorted_RaisesSingleNotesMutating()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(30));
+        int raised = 0;
+        _vm.NotesMutating += (_, _) => raised++;
+
+        var applied = _vm.MoveCutPoint(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
+
+        Assert.Equal(TimeSpan.FromSeconds(20), applied);
+        Assert.Equal(1, raised); // 一次拖动 = 一步撤回
+        Assert.Equal(new[] { TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(30) }, _vm.CutPoints.ToArray());
+    }
+
+    [Fact]
+    public void MoveCutPoint_ClampsAtNeighborAndEdges()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(20));
+
+        // 向右：无右邻居 → 钳到当前时长（stub 未播放时长为 0，兜底为现有点最大值 = 原位置 → 不动）
+        Assert.Null(_vm.MoveCutPoint(TimeSpan.FromSeconds(20), TimeSpan.FromHours(1)));
+
+        // 向左越过邻居 10s（最小间距 100ms）→ 钳到 10.1s
+        var applied = _vm.MoveCutPoint(TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(5));
+        Assert.Equal(TimeSpan.FromSeconds(10.1), applied);
+    }
+
+    [Fact]
+    public void MoveCutPoint_KnownLength_ClampsAtVideoEnd()
+    {
+        _playback.Open("video.mp4");
+        _playback.Play(); // Playing → 时长同步进 VM
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+
+        var applied = _vm.MoveCutPoint(TimeSpan.FromSeconds(10), TimeSpan.FromHours(1));
+        Assert.Equal(TimeSpan.FromMinutes(3), applied);
+    }
+
+    [Fact]
+    public void MoveCutPoint_UnknownOrUnchanged_ReturnsNullWithoutEvent()
+    {
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        int raised = 0;
+        _vm.NotesMutating += (_, _) => raised++;
+
+        Assert.Null(_vm.MoveCutPoint(TimeSpan.FromSeconds(99), TimeSpan.FromSeconds(50)));
+        Assert.Null(_vm.MoveCutPoint(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10)));
+        Assert.Equal(0, raised);
+        Assert.Single(_vm.CutPoints);
+    }
+
     [Fact]
     public void Open_SetsCurrentPathAndResetsPosition()
     {

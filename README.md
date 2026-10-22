@@ -6,7 +6,7 @@
 
 ### 普通用户
 
-直接使用安装包 `artifacts\installer\PianAssistant_Setup_v1.6.0.exe`，双击安装即可——
+直接使用安装包 `artifacts\installer\PianAssistant_Setup_v1.7.0.exe`，双击安装即可——
 **.NET 运行时、VLC、ffmpeg 已全部内置，无需任何额外环境**。
 
 详细安装与使用步骤见 `docs\USER_GUIDE.md`（与版本同步更新）。
@@ -25,7 +25,7 @@
 .\run.bat
 
 # 生成安装包（需先跑门禁，再用 Inno Setup 6 编译 installer\PianAssistant.iss）
-& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.6.0 installer\PianAssistant.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" /DAppVersion=1.7.0 installer\PianAssistant.iss
 ```
 
 ### 使用
@@ -34,6 +34,7 @@
 - **Space** 播放/暂停，**←/→** 逐帧，**Shift+←/→** ±1 秒，**Ctrl+←/→** ±10 秒
 - **I/O** 标记入/出点，**Ctrl+Shift+E** 截取片段
 - **C** 添加裁切点，**Ctrl+Shift+C** 清空全部标记（裁切点 + 截图）
+- **拖拽时间轴标记**：裁切点（红）与截图标记（绿）可按住拖动改位置，实时预览、可撤回
 - **V** 标记/取消标记当前片段（播放头所在片段自动选中；黄带与笔记 ☑ 同步）
 - **Ctrl+Z** 撤回上一步笔记操作（裁切点/截图/标记/清空/导入；步数上限默认 5，可在设置调整）
 - **X** 截图（时间轴标记点 + ffmpeg 后台抽帧缩略图进笔记列表）

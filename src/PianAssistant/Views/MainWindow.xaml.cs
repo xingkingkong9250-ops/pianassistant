@@ -740,6 +740,23 @@ public partial class MainWindow : Window
         Shell?.Player.SelectSegmentAt(e);
     }
 
+    /// <summary>时间轴裁切点拖拽提交（v1.7.0）：一步撤回，勾选标记随迁。</summary>
+    private void OnTimelineCutPointDragged(object sender, MarkerDragEventArgs e)
+    {
+        Shell?.MoveCutPoint(e.OriginalPosition, e.NewPosition);
+    }
+
+    /// <summary>时间轴截图标记拖拽提交（v1.7.0）：按原时间码定位记录后移动。</summary>
+    private void OnTimelineScreenshotDragged(object sender, MarkerDragEventArgs e)
+    {
+        var shell = Shell;
+        if (shell is null) return;
+        var entry = shell.Notes.Screenshots.FirstOrDefault(
+            s => Math.Abs((s.Position - e.OriginalPosition).TotalMilliseconds) < 1);
+        if (entry is not null)
+            shell.MoveScreenshot(entry, e.NewPosition);
+    }
+
     private void OnTimelineScaleChanged(object sender, double e)
     {
         if (ZoomLabel is not null)

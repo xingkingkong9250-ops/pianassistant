@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.6.0）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.7.0）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -70,7 +70,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.6.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.7.0 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -315,7 +315,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <text class="zone-lb" x="16" y="24" fill="var(--z-r3)">W1-R3 时间轴 · TimelineBorder</text>
   <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-01" data-name="缩放指示区" data-desc="「缩放」+ ZoomLabel 倍数"><rect x="16" y="32" width="80" height="22" rx="4"/><text x="56" y="44">R3-01</text></g>
   <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-02" data-name="滚动容器" data-desc="TimelineScroll"><rect x="100" y="32" width="1086" height="42" rx="4" stroke-dasharray="4 3"/><text x="643" y="44">R3-02 滚动容器</text></g>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-03" data-name="TimelineControl" data-desc="刻度/播放头(白)/裁切点(红#E51400)/截图点(绿#4EC9B0)/入出点(蓝)/选中段高亮(白@10%自动跟随)/黄带(V 键标记)；滚轮缩放 0.5~50×"><rect x="110" y="38" width="1066" height="30" rx="4"/><text x="643" y="54">R3-03 刻度 ┃ 播放头 ▼白 ┃ 裁切点 ▼红 ┃ 截图点 ■绿 ┃ 入出点 ┃ 选中段高亮 ┃ 已标记黄带</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-03" data-name="TimelineControl" data-desc="刻度/播放头(白)/裁切点(红#E51400)/截图点(绿#4EC9B0)/入出点(蓝)/选中段高亮(白@10%自动跟随)/黄带(V 键标记)；滚轮缩放 0.5~50×；v1.7.0 起裁切点/截图标记可拖拽修改"><rect x="110" y="38" width="1066" height="30" rx="4"/><text x="643" y="54">R3-03 刻度 ┃ 播放头 ▼白 ┃ 裁切点 ▼红 ┃ 截图点 ■绿 ┃ 入出点 ┃ 选中段高亮 ┃ 已标记黄带</text></g>
   <text class="lbl-m" x="100" y="86">底部为横向滚动条（随缩放出现）</text>
   <rect class="wire" x="6" y="100" width="1188" height="84" rx="6"/>
   <text class="zone-lb" x="16" y="116" fill="var(--z-r4)">W1-R4 底部控制栏 · 高 56</text>
@@ -352,7 +352,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tbody>
 <tr data-num="W1-R3-01"><td class="num">W1-R3-01</td><td>缩放指示区</td><td>「缩放」+ ZoomLabel 当前倍数</td></tr>
 <tr data-num="W1-R3-02"><td class="num">W1-R3-02</td><td>滚动容器 TimelineScroll</td><td>横向滚动条</td></tr>
-<tr data-num="W1-R3-03"><td class="num">W1-R3-03</td><td>TimelineControl</td><td>刻度 / 白播放头 / 红裁切点 #E51400（8×8 三角）/ 绿截图点 #4EC9B0（6×6 圆角方块）/ 蓝入出点 / 选中段高亮（白 @10% + 灰边框，<strong>v1.1.0 起播放头所在片段自动选中</strong>）/ 已标记片段黄带 #D7BA7D（<strong>V 键</strong>：切换标记，与拉片笔记 ☑ 双向同步；v1.1.3 前默认 X）；滚轮缩放 0.5~50×</td></tr>
+<tr data-num="W1-R3-03"><td class="num">W1-R3-03</td><td>TimelineControl</td><td>刻度 / 白播放头 / 红裁切点 #E51400（8×8 三角）/ 绿截图点 #4EC9B0（6×6 圆角方块）/ 蓝入出点 / 选中段高亮（白 @10% + 灰边框，<strong>v1.1.0 起播放头所在片段自动选中</strong>）/ 已标记片段黄带 #D7BA7D（<strong>V 键</strong>：切换标记，与拉片笔记 ☑ 双向同步；v1.1.3 前默认 X）；滚轮缩放 0.5~50×；<strong>v1.7.0 起裁切点/截图标记支持选中拖拽修改</strong>（虚影 + 时间码气泡 + 实时 seek 预览；裁切点不越相邻点；一次拖拽 = 一步 Ctrl+Z；截图只改时间码记录）</td></tr>
 <tr data-num="W1-R4-01"><td class="num">W1-R4-01</td><td>当前时间码</td><td>TimeCodeDisplayString</td></tr>
 <tr data-num="W1-R4-02"><td class="num">W1-R4-02</td><td>总时长</td><td>LengthDisplayString</td></tr>
 <tr data-num="W1-R4-03"><td class="num">W1-R4-03</td><td>倍速标记</td><td>非 1.0× 时显示蓝色标签；<strong>点击恢复 1×</strong></td></tr>

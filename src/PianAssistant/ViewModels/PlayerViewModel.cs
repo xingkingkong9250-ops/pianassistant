@@ -858,6 +858,31 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         return true;
     }
 
+    /// <summary>
+    /// 移动裁切点（时间轴拖拽用，v1.7.0）：只触发一次 NotesMutating（一步撤回），
+    /// 目标位置自动钳制在不越过相邻裁切点（100ms 最小间距）与 [0, 时长] 内。
+    /// 返回实际落点；未找到原位置或落点无变化时返回 null。
+    /// </summary>
+    public TimeSpan? MoveCutPoint(TimeSpan oldPos, TimeSpan newPos)
+    {
+        var index = -1;
+        for (var i = 0; i < CutPoints.Count; i++)
+            if (CutPoints[i] == oldPos) { index = i; break; }
+        if (index < 0) return null;
+
+        // 时长未知（尚未解析出）时用现有最大裁切点做上限兜底，避免把点压到 0
+        var maxBound = _length > TimeSpan.Zero ? _length : CutPoints.Max();
+        var clamped = TimelineHitTest.ClampCutPointMove(CutPoints, index, newPos, maxBound);
+        if (clamped == oldPos) return null;
+
+        NotesMutating?.Invoke(this, EventArgs.Empty);
+        CutPoints.RemoveAt(index);
+        var insertIndex = CutPoints.TakeWhile(c => c < clamped).Count();
+        CutPoints.Insert(insertIndex, clamped);
+        UpdateSelectedSegmentFromPlayhead();
+        return clamped;
+    }
+
     /// <summary>清空裁切点与选中段（不含截图标记；Shell 确认后调用）。</summary>
     public void ClearCutPoints()
     {

@@ -291,6 +291,8 @@
                         SelectedSegmentEnd="{Binding Player.SelectedSegmentEnd, Mode=OneWay}"
                         SeekRequested="OnTimelineSeek"
                         SegmentSelected="OnTimelineSegmentSelected"
+                        CutPointDragged="OnTimelineCutPointDragged"
+                        ScreenshotDragged="OnTimelineScreenshotDragged"
                         ScaleChanged="OnTimelineScaleChanged" />
                 </ScrollViewer>
             </DockPanel>
