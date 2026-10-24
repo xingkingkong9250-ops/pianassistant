@@ -7,6 +7,64 @@
 
 ## [Unreleased]
 
+### v1.7.5 — 修复切换视频串入上一个视频的笔记/截图（NO.P，2026-10-25）
+
+- 根因：`MediaSessionService.LoadAsync` 的内容哈希计算是全文件 SHA-256（大文件
+  数秒）。计算期间用户切到别的素材后，旧加载完成时仍会 ① 把旧素材的会话
+  （笔记/截图/裁切点/播放位置）套用到新视频面板；② 把旧素材的内容哈希回写到
+  新素材的数据库行（污染后续哈希匹配）
+- 修复：引入会话代次（`BeginSession`/`EndSession` 时 +1）。`LoadAsync` 在哈希
+  计算前捕获代次，计算完成后先校验——代次不符（期间已切换素材）则整体丢弃；
+  `ApplyAndReport` 的 UI 派发回调执行前再校验一次；`TryWriteBackHash` 同样
+  校验代次，禁止把旧哈希写进新素材行
+- 哈希计算改为可注入（构造参数 `computeHash`），新增确定性竞态单测：
+  用挂起的哈希闸门模拟「计算期间切换素材」，断言旧会话不套用、旧哈希不回写
+
+### v1.7.4 — 修复反复快进/后退 + 暂停切换卡死（NO.P，2026-10-24）
+
+- 根因：`SeekToMs` 的 `MediaPlayer.Time` 赋值与 `NextFrame()` 仍在 UI 线程执行。
+  反复快进/后退（尤其长按 `←`/`→` 每 50ms 一次）时，每次 seek 都要等 VLC input
+  线程响应；再叠加暂停/播放切换与倍速变化，input 线程持续繁忙，UI 线程被串行
+  阻塞 → 窗口无响应（Application Hang）
+- 修复：seek 原生赋值也下沉到后台控制线程，与倍速/音轨/暂停共用同一串行队列，
+  并按「最后一次生效」合并；UI 线程只更新期望位置并唤醒线程
+- 修复「恢复上次播放位置」失效：`ApplySession` 在媒体未起播（input 未创建）时
+  调用 seek，`Time` 赋值被 VLC 丢弃。现在起播前的 seek 会被暂存，待首次
+  `Playing` 事件后由控制线程补发，重新打开视频可正确跳转到上次位置
+
+### v1.7.3 — 修复倍速切换时窗口卡死（NO.P，2026-10-24）
+
+- 根因：`libvlc` 的 `set_rate` / `set_audio_track` / `get_audio_track` / `set_pause`
+  都会经 VLC 内部 input 线程同步下发。高倍速播放时管线频繁重缓冲，input 线程繁忙，
+  这些调用会在调用线程上长时间阻塞。v1.7.2 的实现里 `SetRate` 在 UI 线程一次性串行
+  做了 4 次这类调用（读取音轨 → 禁用音轨 → SetRate → 再次 SetRate），且 `Playing`
+  事件（重缓冲后会反复触发）又在 UI 线程重复应用音轨策略 → 切换倍速时 UI 线程卡死，
+  系统判定为 Application Hang（AppHangB1），表现为窗口无响应、播放停止
+- 修复：新增单一后台控制线程（`VideoPlaybackService.ControlLoop`），倍速、音轨策略、
+  音轨切换、播放/暂停的原生调用全部下沉到该线程串行执行；UI 线程只写「期望值」
+  并唤醒线程，永不做阻塞性原生调用
+- 连续切换倍速（按住 ↑/↓、快速点选档位）按「最后一次生效」合并，不会排队堆积
+- 去掉 `ApplyHighRateAudioPolicy` 内部重复的 `SetRate`（倍速现在每轮只下发一次）；
+  `Playing` 触发的策略重试在「已禁用」时直接跳过，避免重缓冲时反复调用原生 API
+- `Rate` 读取改为返回期望倍速（不再直读 `libvlc_media_player_get_rate`），
+  避免 UI 线程被原生取值阻塞
+- 音轨策略只在 `Playing` 态（音轨完成选择）下发，避免 Opening/Buffering
+  误记「已禁用」而错过重试（高倍速记忆还原场景）
+- 新增 7 条单元测试锁定 `NeedsAudioDisable` 策略判定
+
+### v1.7.2 — 修复倍速下空格无法暂停（NO.P，2026-10-24）
+
+- 根因：`TogglePlayPause` 用 `MediaPlayer.IsPlaying` 判定当前是否在播放。
+  LibVLC 的 `is_playing` 仅在 `Playing` 态返回 true，`Buffering` / `Opening`
+  期间返回 false；高倍速播放时解码管线频繁重缓冲，此时按空格被误判为
+  「未播放」→ 再次调用 `Play()`（空操作），表现为倍速下空格失效
+- 修复：改为按 VLC 状态机判定（`VideoPlaybackService.IsPlaybackActive`，
+  `Playing` / `Buffering` / `Opening` 均视为在播放），空格在倍速下可正常暂停
+- 空格全局兜底：`MainWindow` 在 `PreviewKeyDown` 阶段拦截空格并直接执行
+  播放/暂停，避免焦点落在列表项、复选框等消费空格的控件上时 KeyBinding
+  收不到按键；文本输入框内放行，用户改绑其它按键时保持自定义优先级
+- 新增 8 条单元测试锁定状态判定
+
 ### v1.7.1 — 发布打包合规修正（NO.P，2026-10-23）
 
 - 修正打包方式违规：先前直接调用 ISCC 并硬编码 `/DAppVersion=1.7.0`，

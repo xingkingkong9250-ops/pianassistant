@@ -17,6 +17,10 @@ public interface IVideoPlayback : IDisposable
     bool IsPlaying { get; }
     TimeSpan Position { get; }
     TimeSpan Length { get; }
+    /// <summary>
+    /// 播放倍速。读取返回「期望倍速」：原生层的实际套用由后台控制线程异步完成
+    /// （set_rate 会阻塞到 input 线程响应，不能在 UI 线程直接调用，v1.7.3）。
+    /// </summary>
     double Rate { get; set; }
     int Volume { get; set; }
     bool IsMuted { get; set; }

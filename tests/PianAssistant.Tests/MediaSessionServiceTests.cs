@@ -209,6 +209,39 @@ public class MediaSessionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task LoadAsync_SwitchMediaDuringHash_OldSessionDiscarded()
+    {
+        // v1.7.5 竞态：哈希计算期间切换素材，旧会话不得再次套用，
+        // 旧哈希也不得回写到新素材行（否则上一个视频的笔记/截图会刷到新视频）。
+        var pathA = CreateMedia("raceA.mp4", "content-A");
+        var pathB = CreateMedia("raceB.mp4", "content-B");
+
+        var hashA = await ContentFingerprint.ComputeContentHashAsync(pathA);
+        var rowA = BuildSessionModel(ContentFingerprint.ComputeFastKey(pathA)!, pathA, hashA, cutPoints: 3);
+        _repo.UpsertSession(rowA);
+
+        // 注入可控哈希闸门：把 A 的哈希计算挂起，确定性制造「计算期间切走」
+        var hashGate = new TaskCompletionSource<string?>();
+        using var svc = new MediaSessionService(_repo, _settings,
+            computeHash: (path, ct) => path == pathA
+                ? hashGate.Task
+                : ContentFingerprint.ComputeContentHashAsync(path, ct));
+        var applied = new List<MediaSession>();
+        svc.ApplySession = s => applied.Add(s);
+
+        var loadA = svc.LoadAsync(new MediaFile(pathA)); // TryRestore 同步套用 A，哈希被闸门挡住
+        Assert.Single(applied);
+
+        svc.BeginSession(new MediaFile(pathB));          // 用户切到 B：代次 +1
+        hashGate.SetResult(hashA);                        // A 的哈希此刻才算完
+        await loadA;
+
+        Assert.Single(applied); // 没有第二次套用：哈希升级结果按代次丢弃
+        var rowB = _repo.LoadSessionByFastKey(ContentFingerprint.ComputeFastKey(pathB)!);
+        Assert.True(rowB is null || rowB.ContentHash != hashA); // 旧哈希不得写进 B 行
+    }
+
+    [Fact]
     public async Task MarkDirty_DebouncesToSinglePersist()
     {
         var media = CreateMedia("debounce.mp4");

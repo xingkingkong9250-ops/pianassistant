@@ -55,6 +55,8 @@ public partial class MainWindow : Window
         // 实现长按连续触发
         PreviewKeyDown += OnPreviewArrowKeyDown;
         PreviewKeyUp += OnPreviewArrowKeyUp;
+        // 空格全局兜底：任意焦点下都直接控制播放/暂停（文本框除外）
+        PreviewKeyDown += OnPreviewSpaceKeyDown;
         // 全屏时鼠标静止自动隐藏
         PreviewMouseMove += OnWindowPreviewMouseMove;
         // 输入法强制英文：焦点不在文本框时再次强制，避免中文 IME 吞掉单键快捷键
@@ -595,6 +597,34 @@ public partial class MainWindow : Window
                     shell?.OpenMedia(videos);
             }
         }
+        e.Handled = true;
+    }
+
+    // --- 空格：播放/暂停全局兜底 ---
+
+    /// <summary>
+    /// 空格键兜底处理（v1.7.2）。
+    /// <para>
+    /// 仅靠 <c>InputBindings</c> 时，焦点落在会消费空格的控件（列表项、复选框、
+    /// 滚动容器等）上，KeyBinding 收不到按键，空格「失效」。这里在 Preview 阶段
+    /// 统一把空格交给播放/暂停命令，并标记 Handled 避免与 KeyBinding 重复触发。
+    /// 文本输入控件内放行（空格用于输入）；用户把「播放/暂停」改绑到其它键时
+    /// 不拦截，保持自定义优先级。
+    /// </para>
+    /// </summary>
+    private void OnPreviewSpaceKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space) return;
+        // 文本输入控件内空格是正常输入，不拦截
+        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
+
+        var shell = Shell;
+        if (shell is null) return;
+        if (!shell.Services.Hotkeys.Active.TryGetValue(HotkeyAction.PlayPause, out var gesture)) return;
+        if (!HotkeyService.TryParseKeyModifiers(gesture, out var key, out var modifiers)) return;
+        if (key != Key.Space || modifiers != ModifierKeys.None) return; // 自定义为其它手势时交给 KeyBinding
+
+        shell.Player.PlayPauseCommand.Execute(null);
         e.Handled = true;
     }
 

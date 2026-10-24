@@ -16,6 +16,7 @@ public sealed class MediaSessionService : IDisposable
     private readonly ProjectRepository _repository;
     private readonly AppSettingsService _settings;
     private readonly Action<Action> _dispatch;
+    private readonly Func<string, CancellationToken, Task<string?>> _computeHash;
 
     private readonly object _gate = new();
     private Timer? _debounceTimer;
@@ -24,6 +25,11 @@ public sealed class MediaSessionService : IDisposable
     private string? _currentFastKey;
     private string? _currentPath;
     private string? _currentHash;
+    // 会话代次：每次切换素材（BeginSession/EndSession）+1。
+    // LoadAsync 的内容哈希计算是慢操作（全文件 SHA-256，大文件数秒），期间用户
+    // 可能已切到别的素材——旧加载完成后必须整体丢弃：既不能套用旧会话
+    // （否则上一个视频的笔记/截图会刷到新视频），也不能把旧哈希回写到新素材行（v1.7.5）。
+    private long _generation;
 
     /// <summary>防抖窗口（默认 2s；供测试缩短）。</summary>
     public TimeSpan DebounceInterval { get; set; } = TimeSpan.FromSeconds(2);
@@ -43,12 +49,15 @@ public sealed class MediaSessionService : IDisposable
     public MediaSessionService(
         ProjectRepository repository,
         AppSettingsService settings,
-        Action<Action>? dispatch = null)
+        Action<Action>? dispatch = null,
+        Func<string, CancellationToken, Task<string?>>? computeHash = null)
     {
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         // 生产环境由 Shell 注入 Dispatcher；测试默认同步执行。
         _dispatch = dispatch ?? (action => action());
+        // 哈希计算可注入（测试用于确定性复现代次竞态）；默认全文件 SHA-256
+        _computeHash = computeHash ?? ContentFingerprint.ComputeContentHashAsync;
     }
 
     /// <summary>
@@ -60,6 +69,7 @@ public sealed class MediaSessionService : IDisposable
         ArgumentNullException.ThrowIfNull(media);
         lock (_gate)
         {
+            _generation++;
             _currentFastKey = ContentFingerprint.ComputeFastKey(media.Path);
             _currentPath = media.Path;
             _currentHash = null;
@@ -74,6 +84,7 @@ public sealed class MediaSessionService : IDisposable
         Flush();
         lock (_gate)
         {
+            _generation++;
             _currentFastKey = null;
             _currentPath = null;
             _currentHash = null;
@@ -102,8 +113,9 @@ public sealed class MediaSessionService : IDisposable
         }
         if (session is null || IsEmpty(session))
             return SessionRestoreResult.NotRestored;
-        lock (_gate) { _currentHash = session.ContentHash; }
-        return ApplyAndReport(session);
+        long gen;
+        lock (_gate) { _currentHash = session.ContentHash; gen = _generation; }
+        return ApplyAndReport(session, gen);
     }
 
     /// <summary>
@@ -115,12 +127,15 @@ public sealed class MediaSessionService : IDisposable
     {
         ArgumentNullException.ThrowIfNull(media);
         var fastResult = TryRestore(media);
+        // 捕获代次：哈希计算期间若用户切换素材（BeginSession/EndSession 会 +1），
+        // 本次加载的后续套用与哈希回写全部作废
+        long gen;
+        lock (_gate) gen = _generation;
 
         string? hash;
         try
         {
-            hash = await ContentFingerprint
-                .ComputeContentHashAsync(media.Path, CancellationToken.None)
+            hash = await _computeHash(media.Path, CancellationToken.None)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -130,12 +145,17 @@ public sealed class MediaSessionService : IDisposable
         }
         if (string.IsNullOrEmpty(hash)) return fastResult;
 
-        lock (_gate) { _currentHash = hash; }
+        lock (_gate)
+        {
+            if (gen != _generation) return fastResult; // 已切换素材：丢弃
+            _currentHash = hash;
+        }
 
         var result = fastResult;
         try
         {
-            var fastKey = _currentFastKey;
+            string? fastKey;
+            lock (_gate) fastKey = _currentFastKey;
             var hashSession = _repository.LoadSessionByHash(hash);
 
             // 哈希命中「另一行」（另一设备/改名）：按 updated_at 取较新者合并。
@@ -146,7 +166,7 @@ public sealed class MediaSessionService : IDisposable
                     : _repository.LoadSessionByFastKey(fastKey);
                 var hashIsNewer = current is null || hashSession.UpdatedAt > current.UpdatedAt;
                 if (hashIsNewer && !IsEmpty(hashSession))
-                    result = ApplyAndReport(hashSession);
+                    result = ApplyAndReport(hashSession, gen);
             }
         }
         catch (Exception ex)
@@ -155,17 +175,22 @@ public sealed class MediaSessionService : IDisposable
         }
 
         // 把哈希回写到当前快速键行（内容哈希已被占用时 repo 会自动置空）。
-        TryWriteBackHash();
+        TryWriteBackHash(gen);
         return result;
     }
 
     /// <summary>把当前内容哈希回写到当前快速键会话行（幂等、失败仅记日志）。</summary>
-    private void TryWriteBackHash()
+    private void TryWriteBackHash(long gen)
     {
         try
         {
             string? fastKey, hash;
-            lock (_gate) { fastKey = _currentFastKey; hash = _currentHash; }
+            lock (_gate)
+            {
+                if (gen != _generation) return; // 已切换素材：禁止把旧哈希写进新素材行
+                fastKey = _currentFastKey;
+                hash = _currentHash;
+            }
             if (fastKey is null || string.IsNullOrEmpty(hash)) return;
             var current = _repository.LoadSessionByFastKey(fastKey);
             if (current is null) return;
@@ -235,7 +260,7 @@ public sealed class MediaSessionService : IDisposable
         }
     }
 
-    private SessionRestoreResult ApplyAndReport(MediaSession session)
+    private SessionRestoreResult ApplyAndReport(MediaSession session, long gen)
     {
         // 若关闭「恢复播放位置」则清零位置与倍速，仅还原标记类数据。
         if (!_settings.RestorePlaybackPosition)
@@ -248,6 +273,8 @@ public sealed class MediaSessionService : IDisposable
             session.LastPositionMs > 0);
         _dispatch(() =>
         {
+            // 派发执行前再校验一次代次：dispatch 排队期间可能已切换素材
+            lock (_gate) { if (gen != _generation) return; }
             ApplySession?.Invoke(session);
             SessionRestored?.Invoke(this, result);
         });
