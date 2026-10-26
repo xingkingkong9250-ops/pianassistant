@@ -156,6 +156,89 @@ public sealed class FfmpegRunner
         RunWithProgress(args.ToString(), durationMs, cancellationToken, onProgress);
     }
 
+    /// <summary>
+    /// 生成代理媒体（v1.11.0）：按档位降分辨率 + 限码率重编码。
+    /// 关键点：<c>-fps_mode passthrough</c> 保持帧率直通，代理与源的时间码逐帧对齐，
+    /// 裁切点/截图/片段导出均可直接复用源时间码。
+    /// </summary>
+    /// <param name="useHardwareEncoder">true 用 h264_nvenc（快且 CPU 占用低）；false 用 libx264。</param>
+    public void GenerateProxy(
+        string source,
+        string outputPath,
+        PianAssistant.Models.ProxyPreset preset,
+        bool useHardwareEncoder,
+        double totalDurationMs,
+        CancellationToken cancellationToken,
+        Action<double>? onProgress = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        ArgumentNullException.ThrowIfNull(preset);
+
+        var kbps = preset.VideoBitrateKbps;
+        var args = new StringBuilder();
+        args.Append("-i \"").Append(source).Append("\" ");
+        if (useHardwareEncoder)
+        {
+            args.Append("-c:v h264_nvenc -preset p1 -rc vbr -cq 28 ");
+            args.Append("-b:v ").Append(kbps).Append("k -maxrate ").Append(kbps * 2).Append("k ");
+        }
+        else
+        {
+            args.Append("-c:v libx264 -preset veryfast ");
+            args.Append("-b:v ").Append(kbps).Append("k -maxrate ").Append(kbps * 2)
+                .Append("k -bufsize ").Append(kbps * 4).Append("k ");
+        }
+        // 等比缩放并按 2 对齐（保证 yuv420p 合法），不放大
+        args.Append("-vf \"scale=").Append(preset.Width).Append(':').Append(preset.Height)
+            .Append(":force_original_aspect_ratio=decrease:force_divisible_by=2\" ");
+        // 关键帧收紧到 1s（seek 响应更快）+ 帧率直通（时间码对齐）
+        args.Append("-g 25 -fps_mode passthrough -pix_fmt yuv420p ");
+        args.Append("-c:a aac -b:a 96k ");
+        args.Append("-movflags +faststart ");
+        args.Append('"').Append(outputPath).Append('"');
+        RunWithProgressParsing(args.ToString(), totalDurationMs, cancellationToken, onProgress);
+    }
+
+    /// <summary>
+    /// 运行 ffprobe 并返回 stdout（失败返回空串，绝不抛异常）。
+    /// 供代理媒体的分辨率/时长探测使用：探测失败时上游按「无需代理」处理。
+    /// </summary>
+    public string RunFfprobe(string arguments)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = _ffprobePath,
+                Arguments = arguments,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardErrorEncoding = Encoding.UTF8,
+                StandardOutputEncoding = Encoding.UTF8,
+            };
+            using var process = new Process { StartInfo = psi };
+            process.Start();
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            if (!process.WaitForExit(15000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return string.Empty;
+            }
+            var stdout = stdoutTask.GetAwaiter().GetResult();
+            stderrTask.GetAwaiter().GetResult();
+            return process.ExitCode == 0 ? stdout : string.Empty;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FfmpegRunner] ffprobe failed: {ex.Message}");
+            return string.Empty;
+        }
+    }
+
     /// <summary>追加 -vf 缩放滤镜（空值不追加）。</summary>
     private static void AppendScaleFilter(StringBuilder args, string? scaleFilter)
     {

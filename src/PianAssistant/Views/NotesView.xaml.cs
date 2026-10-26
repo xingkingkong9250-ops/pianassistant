@@ -214,7 +214,7 @@ public partial class NotesView : UserControl
             return;
         }
 
-        var defaultName = Path.GetFileNameWithoutExtension(shell.Player.CurrentPath ?? "拉片数据");
+        var defaultName = Path.GetFileNameWithoutExtension(shell.Player.SourcePathOrCurrent ?? "拉片数据");
         var dlg = new SaveFileDialog
         {
             Title = "导出数据（Excel / CSV，可人工编辑）",
@@ -225,7 +225,7 @@ public partial class NotesView : UserControl
 
         try
         {
-            var data = vm.BuildExportData(shell.Player.CurrentPath, shell.Player.Length);
+            var data = vm.BuildExportData(shell.Player.SourcePathOrCurrent, shell.Player.Length);
             if (Path.GetExtension(dlg.FileName).Equals(".xlsx", StringComparison.OrdinalIgnoreCase))
                 NotesDataXlsxService.Export(dlg.FileName, data);
             else
@@ -247,7 +247,7 @@ public partial class NotesView : UserControl
         var vm = Vm;
         var shell = (Window.GetWindow(this) as MainWindow)?.Shell;
         if (vm is null || shell is null) return;
-        if (string.IsNullOrEmpty(shell.Player.CurrentPath))
+        if (string.IsNullOrEmpty(shell.Player.SourcePathOrCurrent))
         {
             MessageBox.Show("请先打开视频，再导入数据。", "导入数据",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -281,7 +281,7 @@ public partial class NotesView : UserControl
         }
 
         var warnOtherVideo = !string.IsNullOrEmpty(data.SourcePath)
-                             && !string.Equals(data.SourcePath, shell.Player.CurrentPath, StringComparison.OrdinalIgnoreCase)
+                             && !string.Equals(data.SourcePath, shell.Player.SourcePathOrCurrent, StringComparison.OrdinalIgnoreCase)
                              ? "\n\n⚠ 该数据文件来自其他视频。"
                              : string.Empty;
         // 截图清单管理意图：只要携带截图行即管理截图集合；
@@ -376,7 +376,7 @@ public partial class NotesView : UserControl
         try
         {
             var (points, segments) = Services.ClipExportService.ImportCutPoints(
-                dlg.FileName, shell.Player.CurrentPath);
+                dlg.FileName, shell.Player.SourcePathOrCurrent);
             if (points.Count == 0 && segments.Count == 0)
             {
                 MessageBox.Show("文件中没有可导入的裁切点/片段行。", "导入裁切点",

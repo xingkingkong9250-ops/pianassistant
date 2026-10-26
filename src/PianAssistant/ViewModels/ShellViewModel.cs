@@ -1,6 +1,8 @@
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using PianAssistant.Helpers;
@@ -25,6 +27,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private bool _isPlaylistVisible;
     private bool _isSidebarVisible = true;
     private bool _disposed;
+    // 代理媒体（v1.11.0）：生成任务的取消源与进度；切换素材时取消上一素材的生成。
+    private CancellationTokenSource? _proxyCts;
+    private bool _isProxyGenerating;
+    private double _proxyProgress;
     // 会话还原过程中抑制变更上报，避免把还原动作本身再写回数据库（M7）。
     private bool _isRestoring;
     // 撤回历史（v1.6.0）：笔记操作前压栈快照，Ctrl+Z / ↩ 按钮弹出恢复。
@@ -164,6 +170,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand TogglePlaylistVisibilityCommand { get; }
     /// <summary>展开/收起右侧侧边栏面板。</summary>
     public ICommand ToggleSidebarVisibilityCommand { get; }
+    /// <summary>源文件 ⇄ 代理 播放源切换（v1.11.0，底栏按钮）。</summary>
+    public ICommand TogglePlaybackSourceCommand { get; }
 
     // --- Events ---
 
@@ -186,6 +194,26 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
 
     /// <summary>需要以弹窗告知用户的提示信息（如视频文件缺失）；由 App/View 层订阅弹出。</summary>
     public event EventHandler<string>? NotificationRequested;
+
+    /// <summary>
+    /// 建议为当前素材生成代理（v1.11.0）：素材分辨率超过 1080P 且尚无缓存时触发，
+    /// 由 View 层弹「推荐转换 / 直接播放」确认，确认后调用 <see cref="StartProxyGeneration"/>。
+    /// </summary>
+    public event EventHandler<ProxySuggestionEventArgs>? ProxySuggestionRequested;
+
+    /// <summary>当前是否正在生成代理（底栏按钮显示进度/禁用切换）。</summary>
+    public bool IsProxyGenerating
+    {
+        get => _isProxyGenerating;
+        private set => SetProperty(ref _isProxyGenerating, value);
+    }
+
+    /// <summary>代理生成进度（0..1）。</summary>
+    public double ProxyProgress
+    {
+        get => _proxyProgress;
+        private set => SetProperty(ref _proxyProgress, value);
+    }
 
     public ShellViewModel(ServiceRegistry services, bool ownsServices = true)
     {
@@ -275,7 +303,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             new BatchTextParser(),
             services.Batches,
             position => Player.AddCutPointAt(position),
-            () => Player.CurrentPath);
+            () => Player.SourcePathOrCurrent);
 
         // 项目服务会话钩子（M6）：保存时把会话数据桥接到持久化层；加载时反向应用到会话。
         WireProjectService(services);
@@ -315,6 +343,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         OpenProjectCommand = new RelayCommand(() => OpenProjectRequested?.Invoke(this, EventArgs.Empty));
         ExportProjectCommand = new RelayCommand(() => ExportProjectRequested?.Invoke(this, EventArgs.Empty));
         ImportProjectCommand = new RelayCommand(() => ImportProjectRequested?.Invoke(this, EventArgs.Empty));
+        // 源文件 ⇄ 代理（v1.11.0）：已生成代理时才可切换
+        TogglePlaybackSourceCommand = new RelayCommand(TogglePlaybackSource, () => Player.HasProxy);
 
         // 动作名 → 命令 映射（供 MainWindow 动态重建 InputBindings）。
         _hotkeyMap = new HotkeyCommandMap(
@@ -370,6 +400,113 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         OpenFileRequested?.Invoke(this, string.Empty);
     }
 
+    // --- 代理媒体（v1.11.0）---
+
+    /// <summary>源文件 ⇄ 代理 切换（底栏按钮）。</summary>
+    private void TogglePlaybackSource()
+    {
+        if (!Player.HasProxy) return;
+        if (Player.IsUsingProxy)
+        {
+            Player.SwitchToSource();
+            ToastRequested?.Invoke(this, "已切回源文件播放");
+        }
+        else
+        {
+            Player.SwitchToProxy();
+            ToastRequested?.Invoke(this, "已切换到代理播放（画质降低；截图与导出仍读源文件）");
+        }
+    }
+
+    /// <summary>
+    /// 打开素材后探测分辨率：已有代理则直接复用并切换；超过 1080P 且未生成时
+    /// 抛出 <see cref="ProxySuggestionRequested"/> 等用户确认。全程后台执行，不阻塞播放。
+    /// </summary>
+    private async Task ProbeProxyForAsync(string sourcePath)
+    {
+        try
+        {
+            if (!string.Equals(Player.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
+                return;
+            var proxies = _services.Proxies;
+            if (proxies.TryGetExisting(sourcePath, out var existing))
+            {
+                Player.AttachProxy(existing);
+                Player.SwitchToProxy();
+                ((RelayCommand)TogglePlaybackSourceCommand).RaiseCanExecuteChanged();
+                ToastRequested?.Invoke(this, "已复用上次生成的代理文件");
+                return;
+            }
+            var probe = await proxies.ProbeAsync(sourcePath).ConfigureAwait(true);
+            if (!string.Equals(Player.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
+                return;
+            if (!proxies.ShouldSuggest(probe)) return;
+            ProxySuggestionRequested?.Invoke(this, new ProxySuggestionEventArgs(sourcePath, probe));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("[ShellVM] 代理探测失败", ex);
+        }
+    }
+
+    /// <summary>
+    /// 生成代理（用户已确认推荐）：后台任务，进度回填 <see cref="ProxyProgress"/>；
+    /// 完成后自动切到代理播放，并按容量上限做一次 LRU 清理。切换素材会取消本任务。
+    /// </summary>
+    public void StartProxyGeneration(string sourcePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+        var proxies = _services.Proxies;
+        _proxyCts?.Cancel();
+        _proxyCts?.Dispose();
+        _proxyCts = new CancellationTokenSource();
+        var ct = _proxyCts.Token;
+        IsProxyGenerating = true;
+        ProxyProgress = 0;
+        ToastRequested?.Invoke(this,
+            $"正在后台生成 {proxies.PreferredPreset.DisplayName} 代理…生成期间可照常拉片");
+
+        // Progress 在 UI 线程创建，回调自动切回 UI 线程更新进度
+        var progress = new Progress<double>(p => ProxyProgress = Math.Clamp(p, 0, 1));
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                var probe = proxies.ProbeAsync(sourcePath, ct).GetAwaiter().GetResult();
+                var result = proxies.Generate(sourcePath, probe, null,
+                    p => ((IProgress<double>)progress).Report(p), ct);
+                dispatcher?.Invoke(() =>
+                {
+                    if (string.Equals(Player.SourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Player.AttachProxy(result.ProxyPath);
+                        Player.SwitchToProxy();
+                        ToastRequested?.Invoke(this,
+                            $"代理已生成并切换（{(result.UsedHardwareEncoder ? "NVENC 硬件编码" : "x264 软件编码")}）");
+                    }
+                    ((RelayCommand)TogglePlaybackSourceCommand).RaiseCanExecuteChanged();
+                });
+                proxies.EnforceCacheLimit();
+            }
+            catch (OperationCanceledException)
+            {
+                dispatcher?.Invoke(() => ToastRequested?.Invoke(this, "已取消代理生成"));
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("[ShellVM] 代理生成失败", ex);
+                dispatcher?.Invoke(() =>
+                    NotificationRequested?.Invoke(this, $"代理生成失败：{ex.Message}"));
+            }
+            finally
+            {
+                dispatcher?.Invoke(() => IsProxyGenerating = false);
+            }
+        });
+    }
+
     private void OnPlaylistCurrentChanged(object? sender, MediaFile? media)
     {
         if (media is null) return;
@@ -383,6 +520,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             // 切换前先把上一个素材的会话落库（M7）。
             _services.Sessions.EndSession();
+            // 切换素材时取消上一素材仍在跑的代理生成（v1.11.0）
+            _proxyCts?.Cancel();
             // 撤回历史不跨素材保留（v1.6.0）。
             _undo.Clear();
             // 重载过程中抑制变更上报，避免把清空动作本身写回数据库（M7）。
@@ -406,6 +545,8 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 // 静默恢复：先按快速键同步还原，后台算完内容哈希后再按需升级（M7）。
                 _ = _services.Sessions.LoadAsync(media);
             }
+            // 代理媒体（v1.11.0）：后台探测分辨率，超过 1080P 时征求用户是否生成代理
+            _ = ProbeProxyForAsync(media.Path);
         }
         catch (FileNotFoundException ex)
         {
@@ -439,7 +580,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>裁切点集合变化时重算分段并重建笔记面板统一时间线（删除裁切点即合并相邻片段）。</summary>
     private void OnCutPointsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
+        Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.SourcePathOrCurrent);
     }
 
     /// <summary>
@@ -457,7 +598,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         }
         if (e.PropertyName != nameof(PlayerViewModel.Length)) return;
         if (Player.Length <= TimeSpan.Zero || Player.CutPoints.Count == 0) return;
-        Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
+        Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.SourcePathOrCurrent);
     }
 
     /// <summary>
@@ -488,7 +629,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </summary>
     public void ImportCutPoints(string path)
     {
-        var (points, segments) = ClipExportService.ImportCutPoints(path, Player.CurrentPath);
+        var (points, segments) = ClipExportService.ImportCutPoints(path, Player.SourcePathOrCurrent);
         Player.SetCutPoints(points);
         foreach (var segment in segments)
             Clips.Add(segment);
@@ -542,7 +683,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 if (!keptFiles.Contains(s.File) || existing.Contains(s.File)) continue;
                 var pos = NotesDataCsvService.TryParseTime(s.Position, out var p) ? p : TimeSpan.Zero;
                 var entry = new ScreenshotEntry(
-                    Player.CurrentPath ?? string.Empty, s.File, pos, DateTime.Now);
+                    Player.SourcePathOrCurrent ?? string.Empty, s.File, pos, DateTime.Now);
                 Screenshots.Add(entry);
                 Notes.AddScreenshot(entry);
             }
@@ -595,7 +736,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </summary>
     private void RebuildMissingScreenshots(IReadOnlyList<(TimeSpan Position, bool Marked)> shots)
     {
-        if (string.IsNullOrEmpty(Player.CurrentPath)) return;
+        if (string.IsNullOrEmpty(Player.SourcePathOrCurrent)) return;
         var screenshotService = _services.Screenshots;
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher is null) return;
@@ -677,7 +818,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// </summary>
     private void WireProjectService(ServiceRegistry services)
     {
-        services.Projects.ResolveSourcePath = () => Player.CurrentPath;
+        services.Projects.ResolveSourcePath = () => Player.SourcePathOrCurrent;
         services.Projects.ResolveScreenshots = () => Screenshots.Items.ToList();
         services.Projects.ResolveClips = () =>
             Clips.Items
@@ -723,7 +864,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 采集当前会话快照供落库（文字笔记已移除，Notes 传空集合）。
         sessions.CaptureSnapshot = () => new MediaSessionSnapshot
         {
-            Path = Player.CurrentPath ?? string.Empty,
+            Path = Player.SourcePathOrCurrent ?? string.Empty,
             Position = Player.Position,
             Rate = Player.Rate,
             InPoint = Player.InPoint,
@@ -976,7 +1117,7 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         ArgumentNullException.ThrowIfNull(segment);
         ArgumentException.ThrowIfNullOrWhiteSpace(targetDirectory);
-        var source = segment.SourcePath ?? Player.CurrentPath
+        var source = segment.SourcePath ?? Player.SourcePathOrCurrent
             ?? throw new InvalidOperationException("没有已打开的视频，无法导出片段。");
         var range = new ClipRange(source, segment.Start, segment.End);
         var outputPath = _services.Clips.ExtractTo(range, targetDirectory);
@@ -1033,9 +1174,28 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>项目名：优先用当前视频文件名（去扩展名），无则「未命名项目」。</summary>
     private string ResolveProjectName()
     {
-        var path = Player.CurrentPath;
+        var path = Player.SourcePathOrCurrent;
         if (string.IsNullOrWhiteSpace(path)) return "未命名项目";
         var name = Path.GetFileNameWithoutExtension(path);
         return string.IsNullOrWhiteSpace(name) ? "未命名项目" : name;
     }
+}
+
+/// <summary>
+/// 代理生成建议事件参数（v1.11.0）：携带素材路径与探测结果，
+/// View 层据此弹「推荐转换 / 直接播放」确认。
+/// </summary>
+public sealed class ProxySuggestionEventArgs : EventArgs
+{
+    public ProxySuggestionEventArgs(string sourcePath, MediaProbeResult probe)
+    {
+        SourcePath = sourcePath;
+        Probe = probe;
+    }
+
+    /// <summary>待生成代理的源文件路径。</summary>
+    public string SourcePath { get; }
+
+    /// <summary>探测结果（宽高/时长/码率）。</summary>
+    public MediaProbeResult Probe { get; }
 }

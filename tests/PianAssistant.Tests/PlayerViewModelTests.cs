@@ -837,4 +837,104 @@ public class PlayerViewModelTrackTests : IDisposable
         Assert.Equal(1, _vm.SelectedAudioTrackId);
         Assert.Equal(-1, _vm.SelectedSubtitleTrackId);
     }
+
+    // --- 代理媒体播放源切换（v1.11.0）---
+
+    [Fact]
+    public void Open_ResetsProxyState_AndSourcePathIsAuthoritative()
+    {
+        var video = CreateVideo();
+        _vm.Open(video);
+        Assert.Equal(video, _vm.SourcePath);
+        Assert.Null(_vm.ProxyPath);
+        Assert.False(_vm.IsUsingProxy);
+        Assert.False(_vm.HasProxy);
+        Assert.Equal("源文件", _vm.PlaybackSourceLabel);
+    }
+
+    [Fact]
+    public void SwitchToProxy_WithoutProxy_DoesNothing()
+    {
+        var video = CreateVideo();
+        _vm.Open(video);
+        _vm.SwitchToProxy();
+        Assert.False(_vm.IsUsingProxy);
+        Assert.Equal(video, _vm.CurrentPath);
+        Assert.Equal("源文件", _vm.PlaybackSourceLabel);
+    }
+
+    [Fact]
+    public void SwitchToProxy_KeepsNotesAndPosition_AndSourcePathUnchanged()
+    {
+        var video = CreateVideo();
+        var proxy = Path.Combine(_tempDir, "proxy.mp4");
+        File.WriteAllText(proxy, "proxy-bytes");
+
+        _vm.Open(video);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _vm.SetInOut(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(20));
+        _playback.Seek(TimeSpan.FromSeconds(42)); // 位置经事件同步进 VM
+        // v1.10.0 起入/出点会随选中片段自动对齐，故以切换前的实际值作为基准
+        var inPoint = _vm.InPoint;
+        var outPoint = _vm.OutPoint;
+
+        _vm.AttachProxy(proxy);
+        Assert.True(_vm.HasProxy);
+        _vm.SwitchToProxy();
+
+        Assert.True(_vm.IsUsingProxy);
+        Assert.Equal(proxy, _vm.CurrentPath);
+        Assert.Equal(proxy, _playback.CurrentPath);
+        Assert.Equal(video, _vm.SourcePath); // 源路径始终指向原片（截图/导出/会话用）
+        Assert.Equal("代理", _vm.PlaybackSourceLabel);
+        // 笔记与播放位置不受切换影响
+        Assert.Single(_vm.CutPoints);
+        Assert.Equal(inPoint, _vm.InPoint);
+        Assert.Equal(outPoint, _vm.OutPoint);
+        Assert.Equal(TimeSpan.FromSeconds(42), _vm.Position);
+        Assert.Equal(_playback.Length, _vm.Length);
+    }
+
+    [Fact]
+    public void SwitchToSource_RestoresOriginalPathAndKeepsNotes()
+    {
+        var video = CreateVideo();
+        var proxy = Path.Combine(_tempDir, "proxy.mp4");
+        File.WriteAllText(proxy, "proxy-bytes");
+
+        _vm.Open(video);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(10));
+        _playback.Seek(TimeSpan.FromSeconds(30));
+        _vm.AttachProxy(proxy);
+        _vm.SwitchToProxy();
+
+        _vm.SwitchToSource();
+
+        Assert.False(_vm.IsUsingProxy);
+        Assert.Equal(video, _vm.CurrentPath);
+        Assert.Equal(video, _playback.CurrentPath);
+        Assert.Equal("源文件", _vm.PlaybackSourceLabel);
+        Assert.Single(_vm.CutPoints);
+        Assert.Equal(TimeSpan.FromSeconds(30), _vm.Position);
+    }
+
+    [Fact]
+    public void Open_OfAnotherFile_DropsPreviousProxy()
+    {
+        var video = CreateVideo();
+        var other = CreateVideo("other.mp4");
+        var proxy = Path.Combine(_tempDir, "proxy.mp4");
+        File.WriteAllText(proxy, "proxy-bytes");
+
+        _vm.Open(video);
+        _vm.AttachProxy(proxy);
+        _vm.SwitchToProxy();
+        Assert.True(_vm.IsUsingProxy);
+
+        _vm.Open(other);
+        Assert.False(_vm.IsUsingProxy);
+        Assert.False(_vm.HasProxy);
+        Assert.Equal(other, _vm.SourcePath);
+        Assert.Equal(other, _vm.CurrentPath);
+    }
 }

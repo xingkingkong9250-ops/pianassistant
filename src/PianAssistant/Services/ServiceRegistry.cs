@@ -22,6 +22,8 @@ public sealed class ServiceRegistry
     public BatchExecutionService Batches { get; }
     /// <summary>素材会话自动保存/恢复服务（M7）。</summary>
     public MediaSessionService Sessions { get; }
+    /// <summary>代理媒体生成与缓存服务（v1.11.0）。</summary>
+    public ProxyMediaService Proxies { get; }
 
     /// <summary>数据库初始化结果（损坏自愈 / 失败时非 null），供启动层友好提示。</summary>
     public DatabaseOpenResult? DatabaseStatus { get; private set; }
@@ -38,7 +40,8 @@ public sealed class ServiceRegistry
         ProjectRepository repository,
         ProjectService projects,
         BatchExecutionService batches,
-        MediaSessionService sessions)
+        MediaSessionService sessions,
+        ProxyMediaService proxies)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         Playback = playback ?? throw new ArgumentNullException(nameof(playback));
@@ -52,6 +55,7 @@ public sealed class ServiceRegistry
         Projects = projects ?? throw new ArgumentNullException(nameof(projects));
         Batches = batches ?? throw new ArgumentNullException(nameof(batches));
         Sessions = sessions ?? throw new ArgumentNullException(nameof(sessions));
+        Proxies = proxies ?? throw new ArgumentNullException(nameof(proxies));
     }
 
     /// <summary>
@@ -85,9 +89,11 @@ public sealed class ServiceRegistry
         var projects = new ProjectService(database, repository, settings);
         // 会话还原在后台线程算完哈希后需回到 UI 线程应用（M7）。
         var sessions = new MediaSessionService(repository, settings, CreateUiDispatch());
+        // 代理媒体（v1.11.0）：缓存落数据根下 proxy\，随数据根迁移。
+        var proxies = new ProxyMediaService(ffmpeg, settings);
 
         return new ServiceRegistry(settings, playback, screenshots, clips, concats, ffmpeg,
-            hotkeys, database, repository, projects, batches, sessions)
+            hotkeys, database, repository, projects, batches, sessions, proxies)
         {
             DatabaseStatus = dbStatus,
         };

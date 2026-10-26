@@ -28,6 +28,10 @@ public sealed class SettingsViewModel : ObservableObject
     private int _seekStepFrames;
     private double _rateStep;
     private int _maxUndoSteps;
+    // 代理媒体（v1.11.0）
+    private bool _proxyPromptEnabled;
+    private string _proxyPreset = "720p";
+    private int _proxyCacheLimitGb = 50;
     private string _dataRoot;
     private readonly string _originalDataRoot;
     private bool _restoreSession;
@@ -56,6 +60,10 @@ public sealed class SettingsViewModel : ObservableObject
         _seekStepFrames = settings.SeekStepFrames;
         _rateStep = settings.RateStep;
         _maxUndoSteps = settings.MaxUndoSteps;
+        // 代理媒体（v1.11.0）
+        _proxyPromptEnabled = settings.ProxyPromptEnabled;
+        _proxyPreset = settings.ProxyPreset;
+        _proxyCacheLimitGb = settings.ProxyCacheLimitGb;
 
         BrowseDataRootCommand = new RelayCommand(BrowseDataRoot);
         SaveCommand = new RelayCommand(Save);
@@ -146,6 +154,27 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _maxUndoSteps;
         set => SetProperty(ref _maxUndoSteps, Math.Clamp(value, 1, 50));
+    }
+
+    /// <summary>超 1080P 素材是否提示生成代理（v1.11.0，默认开）。</summary>
+    public bool ProxyPromptEnabled
+    {
+        get => _proxyPromptEnabled;
+        set => SetProperty(ref _proxyPromptEnabled, value);
+    }
+
+    /// <summary>代理档位 Id（720p / 540p / 360p）。</summary>
+    public string ProxyPreset
+    {
+        get => _proxyPreset;
+        set => SetProperty(ref _proxyPreset, Models.ProxyPreset.FromId(value).Id);
+    }
+
+    /// <summary>代理缓存容量上限（GB；0 表示不限制，默认 50）。</summary>
+    public int ProxyCacheLimitGb
+    {
+        get => _proxyCacheLimitGb;
+        set => SetProperty(ref _proxyCacheLimitGb, Math.Clamp(value, 0, 2000));
     }
 
     /// <summary>数据路径（数据根）；修改后需重启生效，不搬迁任何文件。</summary>
@@ -298,6 +327,10 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.MaxUndoSteps = MaxUndoSteps;
         _settings.RestoreSession = _restoreSession;
         _settings.RestorePlaybackPosition = _restorePlaybackPosition;
+        // 代理媒体（v1.11.0）
+        _settings.ProxyPromptEnabled = _proxyPromptEnabled;
+        _settings.SetProxyPreset(_proxyPreset);
+        _settings.ProxyCacheLimitGb = ProxyCacheLimitGb;
         if (dataRootChanged)
             _settings.SetDataRoot(newDataRoot);
 

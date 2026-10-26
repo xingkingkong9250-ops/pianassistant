@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Windows.Input;
 using PianAssistant.Helpers;
 using PianAssistant.Models;
@@ -54,6 +55,11 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     // v1.10.0：取消标记片段后抑制入/出点自动同步，直到选中片段变化才恢复；
     // 保证「取消标记 → 删除起始结束标记」不被立即覆盖。
     private bool _suppressInOutSync;
+    // 代理媒体（v1.11.0）：_sourcePath 始终是原片（截图/导出/会话以它为准），
+    // _proxyPath 为已生成的代理文件，_isUsingProxy 表示当前播放的是代理。
+    private string? _sourcePath;
+    private string? _proxyPath;
+    private bool _isUsingProxy;
 
     private static readonly double[] RateSteps =
         { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 32.0 };
@@ -78,6 +84,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _getRateStep = getRateStep ?? (() => 0.25);
         _getMaxRate = getMaxRate ?? (() => 8.0);
         _onVolumePersisted = volumePersisted;
+        // 代理媒体（v1.11.0）：截图一律以原片路径为准，切到代理后也不降画质
+        _screenshots.SourcePathProvider = () => _sourcePath;
         // 软件级音量记忆：启动时恢复上次音量（config.json，跨视频保持）
         _volume = Math.Clamp(initialVolume, 0, 100);
         _playback.Volume = _volume;
@@ -496,6 +504,30 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public string? CurrentPath => _playback.CurrentPath;
     public bool HasMedia => _playback.CurrentPath is not null;
 
+    // --- 代理媒体（v1.11.0）---
+
+    /// <summary>原片路径：切到代理后仍指向源文件（截图/导出/会话一律以它为准）。</summary>
+    public string? SourcePath => _sourcePath;
+
+    /// <summary>
+    /// 源文件优先路径（v1.11.0）：会话落库、截图重建、片段导出、项目保存等一律取原片；
+    /// 未通过 <see cref="Open"/> 打开过媒体时退回底层播放器的当前路径。
+    /// </summary>
+    public string? SourcePathOrCurrent => _sourcePath ?? _playback.CurrentPath;
+
+    /// <summary>已生成的代理文件路径；null 表示该素材暂无可用代理。</summary>
+    public string? ProxyPath => _proxyPath;
+
+    /// <summary>当前是否正在播放代理文件。</summary>
+    public bool IsUsingProxy => _isUsingProxy;
+
+    /// <summary>是否可在源/代理之间切换（已生成代理且文件存在）。</summary>
+    public bool HasProxy =>
+        !string.IsNullOrWhiteSpace(_proxyPath) && File.Exists(_proxyPath);
+
+    /// <summary>当前播放源文案（底栏按钮 ToolTip/标签用）。</summary>
+    public string PlaybackSourceLabel => _isUsingProxy ? "代理" : "源文件";
+
     // --- 轨道选择与外挂字幕（v1.5.0）---
 
     /// <summary>音轨菜单选项（开始播放后填充）。</summary>
@@ -540,7 +572,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     /// <summary>把当前轨到选择记入会话记忆（切回同一素材时可恢复）。</summary>
     private void SaveTrackSelection()
     {
-        var path = _playback.CurrentPath;
+        var path = SourcePathOrCurrent;
         if (path is null) return;
         _trackMemory[path] = (SelectedAudioTrackId, SelectedSubtitleTrackId);
     }
@@ -663,6 +695,15 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         SaveCurrentRate();
         SaveTrackSelection();
         _playback.Open(path);
+        // 代理媒体（v1.11.0）：换素材时清空代理登记，源路径始终记住原片
+        _sourcePath = path;
+        _proxyPath = null;
+        _isUsingProxy = false;
+        OnPropertyChanged(nameof(SourcePath));
+        OnPropertyChanged(nameof(ProxyPath));
+        OnPropertyChanged(nameof(IsUsingProxy));
+        OnPropertyChanged(nameof(HasProxy));
+        OnPropertyChanged(nameof(PlaybackSourceLabel));
         // 恢复新视频的倍速与轨到选择
         LoadRate(path);
         _trackMemory.TryGetValue(path, out var trackChoice);
@@ -692,10 +733,67 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         TryAutoLoadExternalSubtitles(path);
     }
 
+    /// <summary>登记已生成的代理文件（生成完成后由 Shell 调用），供底栏源/代理切换。</summary>
+    public void AttachProxy(string proxyPath)
+    {
+        _proxyPath = proxyPath;
+        OnPropertyChanged(nameof(ProxyPath));
+        OnPropertyChanged(nameof(HasProxy));
+    }
+
+    /// <summary>切到代理播放：保留位置/倍速/轨选择，裁切点与笔记状态不变。</summary>
+    public void SwitchToProxy()
+    {
+        if (_isUsingProxy || _proxyPath is null || !HasProxy) return;
+        SwitchPlaybackSource(_proxyPath, useProxy: true);
+    }
+
+    /// <summary>切回源文件播放：保留位置/倍速/轨选择，裁切点与笔记状态不变。</summary>
+    public void SwitchToSource()
+    {
+        if (!_isUsingProxy || string.IsNullOrWhiteSpace(_sourcePath)) return;
+        SwitchPlaybackSource(_sourcePath!, useProxy: false);
+    }
+
+    /// <summary>
+    /// 切换底层播放源（v1.11.0）。刻意不走 <see cref="Open"/>：裁切点/入出点/选中段/
+    /// 截图与标记一律保留，只重建播放器并把位置、倍速、音轨、外挂字幕原样还原。
+    /// 代理用 <c>-fps_mode passthrough</c> 生成，与源逐帧对齐，时间码可直接沿用。
+    /// </summary>
+    private void SwitchPlaybackSource(string targetPath, bool useProxy)
+    {
+        var position = _position;
+        var rate = _rate;
+        var audio = SelectedAudioTrackId;
+        var subtitle = SelectedSubtitleTrackId;
+        var subtitles = LoadedExternalSubtitles.ToList();
+        var wasPlaying = _isPlaying;
+
+        _playback.Open(targetPath);
+        _isUsingProxy = useProxy;
+        OnPropertyChanged(nameof(IsUsingProxy));
+        OnPropertyChanged(nameof(CurrentPath));
+        OnPropertyChanged(nameof(HasMedia));
+        OnPropertyChanged(nameof(PlaybackSourceLabel));
+
+        Length = _playback.Length;
+        // 轨道列表要等首次 Playing 事件才可用 → 复用既有的待恢复机制
+        _pendingTrackRestore = (audio, subtitle);
+        LoadedExternalSubtitles.Clear();
+        foreach (var sub in subtitles)
+        {
+            _playback.LoadSubtitle(sub);
+            LoadedExternalSubtitles.Add(sub);
+        }
+        Rate = rate;
+        Position = position;
+        if (wasPlaying) _playback.Play();
+    }
+
     /// <summary>将当前视频的倍速保存到记忆表（按路径索引）。</summary>
     public void SaveCurrentRate()
     {
-        var path = _playback.CurrentPath;
+        var path = SourcePathOrCurrent;
         if (string.IsNullOrEmpty(path)) return;
         _rateMemory[path] = _rate;
     }
@@ -882,7 +980,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         if (!HasCompleteClip) return;
         var inP = _inPoint!.Value;
         var outP = _outPoint!.Value;
-        var source = _playback.CurrentPath;
+        var source = SourcePathOrCurrent;
         if (source is null) return;
 
         IsExtracting = true;
@@ -1069,7 +1167,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         if (!HasSelectedSegment) return;
         var inP = _selectedSegmentStart!.Value;
         var outP = _selectedSegmentEnd!.Value;
-        var source = _playback.CurrentPath;
+        var source = SourcePathOrCurrent;
         if (source is null) return;
 
         IsExtracting = true;

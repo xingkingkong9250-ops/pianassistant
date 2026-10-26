@@ -171,6 +171,31 @@ public sealed class AppSettingsService
         set { _settings.Volume = Math.Clamp(value, 0, 100); Save(); }
     }
 
+    /// <summary>开启「超 1080P 素材推荐生成代理」提示（v1.11.0，默认开）。</summary>
+    public bool ProxyPromptEnabled
+    {
+        get => _settings.ProxyPromptEnabled;
+        set { _settings.ProxyPromptEnabled = value; Save(); }
+    }
+
+    /// <summary>代理档位（720p / 540p / 360p），默认 720p。</summary>
+    public string ProxyPreset =>
+        Models.ProxyPreset.FromId(_settings.ProxyPreset).Id;
+
+    /// <summary>设置代理档位（非法值回落到 720p）。</summary>
+    public void SetProxyPreset(string presetId)
+    {
+        _settings.ProxyPreset = Models.ProxyPreset.FromId(presetId).Id;
+        Save();
+    }
+
+    /// <summary>代理缓存容量上限（GB，0 表示不限制，默认 50）。</summary>
+    public int ProxyCacheLimitGb
+    {
+        get => Math.Clamp(_settings.ProxyCacheLimitGb, 0, 2000);
+        set { _settings.ProxyCacheLimitGb = Math.Clamp(value, 0, 2000); Save(); }
+    }
+
     /// <summary>
     /// 设置数据根（写回 config.json，config.json 本身仍在引导目录）。
     /// 仅切换路径、不搬迁任何文件；生效需重启。
@@ -291,6 +316,12 @@ public sealed class AppSettings
     public int Volume { get; set; } = 100;
     /// <summary>撤回步数上限（1~50，默认 5；超出丢弃最旧快照）。</summary>
     public int MaxUndoSteps { get; set; } = 5;
+    /// <summary>超 1080P 素材是否提示生成代理（默认开）。</summary>
+    public bool ProxyPromptEnabled { get; set; } = true;
+    /// <summary>代理档位 Id（720p / 540p / 360p；null 表示默认 720p）。</summary>
+    public string? ProxyPreset { get; set; }
+    /// <summary>代理缓存容量上限（GB；0 表示不限制，默认 50）。</summary>
+    public int ProxyCacheLimitGb { get; set; } = 50;
 }
 
 [JsonSerializable(typeof(AppSettings))]

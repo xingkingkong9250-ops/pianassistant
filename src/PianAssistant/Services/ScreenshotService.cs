@@ -46,6 +46,15 @@ public sealed class ScreenshotService
 
     public string OutputDirectory => _outputDirectory;
 
+    /// <summary>
+    /// 原片路径提供者（v1.11.0 代理媒体）：切到代理播放后 <see cref="IVideoPlayback.CurrentPath"/>
+    /// 会变成代理路径，截图必须仍从源文件抽帧（原始分辨率）。未设置时退回播放器当前路径。
+    /// </summary>
+    public Func<string?>? SourcePathProvider { get; set; }
+
+    /// <summary>实际用于抽帧/记录的源文件路径。</summary>
+    private string? ActiveSourcePath => SourcePathProvider?.Invoke() ?? _playback.CurrentPath;
+
     /// <summary>截图格式：有 settings 时实时读取（设置窗保存后立即生效）。</summary>
     public string Format => _settings?.SnapshotFormat ?? _format;
 
@@ -61,15 +70,16 @@ public sealed class ScreenshotService
     /// </summary>
     public ScreenshotEntry CaptureAt(TimeSpan position, string? label = null)
     {
-        if (_playback.CurrentPath is null)
+        var source = ActiveSourcePath;
+        if (source is null)
             throw new InvalidOperationException("No media is open.");
         // 按组织选项解析本次输出目录（日期/项目子目录），确保存在
         var outputDir = OutputDirectoryResolver.Resolve(
             _outputDirectory, _organizeByDate, _projectSubfolder, DateTime.Now);
         Directory.CreateDirectory(outputDir);
 
-        var source = Path.GetFileNameWithoutExtension(_playback.CurrentPath);
-        var stamp = $"{source}_{TimeCodeFormatter.ToFileNameFragment(position)}_{DateTime.Now:yyyyMMddHHmmss}.{Format}";
+        var stem = Path.GetFileNameWithoutExtension(source);
+        var stamp = $"{stem}_{TimeCodeFormatter.ToFileNameFragment(position)}_{DateTime.Now:yyyyMMddHHmmss}.{Format}";
         var outputPath = Path.Combine(outputDir, stamp);
         outputPath = MakeUnique(outputPath);
 
@@ -78,9 +88,9 @@ public sealed class ScreenshotService
         var scaleFilter = _settings is null
             ? null
             : ExportPresets.BuildScaleFilter(_settings.SnapshotResolution);
-        _ffmpeg.CaptureSingleFrame(_playback.CurrentPath, position, outputPath, scaleFilter);
+        _ffmpeg.CaptureSingleFrame(source, position, outputPath, scaleFilter);
 
-        return new ScreenshotEntry(_playback.CurrentPath, outputPath, position, DateTime.Now, label);
+        return new ScreenshotEntry(source, outputPath, position, DateTime.Now, label);
     }
 
     private static string MakeUnique(string path)

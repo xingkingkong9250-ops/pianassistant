@@ -176,6 +176,39 @@
                                 <ComboBoxItem Tag="480p" Content="480P（重编码）" />
                             </ComboBox>
                         </Grid>
+
+                        <!-- 代理媒体设置区（v1.11.0，W2-A-19~21） -->
+                        <TextBlock Text="代理媒体（大分辨率素材拉片更流畅）" FontWeight="Bold"
+                                   Foreground="#E0E0E0" Margin="0,16,0,4" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <CheckBox Grid.Row="0" Grid.Column="1" Margin="0,2,0,6"
+                                      Content="素材超过 1080P 时提示生成代理"
+                                      IsChecked="{Binding ProxyPromptEnabled, Mode=TwoWay}"
+                                      Foreground="#E0E0E0"
+                                      ToolTip="打开高于 1080P（4K/1440P）的素材时弹窗推荐转换；确认后才在后台生成，普通 1080P 及以下不提示" />
+                            <Label Grid.Row="1" Content="代理档位：" />
+                            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,2"
+                                      SelectedValue="{Binding ProxyPreset, Mode=TwoWay}"
+                                      SelectedValuePath="Tag"
+                                      ToolTip="代理分辨率/码率档位；帧率保持与源一致，时间码逐帧对齐">
+                                <ComboBoxItem Tag="720p" Content="标准 720P（2.5 Mbps）" />
+                                <ComboBoxItem Tag="540p" Content="轻量 540P（1.5 Mbps）" />
+                                <ComboBoxItem Tag="360p" Content="快速 360P（0.8 Mbps）" />
+                            </ComboBox>
+                            <Label Grid.Row="2" Content="缓存上限：" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Margin="0,2"
+                                     Text="{Binding ProxyCacheLimitGb, Mode=TwoWay}"
+                                     ToolTip="代理缓存占用上限（GB，0 表示不限制，默认 50）；超限按最近使用时间从旧到新清理" />
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

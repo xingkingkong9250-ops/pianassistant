@@ -136,6 +136,8 @@ public partial class MainWindow : Window
             () => Keyboard.Focus(VideoView), DispatcherPriority.Background);
         // 清空全部标记（Ctrl+Shift+C / W1-R1-11）：确认后执行
         shell.ConfirmClearAllMarksRequested += OnConfirmClearAllMarks;
+        // 代理媒体建议（v1.11.0）：超 1080P 素材弹「推荐转换 / 直接播放」确认
+        shell.ProxySuggestionRequested += OnProxySuggestionRequested;
         // 导入数据重建缺失截图等后台任务汇总提示（toast）
         shell.ToastRequested += (_, msg) => ShowToast(msg);
 
@@ -571,6 +573,24 @@ public partial class MainWindow : Window
 
     // 支持的字幕扩展名清单统一由 SubtitleTrackMatcher 维护（v1.5.0 起与自动匹配共用）
     private static bool IsSubtitleFile(string path) => SubtitleTrackMatcher.IsSubtitleFile(path);
+
+    /// <summary>
+    /// 代理媒体建议（v1.11.0）：素材超过 1080P 时弹窗推荐转换代理，人工确认后才开始后台生成。
+    /// 「否」= 直接用源文件播放（不再打扰本次）；取消转化不影响后续任何功能。
+    /// </summary>
+    private void OnProxySuggestionRequested(object? sender, ProxySuggestionEventArgs e)
+    {
+        var message =
+            $"该素材分辨率为 {e.Probe.Width}×{e.Probe.Height}，高于 1080P。\n\n" +
+            "先生成一份低码率代理再拉片，快进/后退/倍速会更流畅（档位见设置 → 输出 → 代理）；\n" +
+            "生成在后台进行（期间可照常播放），完成后自动切换到代理。\n" +
+            "截图、片段导出仍读取源文件，画质不受影响。\n\n" +
+            "是否现在生成代理？";
+        var result = MessageBox.Show(this, message, "推荐生成代理",
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result == MessageBoxResult.Yes)
+            Shell?.StartProxyGeneration(e.SourcePath);
+    }
 
     private void OnVideoDragOver(object sender, DragEventArgs e)
     {
