@@ -49,6 +49,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private TimeSpan? _selectedSegmentEnd;
     // 片段循环（v1.9.0）：越过出点后拉回入点的防抖截止时间
     private DateTime _loopSeekGuardUntilUtc;
+    // 当前选中片段是否已被 ☑ 标记（v1.9.1：由 Shell 依据笔记数据回填，驱动底栏 🚩 状态）
+    private bool _isSelectedSegmentMarked;
 
     private static readonly double[] RateSteps =
         { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 32.0 };
@@ -388,6 +390,19 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     /// <summary>是否已选中一段（start 和 end 都有值且 end > start）。</summary>
     public bool HasSelectedSegment =>
         _selectedSegmentStart is { } s && _selectedSegmentEnd is { } e && e > s;
+
+    /// <summary>
+    /// 当前选中片段是否已标记（v1.9.1）：由 Shell 在选中段变化 / 笔记勾选变化时回填，
+    /// 驱动底栏 🚩 按钮的「已标记 / 未标记」视觉状态。
+    /// </summary>
+    public bool IsSelectedSegmentMarked
+    {
+        get => _isSelectedSegmentMarked;
+        private set => SetProperty(ref _isSelectedSegmentMarked, value);
+    }
+
+    /// <summary>由 Shell 回填当前选中段的标记状态。</summary>
+    public void SetSelectedSegmentMarked(bool marked) => IsSelectedSegmentMarked = marked;
 
     public bool IsExtracting
     {

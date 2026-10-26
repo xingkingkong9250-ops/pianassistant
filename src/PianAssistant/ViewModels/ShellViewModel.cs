@@ -248,7 +248,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Notes.ItemMarkToggling += (_, _) => RecordUndoCheckpoint();
         // 会话还原时 VLC 尚未解析出时长（Length=0），分段被跳过；
         // 时长就绪后（0 → 实际值）若已有裁切点则补算一次分段。
-        Player.PropertyChanged += OnPlayerLengthChanged;
+        Player.PropertyChanged += OnPlayerPropertyChanged;
+        // 标记状态回填（v1.9.1）：勾选标记增删时刷新底栏 🚩 视觉状态
+        Notes.MarkedSegments.CollectionChanged += (_, _) => RefreshPlayerSegmentMarked();
 
         // Wire Playlist → Player.
         Playlist.CurrentChanged += OnPlaylistCurrentChanged;
@@ -443,12 +445,35 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     /// <summary>
     /// 时长从 0 变为实际值时补算分段：打开旧会话时还原先于 VLC 解析出时长，
     /// RecomputeSegments 因 length=0 跳过建段，导致片段列表为空直到下一次交互。
+    /// 另外（v1.9.1）选中段变化时回填 🚩 标记状态。
     /// </summary>
-    private void OnPlayerLengthChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnPlayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(PlayerViewModel.SelectedSegmentStart)
+            or nameof(PlayerViewModel.SelectedSegmentEnd))
+        {
+            RefreshPlayerSegmentMarked();
+            return;
+        }
         if (e.PropertyName != nameof(PlayerViewModel.Length)) return;
         if (Player.Length <= TimeSpan.Zero || Player.CutPoints.Count == 0) return;
         Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.CurrentPath);
+    }
+
+    /// <summary>
+    /// 依据笔记勾选标记回填当前选中段的 🚩 状态（v1.9.1）：
+    /// 与时间轴黄带 / 笔记 ☑ 同一数据源，保证底栏图标与列表状态一致。
+    /// </summary>
+    private void RefreshPlayerSegmentMarked()
+    {
+        if (Player.SelectedSegmentStart is not { } start
+            || Player.SelectedSegmentEnd is not { } end)
+        {
+            Player.SetSelectedSegmentMarked(false);
+            return;
+        }
+        Player.SetSelectedSegmentMarked(Notes.Items.OfType<SegmentListItem>()
+            .Any(i => i.Segment.Start == start && i.Segment.End == end && i.IsMarked));
     }
 
     // --- 裁切点导入/导出（M5，路径由 View 层对话框确定）---

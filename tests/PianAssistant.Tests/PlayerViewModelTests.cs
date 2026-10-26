@@ -316,6 +316,19 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
+    public void SetSelectedSegmentMarked_UpdatesPropertyAndRaisesPropertyChanged()
+    {
+        var changed = new List<string?>();
+        _vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        Assert.False(_vm.IsSelectedSegmentMarked);
+        _vm.SetSelectedSegmentMarked(true);
+        Assert.True(_vm.IsSelectedSegmentMarked);
+        Assert.Contains(nameof(PlayerViewModel.IsSelectedSegmentMarked), changed);
+        _vm.SetSelectedSegmentMarked(true);
+        Assert.Single(changed); // 值未变化不重复通知
+    }
+
+    [Fact]
     public async Task CaptureScreenshot_RaisesScreenshotCapturedEvent()
     {
         // v0.20.0 起截图为 ffmpeg 抽帧：需要真实 ffmpeg（SkipIfMissing）

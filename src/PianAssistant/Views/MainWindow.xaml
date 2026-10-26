@@ -101,6 +101,19 @@
             </Style.Triggers>
         </Style>
 
+        <!-- 片段标记按钮（v1.9.1）：未标记暗显，已标记金黄高亮 -->
+        <Style x:Key="MarkSegmentButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Foreground" Value="#7A7A7A" />
+            <Setter Property="ToolTip" Value="标记当前片段 (V)" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Player.IsSelectedSegmentMarked}" Value="True">
+                    <Setter Property="Foreground" Value="#D7BA7D" />
+                    <Setter Property="Background" Value="#3A3320" />
+                    <Setter Property="ToolTip" Value="取消标记当前片段 (V)" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <!-- 滑块样式：使用默认模板，仅覆盖颜色 -->
         <Style x:Key="PlayerSlider" TargetType="Slider">
             <Setter Property="Background" Value="#2A2A2A" />
@@ -379,9 +392,9 @@
                     <!-- W1-R1-08 添加裁切点（v0.20.0 起由「截取片段」改为「添加裁切点」；截取片段保留快捷键 Ctrl+Shift+E） -->
                     <Button Content="✂" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.AddCutPointCommand}" ToolTip="添加裁切点 (C)" />
-                    <!-- W1-R1-25 标记/取消标记当前片段（v1.5.1 新增；对应 V 快捷键，与笔记 ☑ 勾选同步） -->
-                    <Button Content="🚩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
-                            Command="{Binding Player.ToggleMarkSelectedSegmentCommand}" ToolTip="标记/取消标记当前片段 (V)" />
+                    <!-- W1-R1-25 标记/取消标记当前片段（v1.5.1 新增；v1.9.1 起按状态区分暗显/金黄高亮） -->
+                    <Button Content="🚩" Style="{StaticResource MarkSegmentButton}" Padding="8,6" FontSize="16"
+                            Command="{Binding Player.ToggleMarkSelectedSegmentCommand}" />
                     <!-- W1-R1-26 撤回上一步笔记操作（v1.6.0 起替换原 W1-R1-10 撤销裁切点按钮；对应 Ctrl+Z） -->
                     <Button Content="↩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding UndoCommand}" ToolTip="撤回上一步笔记操作 (Ctrl+Z)" />
