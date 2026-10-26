@@ -172,6 +172,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     public ICommand ToggleSidebarVisibilityCommand { get; }
     /// <summary>源文件 ⇄ 代理 播放源切换（v1.11.0，底栏按钮）。</summary>
     public ICommand TogglePlaybackSourceCommand { get; }
+    /// <summary>播放列表：上一个视频（v1.15.0 底栏 ⏮ 按钮；切换后自动起播，与打开视频一致）。</summary>
+    public ICommand PlayPreviousCommand { get; }
+    /// <summary>播放列表：下一个视频（v1.15.0 底栏 ⏭ 按钮；切换后自动起播，与打开视频一致）。</summary>
+    public ICommand PlayNextCommand { get; }
 
     // --- Events ---
 
@@ -345,6 +349,18 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         ImportProjectCommand = new RelayCommand(() => ImportProjectRequested?.Invoke(this, EventArgs.Empty));
         // 源文件 ⇄ 代理（v1.11.0）：已生成代理时才可切换
         TogglePlaybackSourceCommand = new RelayCommand(TogglePlaybackSource, () => Player.HasProxy);
+        // 播放列表上一个/下一个（v1.15.0 底栏 ⏮/⏭）：列表非空即可点，切换后自动起播
+        PlayPreviousCommand = new RelayCommand(
+            () => SwitchPlaylistMedia(Playlist.MovePrevious),
+            () => Playlist.Items.Count > 0);
+        PlayNextCommand = new RelayCommand(
+            () => SwitchPlaylistMedia(Playlist.MoveNext),
+            () => Playlist.Items.Count > 0);
+        Playlist.Items.CollectionChanged += (_, _) =>
+        {
+            ((RelayCommand)PlayPreviousCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)PlayNextCommand).RaiseCanExecuteChanged();
+        };
 
         // 动作名 → 命令 映射（供 MainWindow 动态重建 InputBindings）。
         _hotkeyMap = new HotkeyCommandMap(
@@ -575,6 +591,16 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 Player.PlayPauseCommand.Execute(null);
             }
         });
+    }
+
+    /// <summary>
+    /// 底栏 ⏮/⏭ 上一个/下一个视频（v1.15.0）：MoveNext/MovePrevious 经 CurrentChanged
+    /// 完成换素材，随后与打开视频一致自动起播。
+    /// </summary>
+    private void SwitchPlaylistMedia(Func<bool> move)
+    {
+        if (!move()) return;
+        Player.PlayPauseCommand.Execute(null);
     }
 
     /// <summary>裁切点集合变化时重算分段并重建笔记面板统一时间线（删除裁切点即合并相邻片段）。</summary>

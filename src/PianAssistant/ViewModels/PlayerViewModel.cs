@@ -359,6 +359,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
                 _playback.Volume = clamped;
                 if (clamped > 0 && _isMuted)
                     IsMuted = false;
+                OnPropertyChanged(nameof(VolumeIcon)); // v1.15.0：音量为 0 时也切静音图标
                 // 软件级音量记忆：变化即通知持久化（Shell 侧防抖落盘）
                 _onVolumePersisted?.Invoke(clamped);
             }
@@ -371,9 +372,15 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         set
         {
             if (SetProperty(ref _isMuted, value))
+            {
                 _playback.IsMuted = value;
+                OnPropertyChanged(nameof(VolumeIcon)); // v1.15.0：喇叭图标双态切换
+            }
         }
     }
+
+    /// <summary>音量按钮图标（v1.15.0）：静音或音量为 0 时 🔇，否则 🔊（同 PlayPauseIcon 双态模式）。</summary>
+    public string VolumeIcon => (_isMuted || _volume == 0) ? "🔇" : "🔊";
 
     // --- PR 风格裁切点 ---
 

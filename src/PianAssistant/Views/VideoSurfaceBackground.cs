@@ -19,6 +19,7 @@ internal static class VideoSurfaceBackground
 {
     private const int WmEraseBkgnd = 0x0014;
     private const int WmPaint = 0x000F;
+    private const int WmLButtonUp = 0x0202;
     private const int GclpHbrBackground = -10;
     private const int GwlWndProc = -4;
     private const int BlackBrushIndex = 4;
@@ -27,6 +28,15 @@ internal static class VideoSurfaceBackground
     private const uint RdwAllChildren = 0x0080;
     private const uint RdwUpdateNow = 0x0400;
     private const int WsClipChildren = 0x02000000;
+    private const uint EventObjectCreate = 0x8000;
+    private const uint WineventOutofcontext = 0x0000;
+    private const int ObjidWindow = 0;
+
+    /// <summary>
+    /// v1.15.0：VLC 视频窗口收到左键抬起时，由子类化 WndProc 向主窗口 PostMessage
+    /// 此自定义消息（WM_APP 段），主窗口据此切换播放/暂停（点击画面快捷暂停）。
+    /// </summary>
+    public const int WmVideoSurfaceClick = 0x8000 + 0x42;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct PaintStruct
@@ -48,6 +58,8 @@ internal static class VideoSurfaceBackground
 
     private delegate bool EnumWindowProc(IntPtr hWnd, IntPtr lParam);
     private delegate IntPtr WndProcDelegate(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    private delegate void WinEventDelegate(
+        IntPtr hook, uint eventType, IntPtr hWnd, int idObject, int idChild, uint thread, uint time);
 
     [DllImport("user32.dll")] private static extern bool EnumChildWindows(IntPtr parent, EnumWindowProc cb, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
@@ -62,18 +74,30 @@ internal static class VideoSurfaceBackground
     [DllImport("user32.dll")] private static extern IntPtr DefWindowProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll")] private static extern bool RedrawWindow(IntPtr hWnd, IntPtr rect, IntPtr region, uint flags);
     [DllImport("user32.dll")] private static extern int FillRect(IntPtr hdc, ref WinRect rect, IntPtr brush);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern IntPtr SetWinEventHook(
+        uint eventMin, uint eventMax, IntPtr mod, WinEventDelegate cb, uint processId, uint threadId, uint flags);
+    [DllImport("kernel32.dll")] private static extern uint GetCurrentProcessId();
     [DllImport("gdi32.dll")] private static extern IntPtr GetStockObject(int index);
 
     // 委托必须常驻静态字段，否则被 GC 回收会导致回调崩溃
     private static readonly EnumWindowProc EnumProc = OnChildWindow;
     private static readonly WndProcDelegate WndProcHandler = OnWndProc;
+    private static readonly WinEventDelegate WinEventHandler = OnWinEvent;
     private static readonly IntPtr BlackBrush = GetStockObject(BlackBrushIndex);
     private static readonly Dictionary<IntPtr, IntPtr> OldProcs = new();
+
+    // v1.15.0：主窗口句柄（点击视频画面 → PostMessage 通知播放/暂停）
+    private static IntPtr _notifyHwnd;
+    // v1.15.0：已接管的 VLC 视频画面窗口（点击转发 + 即时接管判定）
+    private static readonly HashSet<IntPtr> ClickableWindows = new();
+    private static IntPtr _eventHook;
 
     public static void Apply(Window owner, FrameworkElement videoView)
     {
         var mainHwnd = new WindowInteropHelper(owner).Handle;
         if (mainHwnd == IntPtr.Zero) return;
+        _notifyHwnd = mainHwnd; // v1.15.0：点击视频画面通知目标
 
         var tl = videoView.PointToScreen(new Point(0, 0));
         var br = videoView.PointToScreen(new Point(videoView.ActualWidth, videoView.ActualHeight));
@@ -87,6 +111,9 @@ internal static class VideoSurfaceBackground
     public static void ApplyWithRetry(Window owner, FrameworkElement videoView)
     {
         Apply(owner, videoView);
+        // v1.15.0：挂进程级 WinEvent 钩子——VLC vout 窗口「创建瞬间」即接管类背景刷，
+        // 抢在首帧绘制前填黑，堵住三档重试之间偶尔闪白边的窗口期
+        EnsureEventHook();
         // VLC 的 vout 窗口创建时机不稳定（常在 Playing 事件之后数百毫秒），
         // 单次 Apply 容易扑空 → 分三档延迟补接管（v1.14.0 由单档 800ms 加强）
         foreach (var delay in new[] { 250, 800, 2000 })
@@ -101,6 +128,31 @@ internal static class VideoSurfaceBackground
         }
     }
 
+    /// <summary>
+    /// v1.15.0：进程内窗口创建事件钩子（out-of-context，经 UI 线程消息循环派发）。
+    /// 只接管 VLC 自建的视频窗口（进程内仅播放器会创建）；Static 宿主由枚举路径处理。
+    /// </summary>
+    private static void EnsureEventHook()
+    {
+        if (_eventHook != IntPtr.Zero) return;
+        _eventHook = SetWinEventHook(
+            EventObjectCreate, EventObjectCreate, IntPtr.Zero,
+            WinEventHandler, GetCurrentProcessId(), 0, WineventOutofcontext);
+    }
+
+    private static void OnWinEvent(
+        IntPtr hook, uint eventType, IntPtr hWnd, int idObject, int idChild, uint thread, uint time)
+    {
+        if (idObject != ObjidWindow || hWnd == IntPtr.Zero) return;
+        if (OldProcs.ContainsKey(hWnd)) return; // 已接管
+        var sb = new StringBuilder(128);
+        GetClassName(hWnd, sb, sb.Capacity);
+        // 「VLC video main」与其渲染子窗口「VLC video output」都接管：
+        // 前者填黑兜底，后者是实际受击面（点击转发依赖子类化）
+        if (sb.ToString().StartsWith("VLC video", StringComparison.Ordinal))
+            ApplyToWindow(hWnd, sb.ToString());
+    }
+
     private static int _expectedWidth;
     private static int _expectedHeight;
 
@@ -111,7 +163,8 @@ internal static class VideoSurfaceBackground
         var cls = sb.ToString();
 
         var isSurfaceHost = cls.Equals("Static", StringComparison.Ordinal);
-        var isVlcMain = cls.StartsWith("VLC video main", StringComparison.Ordinal);
+        // v1.15.0：「VLC video main」+ 渲染子窗口「VLC video output」统一按前缀接管
+        var isVlcMain = cls.StartsWith("VLC video", StringComparison.Ordinal);
         if (!isSurfaceHost && !isVlcMain) return true;
 
         // VLC 自建视频窗口进程内只有播放器会创建，一律接管；
@@ -141,6 +194,10 @@ internal static class VideoSurfaceBackground
                 Services.AppLog.Info($"[VideoSurface] 子类化失败 hwnd=0x{hWnd.ToInt64():X} class='{cls}' err={Marshal.GetLastWin32Error()}");
             }
         }
+
+        // v1.15.0：VLC 视频画面窗口登记为「点击 → 播放/暂停」转发源
+        if (cls.StartsWith("VLC video", StringComparison.Ordinal))
+            ClickableWindows.Add(hWnd);
 
         // 只有带 WS_CLIPCHILDREN 的容器才能整体填黑（否则会盖住视频画面）
         var style = (int)GetWindowLongPtr(hWnd, -16).ToInt64();
@@ -172,6 +229,9 @@ internal static class VideoSurfaceBackground
             EndPaint(hWnd, ref ps);
             return IntPtr.Zero;
         }
+        // v1.15.0：点击视频画面 → 通知主窗口切换播放/暂停（消息不吞，照常透传给 VLC）
+        if (msg == WmLButtonUp && ClickableWindows.Contains(hWnd) && _notifyHwnd != IntPtr.Zero)
+            PostMessage(_notifyHwnd, WmVideoSurfaceClick, IntPtr.Zero, IntPtr.Zero);
         if (OldProcs.TryGetValue(hWnd, out var oldProc))
             return CallWindowProc(oldProc, hWnd, msg, wParam, lParam);
         return DefWindowProc(hWnd, msg, wParam, lParam);

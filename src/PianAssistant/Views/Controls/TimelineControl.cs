@@ -335,6 +335,8 @@ public sealed class TimelineControl : Control
         var lanePen = new Pen(new SolidColorBrush(Color.FromRgb(0x2E, 0x2E, 0x2E)), 1);
         var tickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A)), 1);
         var majorTickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)), 1);
+        // v1.15.0：主刻度参考线（延伸到轴2/轴3，比轴1刻度更淡，便于跨轴定位不喧宾夺主）
+        var guidePen = new Pen(new SolidColorBrush(Color.FromRgb(0x33, 0x33, 0x33)), 1);
         var playheadPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8)), 2);
         var inOutBrush = new SolidColorBrush(Color.FromRgb(0x00, 0x7A, 0xCC)) { Opacity = 0.25 };
         var inOutPen = new Pen(new SolidColorBrush(Color.FromRgb(0x00, 0x9A, 0xEC)), 1.5);
@@ -352,6 +354,7 @@ public sealed class TimelineControl : Control
         lanePen.Freeze();
         tickPen.Freeze();
         majorTickPen.Freeze();
+        guidePen.Freeze();
         playheadPen.Freeze();
         inOutPen.Freeze();
         selectedPen.Freeze();
@@ -399,6 +402,8 @@ public sealed class TimelineControl : Control
             if (s < 0 || s > len.TotalSeconds) continue;
             var x = s / len.TotalSeconds * w;
             dc.DrawLine(majorTickPen, new Point(x, RulerAxisHeight - 6), new Point(x, RulerAxisHeight));
+            // v1.15.0：主刻度参考线贯穿轴2/轴3（裁切/截图行），便于定位
+            dc.DrawLine(guidePen, new Point(x, ClipAxisTop), new Point(x, h));
             var ts = TimeSpan.FromSeconds(s);
             var label = FormatRulerLabel(ts, labelStep);
             var ft = new FormattedText(label, CultureInfo.InvariantCulture,

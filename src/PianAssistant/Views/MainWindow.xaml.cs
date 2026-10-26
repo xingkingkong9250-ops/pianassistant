@@ -106,6 +106,9 @@ public partial class MainWindow : Window
     {
         if (msg == Win32Hotkey.WM_HOTKEY && _globalHotkeys?.HandleHotkey(wParam) == true)
             handled = true;
+        // v1.15.0：VLC 视频窗口左键点击（由 VideoSurfaceBackground 子类化转发）→ 播放/暂停
+        if (msg == VideoSurfaceBackground.WmVideoSurfaceClick && Shell?.Player.HasMedia == true)
+            Shell.Player.PlayPauseCommand.Execute(null);
         return IntPtr.Zero;
     }
 
@@ -825,6 +828,15 @@ public partial class MainWindow : Window
 
     // --- Timeline ---
 
+    /// <summary>v1.15.0：鼠标悬停在音量滑块上时滚动中键滚轮调节音量（每格 ±5）。</summary>
+    private void OnVolumeSliderWheel(object sender, MouseWheelEventArgs e)
+    {
+        var player = Shell?.Player;
+        if (player is null) return;
+        player.Volume += e.Delta > 0 ? 5 : -5; // setter 内部已夹紧 0..100
+        e.Handled = true;
+    }
+
     private void OnTimelineSeek(object sender, double e)
     {
         Shell?.Player.SeekPercent(e);
@@ -870,14 +882,18 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    /// <summary>v1.13.0：鼠标悬停在时间轴下方滚动条上时，滚轮直接水平滚动（不触发缩放）。</summary>
+    /// <summary>
+    /// 鼠标悬停在时间轴下方滚动条上时，滚轮直接水平滚动（不触发缩放）。
+    /// v1.13.0 初版按 <c>OriginalSource is ScrollBar</c> 判定，但悬停在 Thumb/Track/
+    /// 箭头按钮上时 OriginalSource 是滚动条子元素而非 ScrollBar 本身，判定落空；
+    /// v1.15.0 改为按鼠标位置判定：指针落在视口外的底部滚动条条带内即水平滚动。
+    /// </summary>
     private void OnTimelineScrollPreviewWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.OriginalSource is System.Windows.Controls.Primitives.ScrollBar)
-        {
-            TimelineScroll.ScrollToHorizontalOffset(TimelineScroll.HorizontalOffset - e.Delta);
-            e.Handled = true;
-        }
+        if (TimelineScroll.ComputedHorizontalScrollBarVisibility != Visibility.Visible) return;
+        if (e.GetPosition(TimelineScroll).Y < TimelineScroll.ViewportHeight) return;
+        TimelineScroll.ScrollToHorizontalOffset(TimelineScroll.HorizontalOffset - e.Delta);
+        e.Handled = true;
         // 悬停在时间轴本体上时不处理：缩放由 TimelineControl.OnMouseWheel 自己接管
     }
 
