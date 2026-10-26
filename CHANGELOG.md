@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### v1.7.8 — 消除视频区上下「白边」（NO.P，2026-10-26）
+
+- **根因（实测确认，非推断）**：`LibVLCSharp.WPF` 的 `VideoHwndHost` 用系统预定义 `Static`
+  窗口承载画面，libvlc 在其内部再建 `VLC video main` / `VLC video output` 子窗口。VLC 按视频
+  宽高比做信箱模式时，画面窗口只占中间区域，上下各让出 52px；该区域由 `VLC video main` 在
+  `WM_PAINT` 里按系统色 `COLOR_BTNFACE`（`#F0F0F0`）绘制 → 用户看到的「白边」
+- 实测排除项：改 WPF 容器黑底 / `UseLayoutRounding` / `VideoView.Background` / 反射校正
+  `ForegroundWindow` 位置，全部无效（都碰不到上述 Win32 层）
+- 修复：新增 `VideoSurfaceBackground`，对覆盖整个视频区的 `Static` 与 `VLC video main`
+  窗口做 WndProc 子类化，`WM_ERASEBKGND` 填黑；对带 `WS_CLIPCHILDREN` 的容器额外接管
+  `WM_PAINT` 整体填黑（不覆盖画面）；并把类背景刷改为黑色兜底
+- 验证：屏幕取样确认信箱带由 `#F0F0F0` 变为 `#000000`，画面区颜色正常；起播（`Playing`）
+  后重新套用一次，覆盖 vout 窗口重建
+- 清理：删除上一轮试探留下的 `AlignVideoForegroundWindow` 死代码、反射/P-Invoke 与字段，
+  代码回到 0 警告 0 错误状态
+
 ### v1.7.7 — 回滚 seek 预写缓存导致的位置偏差；CoalesceSeek 阻塞；Length 刷新；焦点恢复；暂停后重放音频卡顿（NO.P，2026-10-26）
 
 - **回滚级 bug 修复：位置偏差**：v1.7.6 给 `SeekToMs` 加了 `Volatile.Write(ref _cachedTimeMs, targetMs)`（预写缓存），本意是让 UI 立刻看到 seek 目标位置，但 VLC seek 是异步的——画面还停在旧帧、缓存已跳到目标值，导致：① 列表缩略图看着对（ffmpeg 真帧抽的），但点击跳转后播放头与画面错位；② 截图时间码存成 phantom 值，后续按时间码导出/再抽帧跟着偏。v1.7.7 **撤掉预写缓存**，`Position` getter 改用 `ResolveSeekBaseMs`：settle 窗口内存在 pending seek 目标时返回目标值（覆盖暂停态 seek → 立刻截图的场景），否则回落 `TimeChanged` 回调的真实值

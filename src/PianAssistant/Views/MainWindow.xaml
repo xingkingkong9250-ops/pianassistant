@@ -8,10 +8,11 @@
         Width="1280" Height="800"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/app.ico"
-        Background="#0F0F0F"
+        Background="#FF000000"
         Foreground="#E8E8E8"
         FontFamily="Microsoft YaHei UI, Segoe UI"
-        FontSize="13">
+        FontSize="13"
+        UseLayoutRounding="True">
 
     <Window.Resources>
         <!-- 按钮基础样式 -->
@@ -157,7 +158,7 @@
         </Border>
 
         <!-- ═══ 视频内容区 ═══ -->
-        <Grid x:Name="ContentGrid" Grid.Row="1">
+        <Grid x:Name="ContentGrid" Grid.Row="1" Background="Black">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -176,9 +177,17 @@
             </Grid>
 
             <!-- 视频区 -->
-            <Grid x:Name="VideoArea" Grid.Column="1" Background="#000000"
+            <Grid x:Name="VideoArea" Grid.Column="1" Background="#FF000000"
+                  SnapsToDevicePixels="True"
                   AllowDrop="True" Drop="OnVideoDrop" DragOver="OnVideoDragOver">
-                <vlc:VideoView x:Name="VideoView" />
+                <!-- 白边（上下信箱带浅灰 #F0F0F0）由 Win32 层的 VLC 窗口绘制，
+                     已由 VideoSurfaceBackground 接管，见 MainWindow.xaml.cs OnLoaded -->
+                <vlc:VideoView x:Name="VideoView"
+                               Background="#FF000000"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch"
+                               Margin="0"
+                               SnapsToDevicePixels="True" />
 
                 <!-- 方向键视觉反馈叠加层 -->
                 <Border x:Name="ArrowFeedbackOverlay" HorizontalAlignment="Center"

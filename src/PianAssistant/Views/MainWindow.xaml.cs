@@ -117,6 +117,11 @@ public partial class MainWindow : Window
         if (mp is not null)
         {
             VideoView.MediaPlayer = mp.LibVlcMediaPlayer;
+            // v1.7.8：消除视频区上下「白边」（VLC 信箱黑边被 Static 窗口的系统浅灰填充）
+            VideoSurfaceBackground.ApplyWithRetry(this, VideoView);
+            // vout 窗口在起播时才创建/重建，Playing 后再套一次
+            mp.Playing += (_, _) => Dispatcher.BeginInvoke(
+                () => VideoSurfaceBackground.Apply(this, VideoView));
         }
         // 订阅全屏切换/退出事件（由 PlayerViewModel 的 F / Esc 快捷键触发）
         shell.Player.FullscreenToggleRequested += OnFullscreenToggle;

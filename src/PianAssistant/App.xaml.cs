@@ -86,11 +86,17 @@ public partial class App : Application
         _mainWindow.Closing += (_, _) => _shell.Dispose();
         _mainWindow.Show();
 
-        // 调试用：如果命令行参数里有视频文件路径，自动打开它
+        // 调试用：如果命令行参数里有视频文件路径，自动打开它。
+        // 必须等 Loaded 之后——Loaded 里 VideoHost.Attach 才把 HWND 绑给 MediaPlayer，
+        // 提前 Play 会让 VLC 创建自己的独立顶层视频窗口（脱离布局、盖住控件）。
+        // 注意 Loaded 可能在 Show() 同步布局期间就已触发，故用 Dispatcher 延后而非订阅 Loaded。
         if (e.Args.Length > 0 && File.Exists(e.Args[0]))
         {
-            AppLog.Info($"[App] 命令行参数打开视频: {e.Args[0]}");
-            _shell.OpenMedia(e.Args[0]);
+            var argPath = e.Args[0];
+            AppLog.Info($"[App] 命令行参数打开视频: {argPath}");
+            _mainWindow.Dispatcher.BeginInvoke(
+                System.Windows.Threading.DispatcherPriority.Loaded,
+                new Action(() => _shell.OpenMedia(argPath)));
         }
     }
 
