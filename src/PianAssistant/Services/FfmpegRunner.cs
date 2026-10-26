@@ -160,8 +160,12 @@ public sealed class FfmpegRunner
     /// 生成代理媒体（v1.11.0）：按档位降分辨率 + 限码率重编码。
     /// 关键点：<c>-fps_mode passthrough</c> 保持帧率直通，代理与源的时间码逐帧对齐，
     /// 裁切点/截图/片段导出均可直接复用源时间码。
+    /// v1.12.0 起支持分段并行：传入 <paramref name="chunkStart"/>/<paramref name="chunkDuration"/>
+    /// 后只转该时间段（输入级 -ss 精确 seek + 输出 -t），供并行分段转码使用。
     /// </summary>
     /// <param name="useHardwareEncoder">true 用 h264_nvenc（快且 CPU 占用低）；false 用 libx264。</param>
+    /// <param name="totalDurationMs">进度折算用的总时长（分段时为该分段时长）。</param>
+    /// <param name="hardwareDecode">true 时加 <c>-hwaccel cuda</c> 用 NVDEC 硬解（HEVC 收益大；失败由上层回退）。</param>
     public void GenerateProxy(
         string source,
         string outputPath,
@@ -169,7 +173,10 @@ public sealed class FfmpegRunner
         bool useHardwareEncoder,
         double totalDurationMs,
         CancellationToken cancellationToken,
-        Action<double>? onProgress = null)
+        Action<double>? onProgress = null,
+        TimeSpan? chunkStart = null,
+        TimeSpan? chunkDuration = null,
+        bool hardwareDecode = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
@@ -177,6 +184,14 @@ public sealed class FfmpegRunner
 
         var kbps = preset.VideoBitrateKbps;
         var args = new StringBuilder();
+        if (hardwareDecode) args.Append("-hwaccel cuda ");
+        if (chunkStart is { } start && chunkDuration is { } dur)
+        {
+            // 输入级 -ss（转码时为精确 seek：解码丢帧到目标）+ 输出 -t 控制分段时长，
+            // 与片段导出同一时间基准（v1.2.2 的教训：长度用输出选项 -t）
+            args.Append("-ss ").Append(start.TotalSeconds.ToString("0.###")).Append(' ');
+            args.Append("-t ").Append(dur.TotalSeconds.ToString("0.###")).Append(' ');
+        }
         args.Append("-i \"").Append(source).Append("\" ");
         if (useHardwareEncoder)
         {

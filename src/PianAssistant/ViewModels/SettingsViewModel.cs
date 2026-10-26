@@ -32,6 +32,7 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _proxyPromptEnabled;
     private string _proxyPreset = "720p";
     private int _proxyCacheLimitGb = 50;
+    private string _proxyPerformance = "balanced"; // v1.12.0
     private string _dataRoot;
     private readonly string _originalDataRoot;
     private bool _restoreSession;
@@ -64,6 +65,7 @@ public sealed class SettingsViewModel : ObservableObject
         _proxyPromptEnabled = settings.ProxyPromptEnabled;
         _proxyPreset = settings.ProxyPreset;
         _proxyCacheLimitGb = settings.ProxyCacheLimitGb;
+        _proxyPerformance = settings.ProxyPerformance; // v1.12.0
 
         BrowseDataRootCommand = new RelayCommand(BrowseDataRoot);
         SaveCommand = new RelayCommand(Save);
@@ -175,6 +177,13 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _proxyCacheLimitGb;
         set => SetProperty(ref _proxyCacheLimitGb, Math.Clamp(value, 0, 2000));
+    }
+
+    /// <summary>代理生成性能档位 Id（quiet / balanced / turbo，默认 balanced，v1.12.0）。</summary>
+    public string ProxyPerformance
+    {
+        get => _proxyPerformance;
+        set => SetProperty(ref _proxyPerformance, Models.ProxyPerformance.FromId(value).Id);
     }
 
     /// <summary>数据路径（数据根）；修改后需重启生效，不搬迁任何文件。</summary>
@@ -331,6 +340,7 @@ public sealed class SettingsViewModel : ObservableObject
         _settings.ProxyPromptEnabled = _proxyPromptEnabled;
         _settings.SetProxyPreset(_proxyPreset);
         _settings.ProxyCacheLimitGb = ProxyCacheLimitGb;
+        _settings.SetProxyPerformance(_proxyPerformance); // v1.12.0
         if (dataRootChanged)
             _settings.SetDataRoot(newDataRoot);
 

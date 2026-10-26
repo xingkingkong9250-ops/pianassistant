@@ -196,6 +196,17 @@ public sealed class AppSettingsService
         set { _settings.ProxyCacheLimitGb = Math.Clamp(value, 0, 2000); Save(); }
     }
 
+    /// <summary>代理生成性能档位（quiet / balanced / turbo），默认 balanced（v1.12.0）。</summary>
+    public string ProxyPerformance =>
+        Models.ProxyPerformance.FromId(_settings.ProxyPerformance).Id;
+
+    /// <summary>设置代理生成性能档位（非法值回落到 balanced）。</summary>
+    public void SetProxyPerformance(string id)
+    {
+        _settings.ProxyPerformance = Models.ProxyPerformance.FromId(id).Id;
+        Save();
+    }
+
     /// <summary>
     /// 设置数据根（写回 config.json，config.json 本身仍在引导目录）。
     /// 仅切换路径、不搬迁任何文件；生效需重启。
@@ -322,6 +333,9 @@ public sealed class AppSettings
     public string? ProxyPreset { get; set; }
     /// <summary>代理缓存容量上限（GB；0 表示不限制，默认 50）。</summary>
     public int ProxyCacheLimitGb { get; set; } = 50;
+
+    /// <summary>代理生成性能档位（quiet/balanced/turbo），默认 balanced（v1.12.0）。</summary>
+    public string? ProxyPerformance { get; set; }
 }
 
 [JsonSerializable(typeof(AppSettings))]

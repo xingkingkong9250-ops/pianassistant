@@ -150,4 +150,73 @@ public class ProxyMediaTests : IDisposable
         _settings.ProxyCacheLimitGb = 0;
         Assert.Equal(0, _proxies.EnforceCacheLimit());
     }
+
+    // --- 性能档位与并行分段（v1.12.0）---
+
+    [Theory]
+    [InlineData("quiet", 1)]
+    [InlineData("balanced", 2)]
+    [InlineData("turbo", 4)]
+    [InlineData("TURBO", 4)]
+    [InlineData("banana", 2)]
+    [InlineData(null, 2)]
+    public void ProxyPerformance_FromId_ParsesAndFallsBackToBalanced(string? id, int parallelism)
+    {
+        Assert.Equal(parallelism, ProxyPerformance.FromId(id).Parallelism);
+    }
+
+    [Fact]
+    public void ProxyPerformance_DefaultsToBalanced()
+    {
+        Assert.Equal("balanced", _settings.ProxyPerformance);
+    }
+
+    [Fact]
+    public void ComputeChunkRanges_SingleWhenRequestedOrTooShort()
+    {
+        var duration = TimeSpan.FromHours(2);
+        Assert.Single(ProxyMediaService.ComputeChunkRanges(duration, 1));
+        Assert.Single(ProxyMediaService.ComputeChunkRanges(duration, 0));
+        Assert.Single(ProxyMediaService.ComputeChunkRanges(TimeSpan.Zero, 4));
+        // 每段至少约 60 秒：90 秒素材即使请求 4 路也只分 1 段
+        Assert.Single(ProxyMediaService.ComputeChunkRanges(TimeSpan.FromSeconds(90), 4));
+    }
+
+    [Fact]
+    public void ComputeChunkRanges_SplitsEvenlyAndCoversFullDuration()
+    {
+        var duration = TimeSpan.FromHours(2);
+        var ranges = ProxyMediaService.ComputeChunkRanges(duration, 4);
+
+        Assert.Equal(4, ranges.Count);
+        Assert.Equal(TimeSpan.Zero, ranges[0].Start);
+        // 首尾相接、无重叠无缺口，且覆盖全长
+        for (var i = 1; i < ranges.Count; i++)
+            Assert.Equal(ranges[i - 1].Start + ranges[i - 1].Duration, ranges[i].Start);
+        Assert.Equal(duration, ranges[^1].Start + ranges[^1].Duration);
+        Assert.All(ranges, r => Assert.True(r.Duration > TimeSpan.FromMinutes(29)));
+    }
+
+    [Fact]
+    public void ComputeChunkRanges_CapsByDuration()
+    {
+        // 200 秒素材最多 3 段（每段 ≥60 秒），请求 4 路被收敛到 3
+        var ranges = ProxyMediaService.ComputeChunkRanges(TimeSpan.FromSeconds(200), 4);
+        Assert.Equal(3, ranges.Count);
+    }
+
+    // --- 解码方式选择（v1.12.0 实测：H.264 软解更快，HEVC 硬解可快 2 倍以上）---
+
+    [Theory]
+    [InlineData("h264", false)]
+    [InlineData("H264", false)]
+    [InlineData("hevc", true)]
+    [InlineData("av1", true)]
+    [InlineData("vp9", true)]
+    [InlineData(null, false)]
+    public void PreferHardwareDecode_H264UsesSoftwareOthersHardware(string? codec, bool expected)
+    {
+        var probe = new MediaProbeResult(3840, 2160, TimeSpan.FromHours(1), 0, codec);
+        Assert.Equal(expected, probe.PreferHardwareDecode);
+    }
 }

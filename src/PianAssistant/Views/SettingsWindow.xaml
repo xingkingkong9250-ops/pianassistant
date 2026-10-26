@@ -177,7 +177,7 @@
                             </ComboBox>
                         </Grid>
 
-                        <!-- 代理媒体设置区（v1.11.0，W2-A-19~21） -->
+                        <!-- 代理媒体设置区（v1.11.0，W2-A-19~21；v1.12.0 增 W2-A-22） -->
                         <TextBlock Text="代理媒体（大分辨率素材拉片更流畅）" FontWeight="Bold"
                                    Foreground="#E0E0E0" Margin="0,16,0,4" />
                         <Grid>
@@ -186,6 +186,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -208,6 +209,15 @@
                             <TextBox Grid.Row="2" Grid.Column="1" Margin="0,2"
                                      Text="{Binding ProxyCacheLimitGb, Mode=TwoWay}"
                                      ToolTip="代理缓存占用上限（GB，0 表示不限制，默认 50）；超限按最近使用时间从旧到新清理" />
+                            <Label Grid.Row="3" Content="生成速度：" />
+                            <ComboBox Grid.Row="3" Grid.Column="1" Margin="0,2"
+                                      SelectedValue="{Binding ProxyPerformance, Mode=TwoWay}"
+                                      SelectedValuePath="Tag"
+                                      ToolTip="代理转换的并行路数：多路按时长分段并行转码再拼接，更快但 CPU/GPU 占用更高；段数不足（素材过短）时自动单路">
+                                <ComboBoxItem Tag="quiet" Content="安静（单进程，占用最低）" />
+                                <ComboBoxItem Tag="balanced" Content="均衡（双路并行，默认）" />
+                                <ComboBoxItem Tag="turbo" Content="极速（四路并行，占用最高）" />
+                            </ComboBox>
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>

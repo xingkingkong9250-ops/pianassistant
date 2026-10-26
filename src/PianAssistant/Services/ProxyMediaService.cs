@@ -16,6 +16,8 @@ namespace PianAssistant.Services;
 /// 最近访问时间用于容量上限的 LRU 清理。
 ///
 /// 首次生成优先用 h264_nvenc（速度快、CPU 占用低）；硬编码不可用时自动回退 libx264。
+/// v1.12.0 起支持按性能档位多段并行转码（concat 无损拼接），并按编码格式选择软/硬解
+/// （H.264 软解更快，HEVC 硬解可快 2 倍以上），失败逐段回退。
 /// 生成过程先写 <c>proxy.part.mp4</c>，成功后再改名，避免半成品被当成有效代理。
 /// </summary>
 public sealed class ProxyMediaService : IDisposable
@@ -61,6 +63,7 @@ public sealed class ProxyMediaService : IDisposable
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
             int width = 0, height = 0;
+            string? codec = null;
             if (root.TryGetProperty("streams", out var streams))
             {
                 foreach (var s in streams.EnumerateArray())
@@ -69,6 +72,7 @@ public sealed class ProxyMediaService : IDisposable
                         type.GetString() != "video") continue;
                     if (s.TryGetProperty("width", out var w)) width = w.GetInt32();
                     if (s.TryGetProperty("height", out var h)) height = h.GetInt32();
+                    if (s.TryGetProperty("codec_name", out var cn)) codec = cn.GetString();
                     break;
                 }
             }
@@ -82,7 +86,7 @@ public sealed class ProxyMediaService : IDisposable
                     long.TryParse(b.GetString(), out var bs)) bitrate = bs;
             }
             return new MediaProbeResult(width, height,
-                TimeSpan.FromSeconds(Math.Max(0, durationSec)), bitrate);
+                TimeSpan.FromSeconds(Math.Max(0, durationSec)), bitrate, codec);
         }
         catch (JsonException ex)
         {
@@ -137,7 +141,9 @@ public sealed class ProxyMediaService : IDisposable
 
     /// <summary>
     /// 生成代理（阻塞调用，供上层 Task.Run 包装）。
-    /// 先尝试 NVENC 硬编码，失败自动回退 x264；成功后写 meta 并返回结果。
+    /// 按设置的性能档位决定并行路数：单路直接整段转码；多路按时长等分多段、
+    /// 多 ffmpeg 进程并行转码，再 concat 无损拼接（v1.12.0）。
+    /// 每段/整段均先尝试 NVENC 硬编码，失败自动回退 x264；成功后写 meta 并返回结果。
     /// </summary>
     public ProxyGenerationResult Generate(
         string sourcePath,
@@ -153,38 +159,214 @@ public sealed class ProxyMediaService : IDisposable
         var finalPath = Path.Combine(dir, ProxyFileName);
         var partPath = Path.Combine(dir, PartialFileName);
         var durationMs = probe.Duration.TotalMilliseconds;
-        var usedHardware = true;
 
-        try
-        {
-            TryGenerate(hardware: true, partPath);
-        }
-        catch (OperationCanceledException)
-        {
-            SafeDelete(partPath);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            // 无 NVIDIA 显卡 / 驱动不支持 NVENC / 多 GPU 冲突 → 回退 x264
-            System.Diagnostics.Debug.WriteLine($"[ProxyMedia] NVENC 失败，回退 x264: {ex.Message}");
-            usedHardware = false;
-            SafeDelete(partPath);
-            TryGenerate(hardware: false, partPath);
-        }
+        var parallelism = ProxyPerformance.FromId(_settings.ProxyPerformance).Parallelism;
+        var ranges = ComputeChunkRanges(probe.Duration, parallelism);
+        var usedHardware = ranges.Count <= 1
+            ? GenerateSingle(sourcePath, partPath, actual, probe, onProgress, ct)
+            : GenerateParallel(sourcePath, dir, partPath, actual, probe, ranges, onProgress, ct);
 
         // 成功后才落成正式文件名，避免半成品被当成有效代理
         if (File.Exists(finalPath)) SafeDelete(finalPath);
         File.Move(partPath, finalPath);
         WriteMeta(dir, sourcePath, actual, probe);
         return new ProxyGenerationResult(finalPath, actual, usedHardware);
+    }
 
-        void TryGenerate(bool hardware, string output)
+    /// <summary>
+    /// 按时长等分转码分段（供并行转码）。规则：
+    /// 请求路数 ≤1、时长未知（≤0）或时长过短（每段不足约 60 秒）时回落到单段。
+    /// 返回值 = 各分段的（起点, 时长），首尾相接且覆盖全长。
+    /// </summary>
+    internal static IReadOnlyList<(TimeSpan Start, TimeSpan Duration)> ComputeChunkRanges(
+        TimeSpan duration, int requestedParallelism)
+    {
+        static IReadOnlyList<(TimeSpan, TimeSpan)> Single(TimeSpan d) =>
+            new[] { (TimeSpan.Zero, d) };
+
+        if (requestedParallelism <= 1 || duration <= TimeSpan.Zero) return Single(duration);
+        // 每段至少约 60 秒，避免碎片化带来的开销大于收益
+        var maxByDuration = Math.Max(1, (int)(duration.TotalSeconds / 60));
+        var n = Math.Clamp(requestedParallelism, 1, maxByDuration);
+        if (n <= 1) return Single(duration);
+
+        var ranges = new List<(TimeSpan, TimeSpan)>(n);
+        var step = TimeSpan.FromTicks(duration.Ticks / n);
+        for (var i = 0; i < n; i++)
         {
-            _ffmpeg.GenerateProxy(sourcePath, output, actual, hardware, durationMs, ct, onProgress);
-            if (!File.Exists(output) || new FileInfo(output).Length == 0)
-                throw new InvalidOperationException("代理文件未生成或长度为 0。");
+            var start = TimeSpan.FromTicks(step.Ticks * i);
+            var end = i == n - 1 ? duration : TimeSpan.FromTicks(step.Ticks * (i + 1));
+            ranges.Add((start, end - start));
         }
+        return ranges;
+    }
+
+    /// <summary>单路整段转码。返回是否用了硬编码。</summary>
+    private bool GenerateSingle(
+        string sourcePath, string partPath, ProxyPreset preset, MediaProbeResult probe,
+        Action<double>? onProgress, CancellationToken ct)
+    {
+        try
+        {
+            return TranscodeWithFallback(sourcePath, partPath, preset, probe,
+                probe.Duration.TotalMilliseconds, onProgress, ct, null, null);
+        }
+        catch (OperationCanceledException)
+        {
+            SafeDelete(partPath);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 统一的回退链（单路/分段共用）：NVENC + 按编码格式选定的解码方式 →
+    /// NVENC + 翻转解码方式 → libx264 软解软编。取消在任何一步都直接向上抛。
+    /// 返回最终是否用了硬编码。
+    /// </summary>
+    private bool TranscodeWithFallback(
+        string sourcePath, string output, ProxyPreset preset, MediaProbeResult probe,
+        double durationMs, Action<double>? onProgress, CancellationToken ct,
+        TimeSpan? chunkStart, TimeSpan? chunkDuration)
+    {
+        var hwDecode = probe.PreferHardwareDecode;
+        // ① NVENC + 首选解码方式（H.264 软解更快；HEVC 等硬解可快 2 倍以上，见 v1.12.0 实测）
+        try
+        {
+            RunOnce(hardware: true, hwDecode);
+            return true;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[ProxyMedia] NVENC(hwdec={hwDecode}) 失败，翻转解码方式重试: {ex.Message}");
+            SafeDelete(output);
+        }
+        // ② NVENC + 翻转解码方式（覆盖「探测的编码格式判断失误/驱动组合」等情况）
+        try
+        {
+            RunOnce(hardware: true, !hwDecode);
+            return true;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[ProxyMedia] NVENC(hwdec={!hwDecode}) 仍失败，回退 x264: {ex.Message}");
+            SafeDelete(output);
+        }
+        // ③ x264 软编（无 NVIDIA 显卡/驱动不支持 NVENC 时的兜底）
+        RunOnce(hardware: false, hardwareDecode: false);
+        return false;
+
+        void RunOnce(bool hardware, bool hardwareDecode)
+        {
+            _ffmpeg.GenerateProxy(sourcePath, output, preset, hardware, durationMs, ct,
+                onProgress, chunkStart, chunkDuration, hardwareDecode);
+            if (!File.Exists(output) || new FileInfo(output).Length == 0)
+                throw new InvalidOperationException("代理输出未生成或长度为 0。");
+        }
+    }
+
+    /// <summary>
+    /// 多路并行：分段转码到 chunks\ 子目录，全部成功后 concat 无损拼接。
+    /// 每段独立 NVENC→x264 回退（NVENC 并发会话有上限，超限只影响该段）。
+    /// 取消或失败时清理全部分段与半成品。
+    /// </summary>
+    private bool GenerateParallel(
+        string sourcePath, string dir, string partPath, ProxyPreset preset, MediaProbeResult probe,
+        IReadOnlyList<(TimeSpan Start, TimeSpan Duration)> ranges,
+        Action<double>? onProgress, CancellationToken ct)
+    {
+        var chunkDir = Path.Combine(dir, "chunks");
+        var listPath = Path.Combine(dir, "chunks.txt");
+        var progresses = new double[ranges.Count];
+        var usedHardware = new bool[ranges.Count];
+        try
+        {
+            Directory.CreateDirectory(chunkDir);
+            var tasks = new Task[ranges.Count];
+            for (var i = 0; i < ranges.Count; i++)
+            {
+                var index = i;
+                tasks[i] = Task.Run(() =>
+                {
+                    var (start, dur) = ranges[index];
+                    var output = Path.Combine(chunkDir, $"chunk-{index:D3}.mp4");
+                    try
+                    {
+                        usedHardware[index] = TranscodeWithFallback(sourcePath, output, preset,
+                            probe, dur.TotalMilliseconds,
+                            p =>
+                            {
+                                progresses[index] = p;
+                                onProgress?.Invoke(progresses.Average());
+                            }, ct, start, dur);
+                    }
+                    catch
+                    {
+                        SafeDelete(output);
+                        throw;
+                    }
+                }, ct);
+            }
+            WaitAll(tasks, ct);
+
+            // concat 无损拼接（分段同为 H.264/AAC 且参数一致，可直接流复制）
+            WriteConcatList(listPath, ranges.Count,
+                i => Path.Combine(chunkDir, $"chunk-{i:D3}.mp4"));
+            var totalMs = ranges.Aggregate(0.0, (s, r) => s + r.Duration.TotalMilliseconds);
+            _ffmpeg.ConcatFiles(listPath, partPath, totalMs, ct);
+            if (!File.Exists(partPath) || new FileInfo(partPath).Length == 0)
+                throw new InvalidOperationException("代理文件拼接失败（未生成或长度为 0）。");
+            return usedHardware.All(h => h);
+        }
+        catch
+        {
+            SafeDelete(partPath); // 拼接半成品不留
+            throw;
+        }
+        finally
+        {
+            // 分段与清单是一次性中间产物：无论成功/失败/取消都清理
+            SafeDelete(listPath);
+            try { if (Directory.Exists(chunkDir)) Directory.Delete(chunkDir, recursive: true); }
+            catch { /* 占用中则留待下次缓存清理 */ }
+        }
+    }
+
+    /// <summary>等待全部并行任务；取消时聚合为 OperationCanceledException。</summary>
+    private static void WaitAll(Task[] tasks, CancellationToken ct)
+    {
+        try
+        {
+            Task.WaitAll(tasks, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (AggregateException ex) when (ct.IsCancellationRequested)
+        {
+            throw new OperationCanceledException("代理生成已取消。", ex, ct);
+        }
+        catch (AggregateException ex)
+        {
+            // 展开首个真实异常，避免上层只看到 AggregateException
+            throw ex.Flatten().InnerExceptions.First();
+        }
+    }
+
+    /// <summary>写 concat demuxer 清单（UTF-8 无 BOM，单引号按 ffmpeg 规则转义）。</summary>
+    private static void WriteConcatList(string listPath, int count, Func<int, string> pathOf)
+    {
+        var sb = new System.Text.StringBuilder();
+        for (var i = 0; i < count; i++)
+        {
+            var p = pathOf(i).Replace("'", "'\\''");
+            sb.Append("file '").Append(p).Append("'\n");
+        }
+        File.WriteAllText(listPath, sb.ToString(), new System.Text.UTF8Encoding(false));
     }
 
     /// <summary>
