@@ -1,4 +1,4 @@
-﻿# run.ps1 — Debug 构建 + 关闭旧实例 + 启动。
+﻿﻿# run.ps1 — Debug 构建 + 关闭旧实例 + 启动。
 # 通过 run.bat 静默调用，也可直接 powershell -File run.ps1 调试。
 $ErrorActionPreference = 'Stop'
 

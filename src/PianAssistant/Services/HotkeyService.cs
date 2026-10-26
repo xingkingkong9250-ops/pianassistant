@@ -19,8 +19,9 @@ public sealed class HotkeyService
         new Dictionary<HotkeyAction, string>
         {
             [HotkeyAction.PlayPause] = "Space",
-            [HotkeyAction.NextFrame] = "Right",
-            [HotkeyAction.PreviousFrame] = "Left",
+            // v1.7.6：裸方向键改为 ±3 秒（VLC 风格），逐帧迁移到 , / .（默认步长 5 帧）
+            [HotkeyAction.NextFrame] = "OemPeriod",
+            [HotkeyAction.PreviousFrame] = "OemComma",
             [HotkeyAction.SeekBackward1Second] = "Shift+Left",
             [HotkeyAction.SeekForward1Second] = "Shift+Right",
             [HotkeyAction.SeekBackward10Seconds] = "Ctrl+Left",

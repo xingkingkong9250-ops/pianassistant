@@ -121,6 +121,14 @@ public partial class MainWindow : Window
         // 订阅全屏切换/退出事件（由 PlayerViewModel 的 F / Esc 快捷键触发）
         shell.Player.FullscreenToggleRequested += OnFullscreenToggle;
         shell.Player.FullscreenExitRequested += OnFullscreenExit;
+        // v1.7.7：导出完成后把焦点还给 VideoView —— 防止焦点落在 Button/ContextMenu
+        // 上，空格被误拦截触发 Click（例如右键菜单「打开文件夹」被空格触发）
+        shell.Player.ClipExtracted += (_, _) => Dispatcher.BeginInvoke(
+            () => Keyboard.Focus(VideoView), DispatcherPriority.Background);
+        shell.Player.SegmentExported += (_, _) => Dispatcher.BeginInvoke(
+            () => Keyboard.Focus(VideoView), DispatcherPriority.Background);
+        shell.Player.ScreenshotCaptured += (_, _) => Dispatcher.BeginInvoke(
+            () => Keyboard.Focus(VideoView), DispatcherPriority.Background);
         // 清空全部标记（Ctrl+Shift+C / W1-R1-11）：确认后执行
         shell.ConfirmClearAllMarksRequested += OnConfirmClearAllMarks;
         // 导入数据重建缺失截图等后台任务汇总提示（toast）
@@ -696,12 +704,12 @@ public partial class MainWindow : Window
         switch (key)
         {
             case Key.Left:
-                player.SeekBackwardCustomCommand.Execute(null);
-                ShowArrowFeedback("◀", $"{GetSeekFramesText(player)}", "#4EC9B0");
+                player.SeekBackward3SecondsCommand.Execute(null);
+                ShowArrowFeedback("◀", "-3s", "#4EC9B0");
                 break;
             case Key.Right:
-                player.SeekForwardCustomCommand.Execute(null);
-                ShowArrowFeedback("▶", $"{GetSeekFramesText(player)}", "#4EC9B0");
+                player.SeekForward3SecondsCommand.Execute(null);
+                ShowArrowFeedback("▶", "+3s", "#4EC9B0");
                 break;
             case Key.Up:
                 player.IncreaseRateCustomCommand.Execute(null);
@@ -712,16 +720,6 @@ public partial class MainWindow : Window
                 ShowArrowFeedback("▼", $"{player.Rate:F2}×", "#569CD6");
                 break;
         }
-    }
-
-    private static string GetSeekFramesText(PlayerViewModel player)
-    {
-        var frames = player.SeekStepFrames;
-        var fps = Math.Max(player.Fps, 1.0);
-        var seconds = frames / fps;
-        if (frames == 1) return "1 帧";
-        if (seconds >= 1.0) return $"{frames} 帧 ({seconds:F1}s)";
-        return $"{frames} 帧";
     }
 
     // --- 视觉反馈 ---

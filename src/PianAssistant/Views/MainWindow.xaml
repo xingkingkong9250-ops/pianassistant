@@ -388,7 +388,7 @@
                     <!-- W1-R4-10 上一帧 -->
                     <Button Grid.Column="2" Content="◀" Style="{StaticResource IconButton}"
                             Padding="10,6" FontSize="16"
-                            Command="{Binding Player.PreviousFrameCommand}" ToolTip="上一帧 (←)" />
+                            Command="{Binding Player.PreviousFrameCommand}" ToolTip="上一帧 (,)" />
                     <!-- W1-R4-11 播放/暂停（居中，大圆钮） -->
                     <Border Grid.Column="3" Width="44" Height="44" CornerRadius="22"
                             Background="#1A6B8A" Margin="4,0">
@@ -399,7 +399,7 @@
                     <!-- W1-R4-12 下一帧 -->
                     <Button Grid.Column="4" Content="▶" Style="{StaticResource IconButton}"
                             Padding="10,6" FontSize="16"
-                            Command="{Binding Player.NextFrameCommand}" ToolTip="下一帧 (→)" />
+                            Command="{Binding Player.NextFrameCommand}" ToolTip="下一帧 (.)" />
                     <!-- W1-R4-15 提高倍速 -->
                     <Button Grid.Column="5" Content="+" Style="{StaticResource IconButton}"
                             Padding="10,6" FontSize="16" FontWeight="Bold"

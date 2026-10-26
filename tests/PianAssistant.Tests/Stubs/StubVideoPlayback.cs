@@ -14,6 +14,7 @@ public sealed class StubVideoPlayback : IVideoPlayback
     public event EventHandler? Playing;
     public event EventHandler? Paused;
     public event EventHandler? Stopped;
+    public event EventHandler? LengthChanged;
 
     public bool IsPlaying { get; private set; }
     public TimeSpan Position { get; private set; }
@@ -108,6 +109,9 @@ public sealed class StubVideoPlayback : IVideoPlayback
 
     /// <summary>测试辅助：触发 TracksChanged 事件。</summary>
     public void RaiseTracksChanged() => TracksChanged?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>测试辅助：模拟 Media.Duration 就绪，触发 LengthChanged。</summary>
+    public void RaiseLengthChanged() => LengthChanged?.Invoke(this, EventArgs.Empty);
 
     /// <summary>Simulate playback advancing the position.</summary>
     public void SimulatePositionChange(TimeSpan newPos)

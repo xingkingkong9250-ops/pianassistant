@@ -82,11 +82,18 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _playback.Stopped += OnStopped;
         _playback.EndReached += OnEndReached;
         _playback.TracksChanged += OnTracksChanged;
+        // v1.7.7：订阅 LengthChanged —— Media.Duration 只有在媒体解析完成后才被填充，
+        // 仅靠 Playing 时机刷新不可靠（Playing 可能早于 DurationChanged）
+        _playback.LengthChanged += OnLengthChanged;
 
         // Commands.
         PlayPauseCommand = new RelayCommand(() => _playback.TogglePlayPause());
-        NextFrameCommand = new RelayCommand(() => _playback.NextFrame());
-        PreviousFrameCommand = new RelayCommand(PreviousFrame);
+        NextFrameCommand = new RelayCommand(SeekForwardCustom, () => HasMedia);
+        PreviousFrameCommand = new RelayCommand(SeekBackwardCustom, () => HasMedia);
+        SeekBackward3SecondsCommand = new RelayCommand(
+            () => _playback.SeekRelative(TimeSpan.FromSeconds(-3)));
+        SeekForward3SecondsCommand = new RelayCommand(
+            () => _playback.SeekRelative(TimeSpan.FromSeconds(3)));
         SeekBackward1SecondCommand = new RelayCommand(
             () => _playback.SeekRelative(TimeSpan.FromSeconds(-1)));
         SeekForward1SecondCommand = new RelayCommand(
@@ -184,6 +191,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(PositionRatio));
                 OnPropertyChanged(nameof(TimeCodeDisplayString));
+                OnPropertyChanged(nameof(LengthDisplayString)); // v1.7.7：漏了！XAML 绑 LengthDisplayString，这里不通知 UI 永远是 0
+                Services.AppLog.Info($"[PlayerVM] Length setter fired: {value.TotalMilliseconds}ms ({value:mm\\:ss})");
             }
         }
     }
@@ -496,6 +505,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public ICommand PlayPauseCommand { get; }
     public ICommand NextFrameCommand { get; }
     public ICommand PreviousFrameCommand { get; }
+    /// <summary>← 键（v1.7.6）：后退 3 秒。</summary>
+    public ICommand SeekBackward3SecondsCommand { get; }
+    /// <summary>→ 键（v1.7.6）：前进 3 秒。</summary>
+    public ICommand SeekForward3SecondsCommand { get; }
     public ICommand SeekBackward1SecondCommand { get; }
     public ICommand SeekForward1SecondCommand { get; }
     public ICommand SeekBackward10SecondsCommand { get; }
@@ -662,12 +675,6 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
                 SeekPercent(v);
                 break;
         }
-    }
-
-    private void PreviousFrame()
-    {
-        var fps = Math.Max(_playback.Fps, 1.0);
-        _playback.SeekRelative(TimeSpan.FromSeconds(-1.0 / fps));
     }
 
     private void IncreaseRate()
@@ -1003,8 +1010,22 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private void OnPlaying(object? sender, EventArgs e)
     {
         IsPlaying = true;
-        if (_length == TimeSpan.Zero)
-            Length = _playback.Length;
+        // 兜底：Playing 触发时再次确认 Length 已刷新
+        var fresh = _playback.Length;
+        if (fresh > TimeSpan.Zero && fresh != _length)
+            Length = fresh;
+    }
+
+    /// <summary>
+    /// v1.7.7：Media.DurationChanged 事件回调 —— 时长缓存更新时及时同步到 UI。
+    /// 这是总时长唯一可靠的刷新来源（Playing 触发时机可能早于 DurationChanged）。
+    /// </summary>
+    private void OnLengthChanged(object? sender, EventArgs e)
+    {
+        var fresh = _playback.Length;
+        System.Diagnostics.Debug.WriteLine($"[PlayerVM] OnLengthChanged fired, _playback.Length = {fresh.TotalMilliseconds}ms");
+        if (fresh > TimeSpan.Zero)
+            Length = fresh;
     }
 
     private void OnPaused(object? sender, EventArgs e) => IsPlaying = false;
@@ -1036,6 +1057,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         _playback.Stopped -= OnStopped;
         _playback.EndReached -= OnEndReached;
         _playback.TracksChanged -= OnTracksChanged;
+        _playback.LengthChanged -= OnLengthChanged;
     }
 }
 

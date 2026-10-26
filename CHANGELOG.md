@@ -7,6 +7,29 @@
 
 ## [Unreleased]
 
+### v1.7.7 — 回滚 seek 预写缓存导致的位置偏差；CoalesceSeek 阻塞；Length 刷新；焦点恢复；暂停后重放音频卡顿（NO.P，2026-10-26）
+
+- **回滚级 bug 修复：位置偏差**：v1.7.6 给 `SeekToMs` 加了 `Volatile.Write(ref _cachedTimeMs, targetMs)`（预写缓存），本意是让 UI 立刻看到 seek 目标位置，但 VLC seek 是异步的——画面还停在旧帧、缓存已跳到目标值，导致：① 列表缩略图看着对（ffmpeg 真帧抽的），但点击跳转后播放头与画面错位；② 截图时间码存成 phantom 值，后续按时间码导出/再抽帧跟着偏。v1.7.7 **撤掉预写缓存**，`Position` getter 改用 `ResolveSeekBaseMs`：settle 窗口内存在 pending seek 目标时返回目标值（覆盖暂停态 seek → 立刻截图的场景），否则回落 `TimeChanged` 回调的真实值
+- **CoalesceSeek 阻塞控制线程**：v1.7.6 的 seek 合并循环 `WaitOne` 最多阻塞控制线程 120ms——burst 期间如果同时收到 Play/Pause/Volume/Rate 请求，它们要等合并循环退出才能处理，叠加 VLC 解码压力容易崩溃。v1.7.7 加 bailout：`_rateApplyPending || _pauseApplyPending || _volumeApplyPending || _hasPendingAudioTrack || _resetPolicyPending` 任一为真时立即退出合并循环，优先处理
+- **总时长显示一直为零**：`OnPlaying` 只在 `_length == TimeSpan.Zero` 时刷新一次，而 Open 时 demux 没完成 `Duration` 仍为 0，之后 Playing 反复触发（倍速重缓冲）却不再刷，`Length` 永远停在 0。v1.7.7 改为每次 Playing 都检查并重刷（若值 > 0 且与当前不同）
+- **导出/截图后焦点恢复**：`ClipExtracted` / `SegmentExported` / `ScreenshotCaptured` 事件后把 `Keyboard.Focus(VideoView)` 通过 `DispatcherPriority.Background` 调度，防止焦点落在 Button/ContextMenu 上导致空格误触发 Click
+- **暂停后重放音频卡顿/失声**：Playing 事件触发瞬间 aout 还在重建，立即下发 Volume 会被丢弃/部分生效。v1.7.7 把 Playing 里的音量重发改成 DispatcherTimer 延迟 300ms 等 aout 稳定再下发；高速档 Playing 反复触发时重置定时器，保证以最后一次为准
+
+### v1.7.6 — 清除 UI 线程残余阻塞调用；方向键改为 ±3 秒（NO.P，2026-10-25）
+
+- 根因（v1.7.5 之后仍卡死）：v1.7.3/v1.7.4 只把「写」类 LibVLC 调用下沉到控制线程，
+  **「读」类仍留在 UI 线程**。`libvlc_media_player_get_time` 是经 input 线程同步往返
+  的阻塞调用，而 `Position` 属性与 `SeekRelative` 每次都直读它——按一次 `←`/`→`
+  就在 UI 线程等一次 input 线程，大文件高码率解码繁忙（尤其高倍速重缓冲）时直接无响应
+- 修复：位置由 `TimeChanged` 原生回调第一时间写入 `_cachedTimeMs`（`Volatile`），
+  `Position` 改读缓存；`SeekRelative` 的基准位置改用缓存/未到位 seek 目标；
+  `SeekToMs` 立即写入期望位置。UI 线程不再有任何 `get_time` 调用
+- 修复：`seek` 增加合并窗口（burst 场景最多等 120ms，合并长按产生的连续请求，
+  只下发最后一次目标），减轻 input 线程压力；单次点击/拖动落点不受影响
+- 修复：音量读写也下沉控制线程（`set_volume` 经 aout 同步下发），新媒体起播时重新下发
+- 交互：裸 `←`/`→` 由「逐帧」改为 **±3 秒**（参照 VLC）；逐帧迁移到 `,` / `.`
+  （沿用「逐帧步长」设置，默认 5 帧）；`Shift+←/→` 仍为 ±1 秒、`Ctrl+←/→` 仍为 ±10 秒
+
 ### v1.7.5 — 修复切换视频串入上一个视频的笔记/截图（NO.P，2026-10-25）
 
 - 根因：`MediaSessionService.LoadAsync` 的内容哈希计算是全文件 SHA-256（大文件

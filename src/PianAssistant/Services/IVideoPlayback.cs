@@ -13,6 +13,12 @@ public interface IVideoPlayback : IDisposable
     event EventHandler? Playing;
     event EventHandler? Paused;
     event EventHandler? Stopped;
+    /// <summary>
+    /// 总时长就绪 / 变化（v1.7.7）。Media.Duration 只有在媒体解析完成后才被填充，
+    /// Length 属性可能在 Open 后长时间返回 TimeSpan.Zero。订阅这个事件可以在
+    /// 时长从 0 变为实际值时及时刷新 UI。
+    /// </summary>
+    event EventHandler? LengthChanged;
 
     bool IsPlaying { get; }
     TimeSpan Position { get; }

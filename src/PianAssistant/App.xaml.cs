@@ -85,6 +85,13 @@ public partial class App : Application
         };
         _mainWindow.Closing += (_, _) => _shell.Dispose();
         _mainWindow.Show();
+
+        // 调试用：如果命令行参数里有视频文件路径，自动打开它
+        if (e.Args.Length > 0 && File.Exists(e.Args[0]))
+        {
+            AppLog.Info($"[App] 命令行参数打开视频: {e.Args[0]}");
+            _shell.OpenMedia(e.Args[0]);
+        }
     }
 
     private void OpenFileViaDialog()

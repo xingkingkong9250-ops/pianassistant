@@ -343,8 +343,8 @@ public static class HotkeyActionLabels
         new Dictionary<HotkeyAction, string>
         {
             [HotkeyAction.PlayPause] = "播放 / 暂停",
-            [HotkeyAction.NextFrame] = "下一帧",
-            [HotkeyAction.PreviousFrame] = "上一帧",
+            [HotkeyAction.NextFrame] = "逐帧前进",
+            [HotkeyAction.PreviousFrame] = "逐帧后退",
             [HotkeyAction.SeekBackward1Second] = "后退 1 秒",
             [HotkeyAction.SeekForward1Second] = "前进 1 秒",
             [HotkeyAction.SeekBackward10Seconds] = "后退 10 秒",

@@ -77,11 +77,11 @@
                               SelectedItem="{Binding MaxRate, Mode=TwoWay}"
                               ToolTip="倍速上限（2×~32×）。超过约4×后音频会静音，仅视频快放" />
 
-                    <!-- 方向键步长（M6）：帧步进 + 倍速步长 -->
-                    <Label Grid.Row="4" Content="后退/快进步长：" />
+                    <!-- 逐帧步长（v1.7.6：裸方向键改为 ±3 秒，逐帧迁到 , / .） -->
+                    <Label Grid.Row="4" Content="逐帧步长（, / .）：" />
                     <TextBox Grid.Row="4" Grid.Column="1"
                              Text="{Binding SeekStepFrames, Mode=TwoWay}" Margin="0,2"
-                             ToolTip="方向键左右每次移动的帧数（1~600，默认 5）" />
+                             ToolTip="按 , / . 逐帧前后移动的帧数（1~600，默认 5）；方向键 ←/→ 固定 ±3 秒" />
                     <Label Grid.Row="5" Content="倍速步长：" />
                     <TextBox Grid.Row="5" Grid.Column="1"
                              Text="{Binding RateStep, Mode=TwoWay}" Margin="0,2"
