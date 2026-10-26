@@ -273,11 +273,46 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
-    public void LoopMode_ToggleChangesState()
+    public void LoopMode_ToggleChangesState_WhenRangeComplete()
     {
+        _vm.SetInOut(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
         Assert.False(_vm.LoopMode);
         _vm.ToggleLoopCommand.Execute(null);
         Assert.True(_vm.LoopMode);
+        _vm.ToggleLoopCommand.Execute(null);
+        Assert.False(_vm.LoopMode);
+    }
+
+    [Fact]
+    public void LoopMode_ToggleWithoutRange_StaysOff_AndRaisesLoopRangeRequired()
+    {
+        int raised = 0;
+        _vm.LoopRangeRequired += (_, _) => raised++;
+        _vm.ToggleLoopCommand.Execute(null);
+        Assert.False(_vm.LoopMode);
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public void LoopMode_AutoDisables_WhenRangeBecomesIncomplete()
+    {
+        _vm.SetInOut(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
+        _vm.ToggleLoopCommand.Execute(null);
+        Assert.True(_vm.LoopMode);
+        _vm.SetInOut(TimeSpan.FromSeconds(10), null);
+        Assert.False(_vm.LoopMode);
+    }
+
+    [Fact]
+    public void LoopMode_WhenPlaybackReachesOutPoint_SeeksBackToInPoint()
+    {
+        _playback.Open("video.mp4");
+        _vm.SetInOut(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
+        _vm.ToggleLoopCommand.Execute(null);
+        _playback.Play();
+        _playback.Seek(TimeSpan.FromSeconds(20));
+        Assert.Equal(TimeSpan.FromSeconds(10), _playback.Position);
+        Assert.True(_playback.IsPlaying);
     }
 
     [Fact]
@@ -316,13 +351,14 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
-    public void EndReached_WhenLoopMode_SeeksToStartAndPlays()
+    public void EndReached_WhenLoopMode_SeeksToInPointAndPlays()
     {
         _playback.Open("video.mp4");
-        _playback.Seek(TimeSpan.FromSeconds(100));
-        _vm.ToggleLoopCommand.Execute(null); // enable loop
+        _vm.SetInOut(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
+        _vm.ToggleLoopCommand.Execute(null); // 开启时对齐到入点
         _playback.SimulateEndReached();
         Assert.True(_playback.IsPlaying); // auto-restarted
+        Assert.Equal(TimeSpan.FromSeconds(10), _playback.Position);
     }
 
     // --- 裁切点批量重设（M5 导入/批量指令） ---

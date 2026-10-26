@@ -365,7 +365,7 @@ public static class HotkeyActionLabels
             [HotkeyAction.MarkSelectedSegment] = "标记 / 取消标记当前片段",
             [HotkeyAction.ToggleFullscreen] = "全屏切换",
             [HotkeyAction.ExitFullscreen] = "退出全屏",
-            [HotkeyAction.TogglePlayPauseLoop] = "循环播放开关",
+            [HotkeyAction.TogglePlayPauseLoop] = "片段循环开关",
             [HotkeyAction.SeekPercent10] = "跳到 10% 位置",
             [HotkeyAction.SeekPercent20] = "跳到 20% 位置",
             [HotkeyAction.SeekPercent30] = "跳到 30% 位置",

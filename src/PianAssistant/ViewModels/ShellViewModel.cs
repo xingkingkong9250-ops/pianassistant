@@ -264,6 +264,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         Player.FullscreenExitRequested += (_, _) => IsFullscreen = false;
         // 非循环模式播放结束 → 自动推进播放列表
         Player.EndReached += OnPlayerEnded;
+        // 片段循环缺少入/出点 → 提示用户（v1.9.0）
+        Player.LoopRangeRequired += (_, _) => ToastRequested?.Invoke(this,
+            "请先按 I / O 设置入点与出点，再开启片段循环");
 
         // 批量文本操作（M5）：裁切点经回调分发到播放器；标记指令已不支持（文字笔记随统一时间线移除）。
         Batch = new BatchPreviewViewModel(

@@ -47,6 +47,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     // PR 风格裁切点
     private TimeSpan? _selectedSegmentStart;
     private TimeSpan? _selectedSegmentEnd;
+    // 片段循环（v1.9.0）：越过出点后拉回入点的防抖截止时间
+    private DateTime _loopSeekGuardUntilUtc;
 
     private static readonly double[] RateSteps =
         { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 32.0 };
@@ -119,8 +121,7 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             () => FullscreenToggleRequested?.Invoke(this, EventArgs.Empty));
         ExitFullscreenCommand = new RelayCommand(
             () => FullscreenExitRequested?.Invoke(this, EventArgs.Empty));
-        ToggleLoopCommand = new RelayCommand(
-            () => LoopMode = !LoopMode);
+        ToggleLoopCommand = new RelayCommand(ToggleLoop);
         ToggleMuteCommand = new RelayCommand(() => IsMuted = !IsMuted);
         VolumeUpCommand = new RelayCommand(() => Volume = Math.Min(100, Volume + 10));
         VolumeDownCommand = new RelayCommand(() => Volume = Math.Max(0, Volume - 10));
@@ -282,6 +283,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(HasMarkedIn));
                 OnPropertyChanged(nameof(HasCompleteClip));
                 ExtractClipCommand.RaiseCanExecuteChanged();
+                // 入出点不再构成完整区间时，片段循环自动关闭（v1.9.0）
+                if (_loopMode && !HasCompleteClip) LoopMode = false;
             }
         }
     }
@@ -296,6 +299,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
                 OnPropertyChanged(nameof(HasMarkedOut));
                 OnPropertyChanged(nameof(HasCompleteClip));
                 ExtractClipCommand.RaiseCanExecuteChanged();
+                // 入出点不再构成完整区间时，片段循环自动关闭（v1.9.0）
+                if (_loopMode && !HasCompleteClip) LoopMode = false;
             }
         }
     }
@@ -307,10 +312,20 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public bool HasCompleteClip =>
         _inPoint is { } inP && _outPoint is { } outP && outP > inP;
 
+    /// <summary>
+    /// 片段循环（v1.9.0）：开启后播放头在入点/出点之间循环，需先设置完整区间。
+    /// 开启瞬间若播放头在区间外，直接对齐到入点。
+    /// </summary>
     public bool LoopMode
     {
         get => _loopMode;
-        set => SetProperty(ref _loopMode, value);
+        set
+        {
+            if (!SetProperty(ref _loopMode, value) || !value) return;
+            if (HasCompleteClip &&
+                (_position < _inPoint!.Value || _position >= _outPoint!.Value))
+                _playback.Seek(_inPoint!.Value);
+        }
     }
 
     public int Volume
@@ -558,6 +573,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public event EventHandler<string>? ErrorOccurred;
     public event EventHandler? FullscreenToggleRequested;
     public event EventHandler? FullscreenExitRequested;
+    /// <summary>未设置完整入/出点时请求开启片段循环 → 由 Shell 弹提示（v1.9.0）。</summary>
+    public event EventHandler? LoopRangeRequired;
     /// <summary>
     /// 非循环模式下播放结束时触发，由 Shell 接管以推进播放列表。
     /// </summary>
@@ -752,6 +769,19 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     {
         InPoint = null;
         OutPoint = null;
+    }
+
+    /// <summary>
+    /// 切换片段循环（L）：没有完整入/出点时拒绝开启，并请求 Shell 提示。
+    /// </summary>
+    private void ToggleLoop()
+    {
+        if (!_loopMode && !HasCompleteClip)
+        {
+            LoopRangeRequired?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        LoopMode = !_loopMode;
     }
 
     private async Task CaptureScreenshotAsync()
@@ -1005,6 +1035,17 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         {
             _isUpdatingFromPlayback = false;
         }
+
+        // 片段循环（v1.9.0）：越过出点 → 拉回入点。
+        // 只在播放中生效，避免暂停状态拖动播放头时被强行拉回；
+        // 300ms 防抖避免 seek 未落地期间重复触发。入点之前的 seek 不拦截，
+        // 避免 seek 落点略早于入点时反复触发。
+        if (_loopMode && IsPlaying && HasCompleteClip &&
+            DateTime.UtcNow >= _loopSeekGuardUntilUtc && e >= _outPoint!.Value)
+        {
+            _loopSeekGuardUntilUtc = DateTime.UtcNow.AddMilliseconds(300);
+            _playback.Seek(_inPoint!.Value);
+        }
     }
 
     private void OnPlaying(object? sender, EventArgs e)
@@ -1036,8 +1077,8 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         IsPlaying = false;
         if (_loopMode)
         {
-            // 循环模式：回到开头继续播放
-            _playback.Seek(TimeSpan.Zero);
+            // 片段循环（v1.9.0）：回到入点继续；无完整区间时兜底回开头
+            _playback.Seek(HasCompleteClip ? _inPoint!.Value : TimeSpan.Zero);
             _playback.Play();
         }
         else
