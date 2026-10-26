@@ -574,6 +574,12 @@ public partial class MainWindow : Window
     // 支持的字幕扩展名清单统一由 SubtitleTrackMatcher 维护（v1.5.0 起与自动匹配共用）
     private static bool IsSubtitleFile(string path) => SubtitleTrackMatcher.IsSubtitleFile(path);
 
+    // 与 App.xaml.cs 打开对话框同一套视频扩展名（v1.12.1）
+    private static bool IsVideoFile(string path) =>
+        System.IO.Path.GetExtension(path).ToLowerInvariant() is
+            ".mp4" or ".mkv" or ".avi" or ".mov" or ".flv" or
+            ".wmv" or ".webm" or ".ts" or ".m2ts" or ".mpg";
+
     /// <summary>
     /// 代理媒体建议（v1.11.0）：素材超过 1080P 时弹窗推荐转换代理，人工确认后才开始后台生成。
     /// 「否」= 直接用源文件播放（不再打扰本次）；取消转化不影响后续任何功能。
@@ -597,7 +603,8 @@ public partial class MainWindow : Window
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             var files = (string[])e.Data.GetData(DataFormats.FileDrop)!;
-            e.Effects = Array.Exists(files, IsSubtitleFile)
+            // 视频与字幕均可接受；其它文件拒绝（v1.12.1：原先仅字幕放行，视频拖入被误拒）
+            e.Effects = Array.Exists(files, f => IsSubtitleFile(f) || IsVideoFile(f))
                 ? DragDropEffects.Copy
                 : DragDropEffects.None;
         }
@@ -622,7 +629,7 @@ public partial class MainWindow : Window
                 {
                     if (IsSubtitleFile(f))
                         player.LoadSubtitle(f);
-                    else
+                    else if (IsVideoFile(f))
                         videos.Add(f);
                 }
                 // 视频批量加入播放列表并播放第一个（多选拖放同 Windows 选择逻辑）
