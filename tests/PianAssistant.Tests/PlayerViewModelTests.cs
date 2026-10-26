@@ -264,6 +264,23 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
+    public void PlayPauseIcon_ShowsPlayWhenPaused_AndPauseWhenPlaying()
+    {
+        // v1.13.0 双态图标：暂停显示 ▶（提示点击可播放），播放中显示 ⏸
+        _playback.Open("video.mp4");
+        Assert.False(_vm.IsPlaying);
+        Assert.Equal("▶", _vm.PlayPauseIcon);
+
+        _playback.Play();
+        Assert.True(_vm.IsPlaying);
+        Assert.Equal("⏸", _vm.PlayPauseIcon);
+
+        _playback.Pause();
+        Assert.False(_vm.IsPlaying);
+        Assert.Equal("▶", _vm.PlayPauseIcon);
+    }
+
+    [Fact]
     public void PositionRatio_ComputesFromPositionAndLength()
     {
         _playback.Length = TimeSpan.FromSeconds(100);

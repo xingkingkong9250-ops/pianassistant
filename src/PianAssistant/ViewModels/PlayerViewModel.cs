@@ -214,8 +214,15 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public bool IsPlaying
     {
         get => _isPlaying;
-        private set => SetProperty(ref _isPlaying, value);
+        private set
+        {
+            if (SetProperty(ref _isPlaying, value))
+                OnPropertyChanged(nameof(PlayPauseIcon));
+        }
     }
+
+    /// <summary>播放/暂停按钮图标（v1.13.0）：暂停时显示 ▶、播放中显示 ⏸（常见双态切换）。</summary>
+    public string PlayPauseIcon => _isPlaying ? "⏸" : "▶";
 
     public double Rate
     {

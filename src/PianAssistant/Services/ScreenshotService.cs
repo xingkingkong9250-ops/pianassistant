@@ -76,6 +76,9 @@ public sealed class ScreenshotService
         // 按组织选项解析本次输出目录（日期/项目子目录），确保存在
         var outputDir = OutputDirectoryResolver.Resolve(
             _outputDirectory, _organizeByDate, _projectSubfolder, DateTime.Now);
+        // v1.13.0：截图按视频独立子文件夹存储（{片名}_{fastkey短哈希16}），
+        // 避免不同视频截图混放同目录，杜绝切换素材时读取/清理互相串扰
+        outputDir = Path.Combine(outputDir, PerSourceSubfolder(source));
         Directory.CreateDirectory(outputDir);
 
         var stem = Path.GetFileNameWithoutExtension(source);
@@ -91,6 +94,19 @@ public sealed class ScreenshotService
         _ffmpeg.CaptureSingleFrame(source, position, outputPath, scaleFilter);
 
         return new ScreenshotEntry(source, outputPath, position, DateTime.Now, label);
+    }
+
+    /// <summary>按源视频生成独立子文件夹名：{片名}_{fastkey 短哈希16}（v1.13.0）。</summary>
+    private static string PerSourceSubfolder(string sourcePath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(sourcePath);
+        // 片名可能含目录非法字符（理论极少），统一过一遍清洗
+        var safeStem = OutputDirectoryResolver.Sanitize(stem) ?? "video";
+        var key = ContentFingerprint.ComputeFastKey(sourcePath) ?? sourcePath;
+        var bytes = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(key));
+        var hash16 = Convert.ToHexString(bytes)[..16].ToLowerInvariant();
+        return $"{safeStem}_{hash16}";
     }
 
     private static string MakeUnique(string path)

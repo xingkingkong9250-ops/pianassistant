@@ -823,6 +823,29 @@ public partial class MainWindow : Window
             ZoomLabel.Text = $"{e:F1}×";
     }
 
+    /// <summary>v1.13.0：点击缩放指示区 → 恢复默认 1.0×。</summary>
+    private void OnZoomLabelClick(object sender, MouseButtonEventArgs e)
+    {
+        var tc = FindTimelineControl(TimelineScroll);
+        if (tc is not null && Math.Abs(tc.Scale - 1.0) > 0.001)
+        {
+            tc.Scale = 1.0;
+            TimelineScroll.ScrollToHorizontalOffset(0);
+        }
+        e.Handled = true;
+    }
+
+    /// <summary>v1.13.0：鼠标悬停在时间轴下方滚动条上时，滚轮直接水平滚动（不触发缩放）。</summary>
+    private void OnTimelineScrollPreviewWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.OriginalSource is System.Windows.Controls.Primitives.ScrollBar)
+        {
+            TimelineScroll.ScrollToHorizontalOffset(TimelineScroll.HorizontalOffset - e.Delta);
+            e.Handled = true;
+        }
+        // 悬停在时间轴本体上时不处理：缩放由 TimelineControl.OnMouseWheel 自己接管
+    }
+
     private void OnTimelineScrollSizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (sender is ScrollViewer sv)

@@ -278,6 +278,26 @@ public sealed class TimelineControl : Control
         if (!double.IsFinite(width) || width <= 0) return;
         _viewportWidth = width;
         Width = width * Scale;
+        HookParentScrollViewer();
+    }
+
+    // v1.13.0：刻度标签按视口可见区段绘制，水平滚动时必须重绘
+    private ScrollViewer? _hookedScrollViewer;
+
+    private void HookParentScrollViewer()
+    {
+        var sv = FindAncestorScrollViewer();
+        if (sv is null || ReferenceEquals(sv, _hookedScrollViewer)) return;
+        if (_hookedScrollViewer is not null)
+            _hookedScrollViewer.ScrollChanged -= OnParentScrollChanged;
+        sv.ScrollChanged += OnParentScrollChanged;
+        _hookedScrollViewer = sv;
+    }
+
+    private void OnParentScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        if (e.HorizontalChange != 0)
+            InvalidateTimelineVisual();
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -350,42 +370,42 @@ public sealed class TimelineControl : Control
         }
 
         // --- 轴1：时间滑块轴（刻度 + 时间标签，底部对齐刻度线） ---
-        // 根据 Scale 决定刻度间隔
+        // v1.13.0：只绘制视口可见区段，间隔按像素密度自适应取「整齐值」，
+        // 标签带偏移钳制（左缘不溢出、右缘不超出），不再挤成一团。
         var pixelsPerSecond = w / len.TotalSeconds;
-        double labelIntervalSeconds;
-        if (pixelsPerSecond > 200) labelIntervalSeconds = 1;
-        else if (pixelsPerSecond > 100) labelIntervalSeconds = 2;
-        else if (pixelsPerSecond > 50) labelIntervalSeconds = 5;
-        else if (pixelsPerSecond > 20) labelIntervalSeconds = 10;
-        else if (pixelsPerSecond > 10) labelIntervalSeconds = 30;
-        else if (pixelsPerSecond > 5) labelIntervalSeconds = 60;
-        else labelIntervalSeconds = 120;
-
-        var totalSeconds = len.TotalSeconds;
-        for (double s = 0; s <= totalSeconds; s += labelIntervalSeconds)
+        double visibleStartSec = 0, visibleEndSec = len.TotalSeconds;
+        if (FindAncestorScrollViewer() is { } host && _viewportWidth > 0)
         {
-            var x = s / totalSeconds * w;
-            // 主刻度线（紧贴轴1底边，避免压到时间标签）
+            visibleStartSec = Math.Max(0, host.HorizontalOffset / w) * len.TotalSeconds;
+            visibleEndSec = Math.Min(1, (host.HorizontalOffset + _viewportWidth) / w) * len.TotalSeconds;
+        }
+
+        var labelStep = PickRulerInterval(90.0 / pixelsPerSecond);   // 主刻度+标签 ≥90px
+        var minorStep = PickRulerInterval(9.0 / pixelsPerSecond);    // 小刻度 ≥9px
+
+        var minorFirst = Math.Floor(visibleStartSec / minorStep) * minorStep;
+        for (double s = minorFirst; s <= visibleEndSec + 1e-9; s += minorStep)
+        {
+            if (s < 0 || s > len.TotalSeconds) continue;
+            if (Math.Abs(s / labelStep - Math.Round(s / labelStep)) < 1e-6) continue; // 主刻度单独画
+            var x = s / len.TotalSeconds * w;
+            dc.DrawLine(tickPen, new Point(x, RulerAxisHeight - 4), new Point(x, RulerAxisHeight));
+        }
+
+        var labelFirst = Math.Floor(visibleStartSec / labelStep) * labelStep;
+        for (double s = labelFirst; s <= visibleEndSec + 1e-9; s += labelStep)
+        {
+            if (s < 0 || s > len.TotalSeconds) continue;
+            var x = s / len.TotalSeconds * w;
             dc.DrawLine(majorTickPen, new Point(x, RulerAxisHeight - 7), new Point(x, RulerAxisHeight));
-            // 时间标签
             var ts = TimeSpan.FromSeconds(s);
-            var label = ts.TotalHours >= 1
-                ? ts.ToString(@"h\:mm\:ss")
-                : ts.ToString(@"mm\:ss");
+            var label = FormatRulerLabel(ts, labelStep);
             var ft = new FormattedText(label, CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, typeface, 10, labelBrush,
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            dc.DrawText(ft, new Point(x + 2, 0));
-        }
-        // 小刻度（每秒一个，仅缩放足够时）
-        if (pixelsPerSecond > 20)
-        {
-            for (double s = 0; s <= totalSeconds; s += 1)
-            {
-                if (s % labelIntervalSeconds == 0) continue;
-                var x = s / totalSeconds * w;
-                dc.DrawLine(tickPen, new Point(x, RulerAxisHeight - 4), new Point(x, RulerAxisHeight));
-            }
+            // 钳制：标签不越出时间轴左右边界（避免 0 点溢出左侧、末尾被裁切）
+            var tx = Math.Clamp(x + 2, 0, Math.Max(0, w - ft.Width - 1));
+            dc.DrawText(ft, new Point(tx, 0));
         }
 
         // --- 轴2：裁切片段轴 ---
@@ -505,6 +525,32 @@ public sealed class TimelineControl : Control
         }
         phTri.Freeze();
         dc.DrawGeometry(new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8)), null, phTri);
+    }
+
+    // 整齐刻度阶梯（秒）：1/2/5/10/15/30 → 1/2/5/10/15/30 分 → 1/2/3/6/12 小时
+    private static readonly double[] RulerStepsSeconds =
+    {
+        1, 2, 5, 10, 15, 30,
+        60, 120, 300, 600, 900, 1800,
+        3600, 7200, 10800, 21600, 43200,
+    };
+
+    /// <summary>从整齐阶梯中选「不小于 minSeconds」的最小间隔（v1.13.0 自适应刻度）。</summary>
+    internal static double PickRulerInterval(double minSeconds)
+    {
+        foreach (var step in RulerStepsSeconds)
+        {
+            if (step >= minSeconds) return step;
+        }
+        return RulerStepsSeconds[^1];
+    }
+
+    /// <summary>刻度标签格式化：短轴用 mm:ss，跨小时或间隔≥1小时时用 h:mm:ss（v1.13.0）。</summary>
+    internal static string FormatRulerLabel(TimeSpan ts, double stepSeconds)
+    {
+        if (stepSeconds >= 3600 || ts.TotalHours >= 1)
+            return ts.ToString(@"h\:mm\:ss");
+        return ts.ToString(@"mm\:ss");
     }
 
     private static void DrawAxisSeparators(
@@ -633,11 +679,49 @@ public sealed class TimelineControl : Control
         return false;
     }
 
+    /// <summary>向上查找承载本控件的 ScrollViewer（直接父级可能是包装 Grid）。</summary>
+    private ScrollViewer? FindAncestorScrollViewer()
+    {
+        DependencyObject? current = Parent;
+        while (current is not null)
+        {
+            if (current is ScrollViewer sv) return sv;
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return null;
+    }
+
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
-        // 鼠标滚轮缩放
+        // 鼠标滚轮缩放（v1.13.0：以鼠标所指时间点为锚，两端拉长/缩短）
         var factor = e.Delta > 0 ? 1.2 : 1.0 / 1.2;
-        Scale *= factor;
+        var oldScale = Scale;
+        var newScale = Math.Clamp(oldScale * factor, 0.5, 50.0);
+        if (Math.Abs(newScale - oldScale) < 1e-9)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var contentX = e.GetPosition(this).X; // 鼠标所指内容坐标（= 时间点）
+        double? pendingOffset = null;
+        if (FindAncestorScrollViewer() is { } sv)
+        {
+            var viewX = contentX - sv.HorizontalOffset; // 视口内相对位置
+            pendingOffset = contentX * (newScale / oldScale) - viewX;
+        }
+
+        Scale = newScale; // 会同步更新 Width
+
+        // 等布局更新 Extent 后再校正滚动位置，保持鼠标下的时间点不动
+        if (pendingOffset is { } target)
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (FindAncestorScrollViewer() is { } host)
+                    host.ScrollToHorizontalOffset(Math.Max(0, target));
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+        }
         e.Handled = true;
     }
 

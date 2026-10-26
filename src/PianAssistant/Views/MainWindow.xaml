@@ -204,13 +204,16 @@
                   SnapsToDevicePixels="True"
                   AllowDrop="True" Drop="OnVideoDrop" DragOver="OnVideoDragOver">
                 <!-- 白边（上下信箱带浅灰 #F0F0F0）由 Win32 层的 VLC 窗口绘制，
-                     已由 VideoSurfaceBackground 接管，见 MainWindow.xaml.cs OnLoaded -->
+                     已由 VideoSurfaceBackground 接管，见 MainWindow.xaml.cs OnLoaded；
+                     v1.13.0：VLC HWND 因 airspace 恒压在 WPF 元素之上，启动未加载媒体时
+                     其 Static 宿主默认浅灰背景会露白 —— 无媒体时直接隐藏 VideoView -->
                 <vlc:VideoView x:Name="VideoView"
                                Background="#FF000000"
                                HorizontalAlignment="Stretch"
                                VerticalAlignment="Stretch"
                                Margin="0"
-                               SnapsToDevicePixels="True" />
+                               SnapsToDevicePixels="True"
+                               Visibility="{Binding Player.HasMedia, Converter={x:Static views:BoolToVisibilityConverter.Instance}}" />
 
                 <!-- 方向键视觉反馈叠加层 -->
                 <Border x:Name="ArrowFeedbackOverlay" HorizontalAlignment="Center"
@@ -294,20 +297,23 @@
         <Border x:Name="TimelineBorder" Grid.Row="2" Background="#1A1A1A"
                 BorderBrush="#2A2A2A" BorderThickness="0,1,0,1">
             <DockPanel>
-                <!-- 缩放指示 -->
+                <!-- 缩放指示（v1.13.0：点击恢复 1.0×） -->
                 <Border DockPanel.Dock="Right" Background="#2A2A2A" Padding="8,0" Margin="4,0,0,0"
-                        VerticalAlignment="Stretch">
+                        VerticalAlignment="Stretch"
+                        MouseLeftButtonUp="OnZoomLabelClick" Cursor="Hand"
+                        ToolTip="点击恢复默认缩放 1.0×">
                     <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
                         <TextBlock Text="缩放" Foreground="#888888" FontSize="11" VerticalAlignment="Center" />
                         <TextBlock x:Name="ZoomLabel" Text="1.0×" Foreground="#CCCCCC" FontSize="11"
                                    FontFamily="Consolas" VerticalAlignment="Center" Margin="4,0,0,0" />
                     </StackPanel>
                 </Border>
-                <!-- 可滚动时间轴 -->
+                <!-- 可滚动时间轴（v1.13.0：悬停下方滑块时滚轮直接滚动） -->
                 <ScrollViewer HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Disabled"
                               Background="#1A1A1A"
                               SizeChanged="OnTimelineScrollSizeChanged"
+                              PreviewMouseWheel="OnTimelineScrollPreviewWheel"
                               x:Name="TimelineScroll">
                     <ctrl:TimelineControl
                         Height="56"
@@ -379,18 +385,17 @@
                             Padding="6,4" FontSize="11" Margin="2,0,0,0"
                             Command="{Binding TogglePlaybackSourceCommand}"
                             ToolTip="播放源切换：源文件 ⇄ 代理（超 1080P 素材建议用代理拉片）" />
-                    <!-- W1-R4-18 片段循环（v1.9.0）：在入点/出点之间循环；需先用 I/O 设置区间 -->
-                    <Button Content="🔁" Style="{StaticResource LoopButton}" Padding="6,4" FontSize="14"
-                            Margin="2,0,0,0"
-                            Command="{Binding Player.ToggleLoopCommand}"
-                            ToolTip="片段循环 (L)：在入点/出点之间循环" />
                     <!-- W1-R4-08 全屏 -->
                     <Button Content="⛶" Style="{StaticResource IconButton}" Padding="6,4" FontSize="18"
                             Command="{Binding Player.ToggleFullscreenCommand}" ToolTip="全屏 (F)" />
                 </StackPanel>
 
-                <!-- 右侧：从 R1 移入的功能按钮（截图 / 截取片段 / 撤销裁切 / 清空裁切） -->
+                <!-- 右侧：从 R1 移入的功能按钮（片段循环 / 截图 / 截取片段 / 撤销裁切 / 清空裁切） -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- W1-R4-18 片段循环（v1.9.0 新增；v1.13.0 移到截图按钮前，更显眼）：在入点/出点之间循环；需先用 I/O 设置区间 -->
+                    <Button Content="🔁" Style="{StaticResource LoopButton}" Padding="6,4" FontSize="14"
+                            Command="{Binding Player.ToggleLoopCommand}"
+                            ToolTip="片段循环 (L)：在入点/出点之间循环" />
                     <!-- W1-R1-05 截图 -->
                     <Button Content="📷" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
                             Command="{Binding Player.CaptureScreenshotCommand}" ToolTip="截图 (S)" />
@@ -431,10 +436,11 @@
                     <Button Grid.Column="2" Content="◀" Style="{StaticResource IconButton}"
                             Padding="10,6" FontSize="16"
                             Command="{Binding Player.PreviousFrameCommand}" ToolTip="上一帧 (,)" />
-                    <!-- W1-R4-11 播放/暂停（居中，大圆钮） -->
+                    <!-- W1-R4-11 播放/暂停（居中，大圆钮；v1.13.0 双态图标：暂停显示 ▶、播放中显示 ⏸） -->
                     <Border Grid.Column="3" Width="44" Height="44" CornerRadius="22"
                             Background="#1A6B8A" Margin="4,0">
-                        <Button Content="⏯" Style="{StaticResource AccentButton}" Padding="0" FontSize="20"
+                        <Button Content="{Binding Player.PlayPauseIcon}" Style="{StaticResource AccentButton}"
+                                Padding="0" FontSize="20"
                                 Command="{Binding Player.PlayPauseCommand}" ToolTip="播放/暂停 (Space)"
                                 Width="44" Height="44" />
                     </Border>
