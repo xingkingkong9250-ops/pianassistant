@@ -87,13 +87,18 @@ internal static class VideoSurfaceBackground
     public static void ApplyWithRetry(Window owner, FrameworkElement videoView)
     {
         Apply(owner, videoView);
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(800) };
-        timer.Tick += (_, _) =>
+        // VLC 的 vout 窗口创建时机不稳定（常在 Playing 事件之后数百毫秒），
+        // 单次 Apply 容易扑空 → 分三档延迟补接管（v1.14.0 由单档 800ms 加强）
+        foreach (var delay in new[] { 250, 800, 2000 })
         {
-            timer.Stop();
-            Apply(owner, videoView);
-        };
-        timer.Start();
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(delay) };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                Apply(owner, videoView);
+            };
+            timer.Start();
+        }
     }
 
     private static int _expectedWidth;
@@ -109,9 +114,13 @@ internal static class VideoSurfaceBackground
         var isVlcMain = cls.StartsWith("VLC video main", StringComparison.Ordinal);
         if (!isSurfaceHost && !isVlcMain) return true;
 
-        if (!GetClientRect(hWnd, out var rc)) return true;
-        // 只处理覆盖整个视频区的窗口，避免误伤其它 Static 控件
-        if (Math.Abs(rc.Right - _expectedWidth) > 3 || Math.Abs(rc.Bottom - _expectedHeight) > 3) return true;
+        // VLC 自建视频窗口进程内只有播放器会创建，一律接管；
+        // Static 可能是其它控件宿主，需尺寸匹配确认是视频区（v1.14.0 放宽 VLC 类尺寸校验）
+        if (isSurfaceHost)
+        {
+            if (!GetClientRect(hWnd, out var rc)) return true;
+            if (Math.Abs(rc.Right - _expectedWidth) > 3 || Math.Abs(rc.Bottom - _expectedHeight) > 3) return true;
+        }
 
         ApplyToWindow(hWnd, cls);
         return true;

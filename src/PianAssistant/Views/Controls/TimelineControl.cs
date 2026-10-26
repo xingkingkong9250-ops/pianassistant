@@ -26,22 +26,23 @@ public sealed class MarkerDragEventArgs : EventArgs
 }
 
 /// <summary>
-/// 时间轴控件：可缩放、PR 风格播放头（白色竖线+顶部三角）、I/O 入出点、选中段。
+/// 时间轴控件：可缩放、播放头（白色竖线+上下三角沙漏形）、I/O 入出点、选中段。
 /// 鼠标滚轮缩放，点击/拖动 seek，释放时触发段选中。
 /// v1.7.0：裁切点/截图标记支持选中拖拽修改（虚影 + 实时 seek 预览，松手提交）。
 /// v1.8.0：拆为三条并排轴——时间滑块轴（刻度/播放头/seek）、裁切片段轴（裁切点/
-/// 入出点/选中段/已标记片段）、截图标记轴（截图色块）；各轴命中互不干扰。
+/// 入出点/选中段/已标记片段）、截图标记轴（水滴标记）；各轴命中互不干扰。
+/// v1.14.0：整体缩窄（56→46），播放头改上下三角沙漏形，截图标记改水滴形。
 /// </summary>
 public sealed class TimelineControl : Control
 {
-    /// <summary>轴1 时间滑块轴高度：刻度、时间标签、播放头三角。</summary>
-    public const double RulerAxisHeight = 20;
+    /// <summary>轴1 时间滑块轴高度：刻度、时间标签、播放头顶三角。</summary>
+    public const double RulerAxisHeight = 18;
 
     /// <summary>轴2 裁切片段轴高度：裁切点、入出点、选中段、已标记片段。</summary>
-    public const double ClipAxisHeight = 18;
+    public const double ClipAxisHeight = 14;
 
-    /// <summary>轴3 截图标记轴高度：截图色块。</summary>
-    public const double MarkerAxisHeight = 18;
+    /// <summary>轴3 截图标记轴高度：水滴标记。</summary>
+    public const double MarkerAxisHeight = 14;
 
     /// <summary>三轴总高度。</summary>
     public const double TotalHeight = RulerAxisHeight + ClipAxisHeight + MarkerAxisHeight;
@@ -389,7 +390,7 @@ public sealed class TimelineControl : Control
             if (s < 0 || s > len.TotalSeconds) continue;
             if (Math.Abs(s / labelStep - Math.Round(s / labelStep)) < 1e-6) continue; // 主刻度单独画
             var x = s / len.TotalSeconds * w;
-            dc.DrawLine(tickPen, new Point(x, RulerAxisHeight - 4), new Point(x, RulerAxisHeight));
+            dc.DrawLine(tickPen, new Point(x, RulerAxisHeight - 3.5), new Point(x, RulerAxisHeight));
         }
 
         var labelFirst = Math.Floor(visibleStartSec / labelStep) * labelStep;
@@ -397,7 +398,7 @@ public sealed class TimelineControl : Control
         {
             if (s < 0 || s > len.TotalSeconds) continue;
             var x = s / len.TotalSeconds * w;
-            dc.DrawLine(majorTickPen, new Point(x, RulerAxisHeight - 7), new Point(x, RulerAxisHeight));
+            dc.DrawLine(majorTickPen, new Point(x, RulerAxisHeight - 6), new Point(x, RulerAxisHeight));
             var ts = TimeSpan.FromSeconds(s);
             var label = FormatRulerLabel(ts, labelStep);
             var ft = new FormattedText(label, CultureInfo.InvariantCulture,
@@ -447,7 +448,7 @@ public sealed class TimelineControl : Control
                 dc.DrawLine(inOutPen, new Point(outX, clipTop), new Point(outX, clipBottom));
         }
 
-        // 裁切点（红色竖线 + 轴2 顶部三角）
+        // 裁切点（v1.14.0 旗标：红色竖线旗杆 + 轴2 顶部小三角旗面）
         if (CutPoints is not null)
         {
             foreach (var cp in CutPoints)
@@ -457,24 +458,23 @@ public sealed class TimelineControl : Control
                 var tri = new StreamGeometry();
                 using (var ctx = tri.Open())
                 {
-                    ctx.BeginFigure(new Point(x - 4, clipTop), true, true);
-                    ctx.LineTo(new Point(x + 4, clipTop), true, false);
-                    ctx.LineTo(new Point(x, clipTop + 8), true, false);
+                    ctx.BeginFigure(new Point(x - 3.5, clipTop), true, true);
+                    ctx.LineTo(new Point(x + 3.5, clipTop), true, false);
+                    ctx.LineTo(new Point(x, clipTop + 6), true, false);
                 }
                 tri.Freeze();
                 dc.DrawGeometry(cutCapBrush, null, tri);
             }
         }
 
-        // --- 轴3：截图标记轴（截图色块：统一 8×8 圆角小方块，垂直居中） ---
+        // --- 轴3：截图标记轴（v1.14.0 水滴标记：圆头 + 下尖角，垂直居中） ---
         if (Markers is not null)
         {
-            var markerY = markerTop + (markerHeight - 8) / 2;
+            var cy = markerTop + markerHeight / 2;
             foreach (var marker in Markers)
             {
                 var x = marker.Position.TotalMilliseconds / lenMs * w;
-                dc.DrawRoundedRectangle(GetMarkerBrush(marker.ColorHex), null,
-                    new Rect(x - 4, markerY, 8, 8), 2, 2);
+                dc.DrawGeometry(GetMarkerBrush(marker.ColorHex), null, BuildDropGeometry(x, cy));
             }
         }
 
@@ -492,8 +492,8 @@ public sealed class TimelineControl : Control
             }
             else
             {
-                dc.DrawRoundedRectangle(GetMarkerBrush("#4EC9B0"), null,
-                    new Rect(gx - 5, markerTop + 4, 10, 10), 2, 2);
+                dc.DrawGeometry(GetMarkerBrush("#4EC9B0"), null,
+                    BuildDropGeometry(gx, markerTop + MarkerAxisHeight / 2 + 1));
                 bubbleTop = markerTop + 2;
             }
             // 时间码气泡（半透明黑底白字，跟随虚影）
@@ -513,18 +513,45 @@ public sealed class TimelineControl : Control
         // 轴分隔线（压在内容之上，保证三条轴界限始终可辨）
         DrawAxisSeparators(dc, lanePen, w, clipTop, clipBottom);
 
-        // --- 播放头（贯穿三轴的白色竖线 + 轴1 顶部三角，PR 风格） ---
+        // --- 播放头（v1.14.0 沙漏形：白色竖线贯穿三轴 + 顶部下三角 + 底部上三角） ---
         var phX = PositionRatio * w;
         dc.DrawLine(playheadPen, new Point(phX, 0), new Point(phX, h));
-        var phTri = new StreamGeometry();
-        using (var ctx = phTri.Open())
+        var phBrush = new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8));
+        var phTop = new StreamGeometry();
+        using (var ctx = phTop.Open())
         {
-            ctx.BeginFigure(new Point(phX - 6, 0), true, true);
-            ctx.LineTo(new Point(phX + 6, 0), true, false);
-            ctx.LineTo(new Point(phX, 10), true, false);
+            ctx.BeginFigure(new Point(phX - 5, 0), true, true);
+            ctx.LineTo(new Point(phX + 5, 0), true, false);
+            ctx.LineTo(new Point(phX, 7), true, false);
         }
-        phTri.Freeze();
-        dc.DrawGeometry(new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8)), null, phTri);
+        phTop.Freeze();
+        dc.DrawGeometry(phBrush, null, phTop);
+        var phBottom = new StreamGeometry();
+        using (var ctx = phBottom.Open())
+        {
+            ctx.BeginFigure(new Point(phX - 5, h), true, true);
+            ctx.LineTo(new Point(phX + 5, h), true, false);
+            ctx.LineTo(new Point(phX, h - 7), true, false);
+        }
+        phBottom.Freeze();
+        dc.DrawGeometry(phBrush, null, phBottom);
+    }
+
+    /// <summary>构建水滴形几何（v1.14.0 截图标记）：圆头在上、尖角朝下。</summary>
+    private static Geometry BuildDropGeometry(double x, double cy)
+    {
+        var head = new EllipseGeometry(new Point(x, cy - 1.4), 2.6, 2.6);
+        var tip = new StreamGeometry();
+        using (var ctx = tip.Open())
+        {
+            ctx.BeginFigure(new Point(x - 2.2, cy - 1.6), true, true);
+            ctx.LineTo(new Point(x + 2.2, cy - 1.6), true, false);
+            ctx.LineTo(new Point(x, cy + 3.6), true, false);
+        }
+        tip.Freeze();
+        var drop = new CombinedGeometry(GeometryCombineMode.Union, head, tip);
+        drop.Freeze();
+        return drop;
     }
 
     // 整齐刻度阶梯（秒）：1/2/5/10/15/30 → 1/2/5/10/15/30 分 → 1/2/3/6/12 小时

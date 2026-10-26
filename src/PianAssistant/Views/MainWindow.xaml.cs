@@ -119,9 +119,12 @@ public partial class MainWindow : Window
             VideoView.MediaPlayer = mp.LibVlcMediaPlayer;
             // v1.7.8：消除视频区上下「白边」（VLC 信箱黑边被 Static 窗口的系统浅灰填充）
             VideoSurfaceBackground.ApplyWithRetry(this, VideoView);
-            // vout 窗口在起播时才创建/重建，Playing 后再套一次
+            // vout 窗口在起播时才创建/重建，且常在 Playing 事件之后才出现，
+            // 单次 Apply 可能扑空（v1.14.0：改为带重试，确保接管成功）
             mp.Playing += (_, _) => Dispatcher.BeginInvoke(
-                () => VideoSurfaceBackground.Apply(this, VideoView));
+                () => VideoSurfaceBackground.ApplyWithRetry(this, VideoView));
+            // 窗口/布局尺寸变化时信箱带区域随之改变，需重新校准并补接管（去抖）
+            VideoView.SizeChanged += OnVideoViewSizeChanged;
         }
         // 订阅全屏切换/退出事件（由 PlayerViewModel 的 F / Esc 快捷键触发）
         shell.Player.FullscreenToggleRequested += OnFullscreenToggle;
@@ -574,11 +577,8 @@ public partial class MainWindow : Window
     // 支持的字幕扩展名清单统一由 SubtitleTrackMatcher 维护（v1.5.0 起与自动匹配共用）
     private static bool IsSubtitleFile(string path) => SubtitleTrackMatcher.IsSubtitleFile(path);
 
-    // 与 App.xaml.cs 打开对话框同一套视频扩展名（v1.12.1）
-    private static bool IsVideoFile(string path) =>
-        System.IO.Path.GetExtension(path).ToLowerInvariant() is
-            ".mp4" or ".mkv" or ".avi" or ".mov" or ".flv" or
-            ".wmv" or ".webm" or ".ts" or ".m2ts" or ".mpg";
+    // 视频扩展名单一来源：Services.VideoFileTypes（v1.14.0，与打开对话框同口径）
+    private static bool IsVideoFile(string path) => VideoFileTypes.IsVideoFile(path);
 
     /// <summary>
     /// 代理媒体建议（v1.11.0）：素材超过 1080P 时弹窗推荐转换代理，人工确认后才开始后台生成。
@@ -638,6 +638,41 @@ public partial class MainWindow : Window
             }
         }
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// 空态遮罩点击（v1.14.0）：未加载视频时点击播放区 = 「打开视频」按钮，
+    /// 走同一条 OpenFileCommand → OpenFileRequested → App 对话框链路。
+    /// </summary>
+    private void OnEmptyStateOverlayClick(object sender, MouseButtonEventArgs e)
+    {
+        if (Shell?.OpenFileCommand.CanExecute(null) == true)
+            Shell.OpenFileCommand.Execute(null);
+        e.Handled = true;
+    }
+
+    // 视频面尺寸变化去抖定时器（v1.14.0 白边兜底：尺寸稳定后再接管一次）
+    private DispatcherTimer? _videoSurfaceRetryTimer;
+
+    private void OnVideoViewSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (Shell?.Player.HasMedia != true) return;
+        _videoSurfaceRetryPending = true;
+        _videoSurfaceRetryTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+        _videoSurfaceRetryTimer.Tick -= OnVideoSurfaceRetryTick;
+        _videoSurfaceRetryTimer.Tick += OnVideoSurfaceRetryTick;
+        _videoSurfaceRetryTimer.Stop();
+        _videoSurfaceRetryTimer.Start();
+    }
+
+    private bool _videoSurfaceRetryPending;
+
+    private void OnVideoSurfaceRetryTick(object? sender, EventArgs e)
+    {
+        _videoSurfaceRetryTimer?.Stop();
+        if (!_videoSurfaceRetryPending) return;
+        _videoSurfaceRetryPending = false;
+        VideoSurfaceBackground.Apply(this, VideoView);
     }
 
     // --- 空格：播放/暂停全局兜底 ---

@@ -130,7 +130,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />    <!-- 顶部导航栏 -->
             <RowDefinition Height="*" />     <!-- 视频内容区 -->
-            <RowDefinition Height="76" />    <!-- 时间轴（三轴 56 + 滚动条，固定高度避免跳动） -->
+            <RowDefinition Height="64" />    <!-- 时间轴（三轴 46 + 滚动条，固定高度避免跳动；v1.14.0 缩窄） -->
             <RowDefinition Height="56" />    <!-- 底部控制栏 -->
         </Grid.RowDefinitions>
 
@@ -236,8 +236,9 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 无视频时的大播放按钮叠加层 -->
+                <!-- 无视频时的大播放按钮叠加层（v1.14.0：点击遮罩 = 打开视频） -->
                 <Border x:Name="EmptyStateOverlay" Background="#000000" Opacity="0.85"
+                        Cursor="Hand" MouseLeftButtonUp="OnEmptyStateOverlayClick"
                         Visibility="{Binding Player.HasMedia, Converter={x:Static views:InverseBoolToVisibilityConverter.Instance}}">
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                         <Border Width="72" Height="72" CornerRadius="36" Background="#1A6B8A"
@@ -246,7 +247,7 @@
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Margin="4,0,0,0" />
                         </Border>
-                        <TextBlock Text="点击「打开文件」加载视频" Foreground="#808080" FontSize="14"
+                        <TextBlock Text="点击此处打开视频文件" Foreground="#808080" FontSize="14"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
@@ -316,7 +317,7 @@
                               PreviewMouseWheel="OnTimelineScrollPreviewWheel"
                               x:Name="TimelineScroll">
                     <ctrl:TimelineControl
-                        Height="56"
+                        Height="46"
                         Margin="0,2,0,0"
                         PositionRatio="{Binding Player.PositionRatio, Mode=OneWay}"
                         Length="{Binding Player.Length}"

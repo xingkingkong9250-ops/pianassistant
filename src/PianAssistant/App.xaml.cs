@@ -105,7 +105,8 @@ public partial class App : Application
         var dlg = new OpenFileDialog
         {
             Title = "选择视频文件（Ctrl/Shift 可多选）",
-            Filter = "视频文件|*.mp4;*.mkv;*.avi;*.mov;*.flv;*.wmv;*.webm;*.ts;*.m2ts;*.mpg|所有文件|*.*",
+            // 视频扩展名单一来源：Services.VideoFileTypes（v1.14.0）
+            Filter = Services.VideoFileTypes.DialogFilter,
             Multiselect = true,
         };
         if (dlg.ShowDialog() == true && _shell is not null)
