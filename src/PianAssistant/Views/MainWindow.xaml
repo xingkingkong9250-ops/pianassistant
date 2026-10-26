@@ -107,7 +107,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="48" />    <!-- 顶部导航栏 -->
             <RowDefinition Height="*" />     <!-- 视频内容区 -->
-            <RowDefinition Height="50" />    <!-- 时间轴（固定，预留滚动条，避免跳动） -->
+            <RowDefinition Height="76" />    <!-- 时间轴（三轴 56 + 滚动条，固定高度避免跳动） -->
             <RowDefinition Height="56" />    <!-- 底部控制栏 -->
         </Grid.RowDefinitions>
 
@@ -287,7 +287,7 @@
                               SizeChanged="OnTimelineScrollSizeChanged"
                               x:Name="TimelineScroll">
                     <ctrl:TimelineControl
-                        Height="32"
+                        Height="56"
                         Margin="0,2,0,0"
                         PositionRatio="{Binding Player.PositionRatio, Mode=OneWay}"
                         Length="{Binding Player.Length}"

@@ -26,13 +26,30 @@ public sealed class MarkerDragEventArgs : EventArgs
 }
 
 /// <summary>
-/// 时间轴控件：可缩放、刻度+时间标签、PR 风格播放头（白色竖线+顶部三角）、
-/// I/O 入出点高亮、PR 风格裁切线（红色）、选中段。
+/// 时间轴控件：可缩放、PR 风格播放头（白色竖线+顶部三角）、I/O 入出点、选中段。
 /// 鼠标滚轮缩放，点击/拖动 seek，释放时触发段选中。
 /// v1.7.0：裁切点/截图标记支持选中拖拽修改（虚影 + 实时 seek 预览，松手提交）。
+/// v1.8.0：拆为三条并排轴——时间滑块轴（刻度/播放头/seek）、裁切片段轴（裁切点/
+/// 入出点/选中段/已标记片段）、截图标记轴（截图色块）；各轴命中互不干扰。
 /// </summary>
 public sealed class TimelineControl : Control
 {
+    /// <summary>轴1 时间滑块轴高度：刻度、时间标签、播放头三角。</summary>
+    public const double RulerAxisHeight = 20;
+
+    /// <summary>轴2 裁切片段轴高度：裁切点、入出点、选中段、已标记片段。</summary>
+    public const double ClipAxisHeight = 18;
+
+    /// <summary>轴3 截图标记轴高度：截图色块。</summary>
+    public const double MarkerAxisHeight = 18;
+
+    /// <summary>三轴总高度。</summary>
+    public const double TotalHeight = RulerAxisHeight + ClipAxisHeight + MarkerAxisHeight;
+
+    // 轴边界（自上而下）
+    private const double ClipAxisTop = RulerAxisHeight;
+    private const double MarkerAxisTop = RulerAxisHeight + ClipAxisHeight;
+
     static TimelineControl()
     {
         DefaultStyleKeyProperty.OverrideMetadata(
@@ -272,7 +289,7 @@ public sealed class TimelineControl : Control
             _viewportWidth = w;
         var desiredWidth = (_viewportWidth > 0 ? _viewportWidth : w) * Scale;
         if (!double.IsFinite(desiredWidth) || desiredWidth <= 0) desiredWidth = 0;
-        return new Size(desiredWidth, 40);
+        return new Size(desiredWidth, TotalHeight);
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -284,9 +301,17 @@ public sealed class TimelineControl : Control
         var len = Length;
         var lenMs = len.TotalMilliseconds;
 
+        // 三轴边界（v1.8.0）：轴1 时间滑块轴 / 轴2 裁切片段轴 / 轴3 截图标记轴
+        var clipTop = ClipAxisTop;
+        var clipBottom = MarkerAxisTop;
+        var markerTop = MarkerAxisTop;
+        var markerHeight = MarkerAxisHeight;
+
         // 画笔（色彩规范：裁切点红 #E51400 / 截图点绿 #4EC9B0 / 标记片段黄 #D7BA7D /
         // 选中段白 10% / I/O 蓝 #009AEC / 播放头白 —— 与笔记列表 AccentColor 对齐）
         var bg = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x1A));
+        var clipLaneBg = new SolidColorBrush(Color.FromRgb(0x20, 0x20, 0x20));
+        var lanePen = new Pen(new SolidColorBrush(Color.FromRgb(0x2E, 0x2E, 0x2E)), 1);
         var tickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x3A, 0x3A, 0x3A)), 1);
         var majorTickPen = new Pen(new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55)), 1);
         var playheadPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8)), 2);
@@ -302,6 +327,8 @@ public sealed class TimelineControl : Control
         var typeface = new Typeface("Consolas");
 
         bg.Freeze();
+        clipLaneBg.Freeze();
+        lanePen.Freeze();
         tickPen.Freeze();
         majorTickPen.Freeze();
         playheadPen.Freeze();
@@ -312,12 +339,17 @@ public sealed class TimelineControl : Control
         cutCapBrush.Freeze();
         labelBrush.Freeze();
 
-        // Background
+        // 背景：整条底色 + 裁切片段轴稍亮，便于分辨三条并排轴
         dc.DrawRectangle(bg, null, new Rect(0, 0, w, h));
+        dc.DrawRectangle(clipLaneBg, null, new Rect(0, clipTop, w, ClipAxisHeight));
 
-        if (lenMs <= 0) return;
+        if (lenMs <= 0)
+        {
+            DrawAxisSeparators(dc, lanePen, w, clipTop, clipBottom);
+            return;
+        }
 
-        // --- 刻度 + 时间标签 ---
+        // --- 轴1：时间滑块轴（刻度 + 时间标签，底部对齐刻度线） ---
         // 根据 Scale 决定刻度间隔
         var pixelsPerSecond = w / len.TotalSeconds;
         double labelIntervalSeconds;
@@ -333,8 +365,8 @@ public sealed class TimelineControl : Control
         for (double s = 0; s <= totalSeconds; s += labelIntervalSeconds)
         {
             var x = s / totalSeconds * w;
-            // 主刻度线
-            dc.DrawLine(majorTickPen, new Point(x, h * 0.5), new Point(x, h));
+            // 主刻度线（紧贴轴1底边，避免压到时间标签）
+            dc.DrawLine(majorTickPen, new Point(x, RulerAxisHeight - 7), new Point(x, RulerAxisHeight));
             // 时间标签
             var ts = TimeSpan.FromSeconds(s);
             var label = ts.TotalHours >= 1
@@ -343,7 +375,7 @@ public sealed class TimelineControl : Control
             var ft = new FormattedText(label, CultureInfo.InvariantCulture,
                 FlowDirection.LeftToRight, typeface, 10, labelBrush,
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
-            dc.DrawText(ft, new Point(x + 2, 2));
+            dc.DrawText(ft, new Point(x + 2, 0));
         }
         // 小刻度（每秒一个，仅缩放足够时）
         if (pixelsPerSecond > 20)
@@ -352,19 +384,21 @@ public sealed class TimelineControl : Control
             {
                 if (s % labelIntervalSeconds == 0) continue;
                 var x = s / totalSeconds * w;
-                dc.DrawLine(tickPen, new Point(x, h * 0.75), new Point(x, h));
+                dc.DrawLine(tickPen, new Point(x, RulerAxisHeight - 4), new Point(x, RulerAxisHeight));
             }
         }
 
-        // --- 选中段高亮（播放头所在片段：白色 10% + 灰细边框） ---
+        // --- 轴2：裁切片段轴 ---
+        // 选中段高亮（播放头所在片段：白色 10% + 灰细边框）
         if (SelectedSegmentStart is { } selStart && SelectedSegmentEnd is { } selEnd && selEnd > selStart)
         {
             var sx = selStart.TotalMilliseconds / lenMs * w;
             var ex = selEnd.TotalMilliseconds / lenMs * w;
-            dc.DrawRectangle(selectedBrush, selectedPen, new Rect(sx, 0, Math.Max(0, ex - sx), h));
+            dc.DrawRectangle(selectedBrush, selectedPen,
+                new Rect(sx, clipTop, Math.Max(0, ex - sx), ClipAxisHeight));
         }
 
-        // --- 已标记片段（黄色半透明段带 + 黄边框，叠加于选中高亮之上） ---
+        // 已标记片段（黄色半透明段带 + 黄边框，叠加于选中高亮之上）
         if (MarkedSegments is not null)
         {
             foreach (var seg in MarkedSegments)
@@ -373,11 +407,11 @@ public sealed class TimelineControl : Control
                 var mx = seg.Start.TotalMilliseconds / lenMs * w;
                 var mex = seg.End.TotalMilliseconds / lenMs * w;
                 dc.DrawRectangle(markedBrush, markedPen,
-                    new Rect(mx, 0, Math.Max(0, mex - mx), h));
+                    new Rect(mx, clipTop, Math.Max(0, mex - mx), ClipAxisHeight));
             }
         }
 
-        // --- I/O 入出点 ---
+        // I/O 入出点（只落在裁切片段轴）
         if (InPoint is { } inP)
         {
             var inX = inP.TotalMilliseconds / lenMs * w;
@@ -387,41 +421,40 @@ public sealed class TimelineControl : Control
             // 容错：历史会话数据可能出现 In>Out 或 In 超出时长，宽度必须非负（否则渲染抛异常）
             var ioWidth = Math.Max(0, outX - inX);
             if (ioWidth > 0)
-                dc.DrawRectangle(inOutBrush, null, new Rect(inX, 0, ioWidth, h));
-            dc.DrawLine(inOutPen, new Point(inX, 0), new Point(inX, h));
+                dc.DrawRectangle(inOutBrush, null, new Rect(inX, clipTop, ioWidth, ClipAxisHeight));
+            dc.DrawLine(inOutPen, new Point(inX, clipTop), new Point(inX, clipBottom));
             if (OutPoint is not null)
-                dc.DrawLine(inOutPen, new Point(outX, 0), new Point(outX, h));
+                dc.DrawLine(inOutPen, new Point(outX, clipTop), new Point(outX, clipBottom));
         }
 
-        // --- 裁切点（红色竖线 + 顶部三角） ---
+        // 裁切点（红色竖线 + 轴2 顶部三角）
         if (CutPoints is not null)
         {
             foreach (var cp in CutPoints)
             {
                 var x = cp.TotalMilliseconds / lenMs * w;
-                dc.DrawLine(cutPen, new Point(x, 8), new Point(x, h));
-                // 顶部三角
+                dc.DrawLine(cutPen, new Point(x, clipTop), new Point(x, clipBottom));
                 var tri = new StreamGeometry();
                 using (var ctx = tri.Open())
                 {
-                    ctx.BeginFigure(new Point(x - 4, 0), true, true);
-                    ctx.LineTo(new Point(x + 4, 0), true, false);
-                    ctx.LineTo(new Point(x, 8), true, false);
+                    ctx.BeginFigure(new Point(x - 4, clipTop), true, true);
+                    ctx.LineTo(new Point(x + 4, clipTop), true, false);
+                    ctx.LineTo(new Point(x, clipTop + 8), true, false);
                 }
                 tri.Freeze();
                 dc.DrawGeometry(cutCapBrush, null, tri);
             }
         }
 
-        // --- 标记（截图点：绿色统一 6×6 圆角小方块）---
-        // 位于播放头三角下方一行（y 9~15），不与裁切点红三角（y 0~8）冲突
+        // --- 轴3：截图标记轴（截图色块：统一 8×8 圆角小方块，垂直居中） ---
         if (Markers is not null)
         {
+            var markerY = markerTop + (markerHeight - 8) / 2;
             foreach (var marker in Markers)
             {
                 var x = marker.Position.TotalMilliseconds / lenMs * w;
                 dc.DrawRoundedRectangle(GetMarkerBrush(marker.ColorHex), null,
-                    new Rect(x - 3, 9, 6, 6), 1.5, 1.5);
+                    new Rect(x - 4, markerY, 8, 8), 2, 2);
             }
         }
 
@@ -429,16 +462,19 @@ public sealed class TimelineControl : Control
         if (_dragMoved && _dragMode is DragMode.CutPoint or DragMode.Screenshot)
         {
             var gx = _dragCurrent.TotalMilliseconds / lenMs * w;
+            double bubbleTop;
             if (_dragMode == DragMode.CutPoint)
             {
                 var ghostPen = new Pen(new SolidColorBrush(Color.FromRgb(0xE5, 0x14, 0x00)), 2.5);
-                dc.DrawLine(ghostPen, new Point(gx, 8), new Point(gx, h));
-                dc.DrawLine(ghostPen, new Point(gx - 5, 0), new Point(gx + 5, 0));
+                dc.DrawLine(ghostPen, new Point(gx, clipTop), new Point(gx, clipBottom));
+                dc.DrawLine(ghostPen, new Point(gx - 5, clipTop + 8), new Point(gx + 5, clipTop + 8));
+                bubbleTop = clipTop + 2;
             }
             else
             {
                 dc.DrawRoundedRectangle(GetMarkerBrush("#4EC9B0"), null,
-                    new Rect(gx - 4, 8, 8, 8), 2, 2);
+                    new Rect(gx - 5, markerTop + 4, 10, 10), 2, 2);
+                bubbleTop = markerTop + 2;
             }
             // 时间码气泡（半透明黑底白字，跟随虚影）
             var dragLabel = _dragCurrent.TotalHours >= 1
@@ -450,14 +486,16 @@ public sealed class TimelineControl : Control
                 FlowDirection.LeftToRight, typeface, 10, bubbleBrush,
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
             var bx = Math.Clamp(gx - dragFt.Width / 2, 0, Math.Max(0, w - dragFt.Width));
-            dc.DrawRectangle(bubbleBg, null, new Rect(bx - 3, 16, dragFt.Width + 6, dragFt.Height + 4));
-            dc.DrawText(dragFt, new Point(bx, 18));
+            dc.DrawRectangle(bubbleBg, null, new Rect(bx - 3, bubbleTop, dragFt.Width + 6, dragFt.Height + 4));
+            dc.DrawText(dragFt, new Point(bx, bubbleTop + 2));
         }
 
-        // --- 播放头（白色竖线 + 顶部三角，PR 风格） ---
+        // 轴分隔线（压在内容之上，保证三条轴界限始终可辨）
+        DrawAxisSeparators(dc, lanePen, w, clipTop, clipBottom);
+
+        // --- 播放头（贯穿三轴的白色竖线 + 轴1 顶部三角，PR 风格） ---
         var phX = PositionRatio * w;
         dc.DrawLine(playheadPen, new Point(phX, 0), new Point(phX, h));
-        // 顶部三角播放头标记
         var phTri = new StreamGeometry();
         using (var ctx = phTri.Open())
         {
@@ -467,6 +505,13 @@ public sealed class TimelineControl : Control
         }
         phTri.Freeze();
         dc.DrawGeometry(new SolidColorBrush(Color.FromRgb(0xE8, 0xE8, 0xE8)), null, phTri);
+    }
+
+    private static void DrawAxisSeparators(
+        DrawingContext dc, Pen pen, double width, double clipTop, double clipBottom)
+    {
+        dc.DrawLine(pen, new Point(0, clipTop), new Point(width, clipTop));
+        dc.DrawLine(pen, new Point(0, clipBottom), new Point(width, clipBottom));
     }
 
     // --- 鼠标交互 ---
@@ -543,8 +588,8 @@ public sealed class TimelineControl : Control
     }
 
     /// <summary>
-    /// 命中检测（v1.7.0）：容差约 6px 换算为时间。裁切点优先于截图标记；
-    /// 截图标记限制纵向命中带（y 4~20），避免与贯穿整行的裁切线混淆。
+    /// 命中检测（v1.8.0）：按三轴分区——轴2（裁切片段轴）只命中裁切点，
+    /// 轴3（截图标记轴）只命中截图标记；容差约 6px 换算为时间。
     /// </summary>
     private bool TryHitTestMarker(MouseEventArgs e, out DragMode mode, out TimeSpan hitPos)
     {
@@ -554,8 +599,9 @@ public sealed class TimelineControl : Control
 
         var toleranceMs = HitTolerancePx / ActualWidth * Length.TotalMilliseconds;
         var mouseTime = MouseToTime(e);
+        var y = e.GetPosition(this).Y;
 
-        if (CutPoints is not null)
+        if (CutPoints is not null && y >= ClipAxisTop && y < MarkerAxisTop)
         {
             var list = CutPoints as IReadOnlyList<TimeSpan> ?? CutPoints.ToList();
             var idx = TimelineHitTest.FindNearest(list, mouseTime, toleranceMs);
@@ -567,7 +613,7 @@ public sealed class TimelineControl : Control
             }
         }
 
-        if (Markers is not null && e.GetPosition(this).Y is >= 4 and <= 20)
+        if (Markers is not null && y >= MarkerAxisTop)
         {
             TimelineMarker? bestMarker = null;
             var bestMs = double.MaxValue;
