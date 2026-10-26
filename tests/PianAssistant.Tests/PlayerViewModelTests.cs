@@ -306,12 +306,19 @@ public class PlayerViewModelTests : IDisposable
     [Fact]
     public void LoopMode_WhenPlaybackReachesOutPoint_SeeksBackToInPoint()
     {
-        _playback.Open("video.mp4");
-        _vm.SetInOut(TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20));
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+        _playback.Seek(TimeSpan.FromSeconds(30)); // 选中片段 [0,60]，入/出点自动同步
+        Assert.Equal(TimeSpan.Zero, _vm.InPoint);
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.OutPoint);
+
         _vm.ToggleLoopCommand.Execute(null);
         _playback.Play();
-        _playback.Seek(TimeSpan.FromSeconds(20));
-        Assert.Equal(TimeSpan.FromSeconds(10), _playback.Position);
+        _playback.Seek(TimeSpan.FromSeconds(60)); // 到达出点 → 回绕入点
+
+        Assert.Equal(TimeSpan.Zero, _playback.Position);
         Assert.True(_playback.IsPlaying);
     }
 
@@ -326,6 +333,86 @@ public class PlayerViewModelTests : IDisposable
         Assert.Contains(nameof(PlayerViewModel.IsSelectedSegmentMarked), changed);
         _vm.SetSelectedSegmentMarked(true);
         Assert.Single(changed); // 值未变化不重复通知
+    }
+
+    [Fact]
+    public void SelectingSegment_AutoSyncsInOutToSegmentBounds()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+
+        _playback.Seek(TimeSpan.FromSeconds(30));
+
+        Assert.Equal(TimeSpan.Zero, _vm.InPoint);
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.OutPoint);
+    }
+
+    [Fact]
+    public void CutPointMove_UpdatesInOutMarkers()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+        _playback.Seek(TimeSpan.FromSeconds(30));
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.OutPoint);
+
+        // 拖动裁切点 60 → 90，当前片段出点跟随
+        _vm.MoveCutPoint(TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(90));
+
+        Assert.Equal(TimeSpan.FromSeconds(90), _vm.OutPoint);
+    }
+
+    [Fact]
+    public void CutPointDelete_ResegmentsAndUpdatesMarkers()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+        _playback.Seek(TimeSpan.FromSeconds(30));
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.OutPoint);
+
+        _vm.RemoveCutPoint(TimeSpan.FromSeconds(60));
+
+        // 裁切点删除后整片回退为一个片段，出点 = 视频尾（测试视频 3 分钟）
+        Assert.Equal(TimeSpan.FromMinutes(3), _vm.OutPoint);
+    }
+
+    [Fact]
+    public void MarkingSegment_AutoEnablesLoopMode()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+        _playback.Seek(TimeSpan.FromSeconds(30));
+
+        _vm.SetSelectedSegmentMarked(true);
+
+        Assert.True(_vm.LoopMode);
+        Assert.Equal(TimeSpan.Zero, _vm.InPoint);
+        Assert.Equal(TimeSpan.FromSeconds(60), _vm.OutPoint);
+    }
+
+    [Fact]
+    public void UnmarkingSegment_DisablesLoopAndClearsMarkers()
+    {
+        var path = Path.Combine(_tempDir, "video.mp4");
+        File.WriteAllText(path, "stub");
+        _vm.Open(path);
+        _vm.AddCutPointAt(TimeSpan.FromSeconds(60));
+        _playback.Seek(TimeSpan.FromSeconds(30));
+        _vm.SetSelectedSegmentMarked(true);
+        Assert.True(_vm.LoopMode);
+
+        _vm.SetSelectedSegmentMarked(false);
+
+        Assert.False(_vm.LoopMode);
+        Assert.Null(_vm.InPoint);
+        Assert.Null(_vm.OutPoint);
     }
 
     [Fact]

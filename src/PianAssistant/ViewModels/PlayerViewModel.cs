@@ -51,6 +51,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     private DateTime _loopSeekGuardUntilUtc;
     // 当前选中片段是否已被 ☑ 标记（v1.9.1：由 Shell 依据笔记数据回填，驱动底栏 🚩 状态）
     private bool _isSelectedSegmentMarked;
+    // v1.10.0：取消标记片段后抑制入/出点自动同步，直到选中片段变化才恢复；
+    // 保证「取消标记 → 删除起始结束标记」不被立即覆盖。
+    private bool _suppressInOutSync;
 
     private static readonly double[] RateSteps =
         { 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0, 20.0, 32.0 };
@@ -378,13 +381,29 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
     public TimeSpan? SelectedSegmentStart
     {
         get => _selectedSegmentStart;
-        private set => SetProperty(ref _selectedSegmentStart, value);
+        private set
+        {
+            if (SetProperty(ref _selectedSegmentStart, value))
+            {
+                // 片段边界变化时恢复入/出点自动同步（v1.10.0）
+                _suppressInOutSync = false;
+                OnPropertyChanged(nameof(HasSelectedSegment));
+            }
+        }
     }
 
     public TimeSpan? SelectedSegmentEnd
     {
         get => _selectedSegmentEnd;
-        private set => SetProperty(ref _selectedSegmentEnd, value);
+        private set
+        {
+            if (SetProperty(ref _selectedSegmentEnd, value))
+            {
+                _suppressInOutSync = false;
+                OnPropertyChanged(nameof(HasSelectedSegment));
+                SyncInOutToSelectedSegment();
+            }
+        }
     }
 
     /// <summary>是否已选中一段（start 和 end 都有值且 end > start）。</summary>
@@ -401,8 +420,48 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         private set => SetProperty(ref _isSelectedSegmentMarked, value);
     }
 
-    /// <summary>由 Shell 回填当前选中段的标记状态。</summary>
-    public void SetSelectedSegmentMarked(bool marked) => IsSelectedSegmentMarked = marked;
+    /// <summary>
+    /// 由 Shell 回填当前选中段的标记状态。
+    /// v1.10.0：勾选标记时自动把入/出点对齐到选中段并开启片段循环；
+    /// 取消标记时关闭循环并删除起始结束标记（抑制同步直到片段变化）。
+    /// </summary>
+    public void SetSelectedSegmentMarked(bool marked)
+    {
+        if (_isSelectedSegmentMarked == marked) return;
+        IsSelectedSegmentMarked = marked; // 通过属性 setter 触发正确的 PropertyChanged 名称
+        if (marked)
+        {
+            // 勾选标记 → 自动开启片段循环：确保入/出点对齐当前选中段
+            if (HasSelectedSegment)
+            {
+                _suppressInOutSync = false;
+                InPoint = _selectedSegmentStart;
+                OutPoint = _selectedSegmentEnd;
+                LoopMode = true;
+            }
+        }
+        else
+        {
+            // 取消标记 → 关闭循环并删除起始结束标记
+            LoopMode = false;
+            _suppressInOutSync = true;
+            InPoint = null;
+            OutPoint = null;
+        }
+    }
+
+    /// <summary>
+    /// 把入/出点同步到当前选中片段边界（v1.10.0）：
+    /// 选中片段即自动创建起始结束标记，与裁切点挂钩、跟随裁切点修改。
+    /// 取消标记后由 _suppressInOutSync 抑制，直到选中片段变化才恢复。
+    /// </summary>
+    private void SyncInOutToSelectedSegment()
+    {
+        if (_suppressInOutSync) return;
+        if (!HasSelectedSegment) return;
+        InPoint = _selectedSegmentStart;
+        OutPoint = _selectedSegmentEnd;
+    }
 
     public bool IsExtracting
     {
@@ -1043,8 +1102,6 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         try
         {
             Position = e;
-            // v0.21.0：播放头所在片段自动选中（滑块停在片段中即选中该片段）
-            UpdateSelectedSegmentFromPlayhead();
         }
         finally
         {
@@ -1052,15 +1109,20 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         }
 
         // 片段循环（v1.9.0）：越过出点 → 拉回入点。
+        // 必须在 UpdateSelectedSegmentFromPlayhead 之前判定：否则播放头越过裁切点时，
+        // 段边界会先切换，出点被替换为下一段的出点，导致回绕判定失效（v1.10.0）。
         // 只在播放中生效，避免暂停状态拖动播放头时被强行拉回；
-        // 300ms 防抖避免 seek 未落地期间重复触发。入点之前的 seek 不拦截，
-        // 避免 seek 落点略早于入点时反复触发。
+        // 300ms 防抖避免 seek 未落地期间重复触发。入点之前的 seek 不拦截。
         if (_loopMode && IsPlaying && HasCompleteClip &&
             DateTime.UtcNow >= _loopSeekGuardUntilUtc && e >= _outPoint!.Value)
         {
             _loopSeekGuardUntilUtc = DateTime.UtcNow.AddMilliseconds(300);
             _playback.Seek(_inPoint!.Value);
+            return; // 回绕后由 seek 回调重新走选中段判定
         }
+
+        // v0.21.0：播放头所在片段自动选中（滑块停在片段中即选中该片段）
+        UpdateSelectedSegmentFromPlayhead();
     }
 
     private void OnPlaying(object? sender, EventArgs e)
