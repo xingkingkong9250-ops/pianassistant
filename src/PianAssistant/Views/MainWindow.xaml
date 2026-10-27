@@ -298,13 +298,14 @@
         <Border x:Name="TimelineBorder" Grid.Row="2" Background="#1A1A1A"
                 BorderBrush="#2A2A2A" BorderThickness="0,1,0,1">
             <DockPanel>
-                <!-- 右端：当前时间/总时长（v1.15.0 由底栏左下角迁入）+ 缩放指示（点击恢复 1.0×） -->
-                <Border DockPanel.Dock="Right" Background="#2A2A2A" Padding="10,0" Margin="4,0,0,0"
-                        VerticalAlignment="Stretch" MinWidth="118"
+                <!-- 右端（v1.15.3）：时间码 / 总时长 / 缩放 / 倍速 四合一紧凑常驻显示；
+                     点击整块恢复默认缩放 1.0× -->
+                <Border DockPanel.Dock="Right" Background="#2A2A2A" Padding="8,0" Margin="4,0,0,0"
+                        VerticalAlignment="Stretch" MinWidth="156"
                         MouseLeftButtonUp="OnZoomLabelClick" Cursor="Hand"
                         ToolTip="点击恢复默认缩放 1.0×">
                     <StackPanel VerticalAlignment="Center">
-                        <!-- W1-R3-07 当前时间码 / 总时长（v1.15.0 由底栏左下角 W1-R4-01/02 迁入） -->
+                        <!-- W1-R3-07 当前时间码 / 总时长 -->
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                             <TextBlock Text="{Binding Player.TimeCodeDisplayString}" Foreground="#E8E8E8"
                                        FontFamily="Consolas" FontSize="12" />
@@ -312,11 +313,42 @@
                             <TextBlock Text="{Binding Player.LengthDisplayString}" Foreground="#999999"
                                        FontFamily="Consolas" FontSize="12" />
                         </StackPanel>
-                        <!-- W1-R3-01 缩放指示 -->
+                        <!-- 缩放 + 倍速（同一行紧凑排布；倍速常驻：1.0× 灰显，非1× 蓝底高亮；点击恢复1×） -->
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
                             <TextBlock Text="缩放" Foreground="#888888" FontSize="10" VerticalAlignment="Center" />
                             <TextBlock x:Name="ZoomLabel" Text="1.0×" Foreground="#CCCCCC" FontSize="10"
-                                       FontFamily="Consolas" VerticalAlignment="Center" Margin="3,0,0,0" />
+                                       FontFamily="Consolas" VerticalAlignment="Center" Margin="3,0,8,0" />
+                            <!-- W1-R4-03 倍速（v1.15.3 由底栏左侧迁入时间轴右端，常驻显示） -->
+                            <Button Style="{StaticResource IconButton}" Padding="0" Margin="0"
+                                    Command="{Binding Player.ResetRateCommand}"
+                                    ToolTip="播放倍速（点击恢复 1×）"
+                                    VerticalAlignment="Center">
+                                <Border Padding="5,1" CornerRadius="3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Player.IsRateNormal}" Value="False">
+                                                    <Setter Property="Background" Value="#1A6B8A" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding Player.RateText}" FontFamily="Consolas"
+                                               FontSize="11" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#888888" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Player.IsRateNormal}" Value="False">
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -353,20 +385,10 @@
             <!-- v1.15.0：DockPanel 改 Grid 三区叠放——播放控制组按整个窗口水平居中，
                  左侧音量/轨道组与右侧功能组两端对齐，互不挤压 -->
             <Grid Margin="16,0">
-                <!-- 左侧：倍速标记 / 音量 / 字幕 / 音轨 / 播放源 / 全屏（时间码已移至时间轴右端 W1-R3-07） -->
+                <!-- 左侧：音量 / 字幕 / 音轨 / 播放源 / 全屏（倍速标记已迁至时间轴右端 W1-R4-03；时间码已移至时间轴右端 W1-R3-07） -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
-                    <!-- W1-R4-03 倍速标记（非1.0×时显示，点击恢复1×） -->
-                    <Button Style="{StaticResource IconButton}" Padding="0" Margin="0,0,4,0"
-                            Command="{Binding Player.ResetRateCommand}"
-                            Visibility="{Binding Player.IsRateNormal, Converter={x:Static views:InverseBoolToVisibilityConverter.Instance}}"
-                            ToolTip="点击恢复 1× 倍速">
-                        <Border Padding="6,2" CornerRadius="3" Background="#1A6B8A">
-                            <TextBlock Text="{Binding Player.RateText}" Foreground="White"
-                                       FontFamily="Consolas" FontSize="12" FontWeight="SemiBold" />
-                        </Border>
-                    </Button>
                     <!-- W1-R4-04 静音（v1.15.0：双态图标 🔊/🔇 跟随 IsMuted） -->
-                    <Button Content="{Binding Player.VolumeIcon}" Style="{StaticResource IconButton}" Padding="6,4" FontSize="15"
+                    <Button Content="{Binding Player.VolumeIcon}" Style="{StaticResource IconButton}" Height="34" Padding="6,4" FontSize="15"
                             Margin="6,0,0,0"
                             Command="{Binding Player.ToggleMuteCommand}" ToolTip="静音 (M)" />
                     <!-- W1-R4-05 音量滑块（v1.15.0：悬停滚动中键滚轮调节音量） -->
@@ -379,45 +401,45 @@
                     <TextBlock Text="{Binding Player.Volume, StringFormat={}{0}%}" Foreground="#999999"
                                FontFamily="Consolas" FontSize="12" MinWidth="30" VerticalAlignment="Center" />
                     <!-- W1-R4-16 字幕轨选择（v1.5.0）：弹出内嵌/外挂字幕轨菜单，含「关闭字幕」与「加载字幕文件…」 -->
-                    <Button x:Name="SubtitleMenuButton" Content="CC" Style="{StaticResource IconButton}"
+                    <Button x:Name="SubtitleMenuButton" Content="CC" Style="{StaticResource IconButton}" Height="34"
                             Padding="6,4" FontSize="12" FontWeight="Bold" Margin="6,0,0,0"
                             Click="OnSubtitleMenuButtonClick"
                             ToolTip="字幕选择（点击展开轨道列表 / 加载外挂字幕）" />
                     <!-- W1-R4-17 音轨选择（v1.5.0）：弹出音轨菜单（双语片源切换） -->
-                    <Button x:Name="AudioTrackMenuButton" Content="♪" Style="{StaticResource IconButton}"
+                    <Button x:Name="AudioTrackMenuButton" Content="♪" Style="{StaticResource IconButton}" Height="34"
                             Padding="6,4" FontSize="14" Margin="2,0,0,0"
                             Click="OnAudioTrackMenuButtonClick"
                             ToolTip="音轨选择（多音轨片源切换）" />
                     <!-- W1-R4-19 播放源切换（v1.11.0）：已生成代理时在「源文件 / 代理」之间切换 -->
-                    <Button Content="{Binding Player.PlaybackSourceLabel}" Style="{StaticResource IconButton}"
+                    <Button Content="{Binding Player.PlaybackSourceLabel}" Style="{StaticResource IconButton}" Height="34"
                             Padding="6,4" FontSize="11" Margin="2,0,0,0"
                             Command="{Binding TogglePlaybackSourceCommand}"
                             ToolTip="播放源切换：源文件 ⇄ 代理（超 1080P 素材建议用代理拉片）" />
                     <!-- W1-R4-08 全屏 -->
-                    <Button Content="⛶" Style="{StaticResource IconButton}" Padding="6,4" FontSize="18"
+                    <Button Content="⛶" Style="{StaticResource IconButton}" Height="34" Padding="6,4" FontSize="18"
                             Command="{Binding Player.ToggleFullscreenCommand}" ToolTip="全屏 (F)" />
                 </StackPanel>
 
                 <!-- 右侧：功能按钮（片段循环 / 截图 / 添加裁切点 / 标记片段 / 撤回 / 清空标记） -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
                     <!-- W1-R4-18 片段循环（v1.9.0 新增；v1.13.0 移到截图按钮前，更显眼）：在入点/出点之间循环；需先用 I/O 设置区间 -->
-                    <Button Content="🔁" Style="{StaticResource LoopButton}" Padding="6,4" FontSize="14"
+                    <Button Content="🔁" Style="{StaticResource LoopButton}" Height="34" Padding="6,4" FontSize="14"
                             Command="{Binding Player.ToggleLoopCommand}"
                             ToolTip="片段循环 (L)：在入点/出点之间循环" />
                     <!-- W1-R1-05 截图 -->
-                    <Button Content="📷" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                    <Button Content="📷" Style="{StaticResource IconButton}" Height="34" Padding="8,6" FontSize="16"
                             Command="{Binding Player.CaptureScreenshotCommand}" ToolTip="截图 (S)" />
                     <!-- W1-R1-08 添加裁切点（v0.20.0 起由「截取片段」改为「添加裁切点」；截取片段保留快捷键 Ctrl+Shift+E） -->
-                    <Button Content="✂" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                    <Button Content="✂" Style="{StaticResource IconButton}" Height="34" Padding="8,6" FontSize="16"
                             Command="{Binding Player.AddCutPointCommand}" ToolTip="添加裁切点 (C)" />
                     <!-- W1-R1-25 标记/取消标记当前片段（v1.5.1 新增；v1.9.1 起按状态区分暗显/金黄高亮） -->
-                    <Button Content="🚩" Style="{StaticResource MarkSegmentButton}" Padding="8,6" FontSize="16"
+                    <Button Content="🚩" Style="{StaticResource MarkSegmentButton}" Height="34" Padding="8,6" FontSize="16"
                             Command="{Binding Player.ToggleMarkSelectedSegmentCommand}" />
                     <!-- W1-R1-26 撤回上一步笔记操作（v1.6.0 起替换原 W1-R1-10 撤销裁切点按钮；对应 Ctrl+Z） -->
-                    <Button Content="↩" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                    <Button Content="↩" Style="{StaticResource IconButton}" Height="34" Padding="8,6" FontSize="16"
                             Command="{Binding UndoCommand}" ToolTip="撤回上一步笔记操作 (Ctrl+Z)" />
                     <!-- W1-R1-11 清空全部标记（v0.20.0 起包含截图标记点，确认后执行） -->
-                    <Button Content="✖" Style="{StaticResource IconButton}" Padding="8,6" FontSize="16"
+                    <Button Content="✖" Style="{StaticResource IconButton}" Height="34" Padding="8,6" FontSize="16"
                             Command="{Binding Player.ClearCutPointsCommand}" ToolTip="清空全部标记：裁切点 + 截图标记 (Ctrl+Shift+C)" />
                 </StackPanel>
 
@@ -433,15 +455,15 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <!-- W1-R4-09 上一个视频（v1.15.0：原「跳到开头」改为播放列表上一个；跳到开头保留 Home 键） -->
-                    <Button Grid.Column="0" Content="⏮" Style="{StaticResource IconButton}"
+                    <Button Grid.Column="0" Content="⏮" Style="{StaticResource IconButton}" Height="34"
                             Padding="10,6" FontSize="18"
                             Command="{Binding PlayPreviousCommand}" ToolTip="播放列表：上一个视频" />
                     <!-- W1-R4-14 降低倍速 -->
-                    <Button Grid.Column="1" Content="−" Style="{StaticResource IconButton}"
+                    <Button Grid.Column="1" Content="−" Style="{StaticResource IconButton}" Height="34"
                             Padding="10,6" FontSize="16" FontWeight="Bold"
                             Command="{Binding Player.DecreaseRateCommand}" ToolTip="降低倍速" />
                     <!-- W1-R4-20 后退 3 秒（v1.15.0 新增按钮；同 ← 键） -->
-                    <Button Grid.Column="2" Content="⏪" Style="{StaticResource IconButton}"
+                    <Button Grid.Column="2" Content="⏪" Style="{StaticResource IconButton}" Height="34"
                             Padding="10,6" FontSize="16"
                             Command="{Binding Player.SeekBackward3SecondsCommand}" ToolTip="后退 3 秒 (←)" />
                     <!-- W1-R4-11 播放/暂停（居中，大圆钮；v1.13.0 双态图标：暂停显示 ▶、播放中显示 ⏸） -->
@@ -453,15 +475,15 @@
                                 Width="44" Height="44" />
                     </Border>
                     <!-- W1-R4-21 快进 3 秒（v1.15.0 新增按钮；同 → 键） -->
-                    <Button Grid.Column="4" Content="⏩" Style="{StaticResource IconButton}"
+                    <Button Grid.Column="4" Content="⏩" Style="{StaticResource IconButton}" Height="34"
                             Padding="10,6" FontSize="16"
                             Command="{Binding Player.SeekForward3SecondsCommand}" ToolTip="快进 3 秒 (→)" />
                     <!-- W1-R4-15 提高倍速 -->
-                    <Button Grid.Column="5" Content="+" Style="{StaticResource IconButton}"
+                    <Button Grid.Column="5" Content="+" Style="{StaticResource IconButton}" Height="34"
                             Padding="10,6" FontSize="16" FontWeight="Bold"
                             Command="{Binding Player.IncreaseRateCommand}" ToolTip="提高倍速" />
                     <!-- W1-R4-13 下一个视频（v1.15.0：原「跳到结尾」改为播放列表下一个；跳到结尾保留 End 键） -->
-                    <Button Grid.Column="6" Content="⏭" Style="{StaticResource IconButton}"
+                    <Button Grid.Column="6" Content="⏭" Style="{StaticResource IconButton}" Height="34"
                             Padding="10,6" FontSize="18"
                             Command="{Binding PlayNextCommand}" ToolTip="播放列表：下一个视频" />
                 </Grid>
