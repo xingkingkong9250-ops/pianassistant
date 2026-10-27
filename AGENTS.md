@@ -13,7 +13,7 @@
 - 架构红线：纯 MVVM；Services 不引用 UI；P/Invoke 只进 Interop/；
   不引入第三方 MVVM/DI 框架；不引入 WebView2/Electron/HTML UI
 - 数据红线：状态文件原子写 + `.backup`；不得把数据写到程序安装目录
-- `dist/` 保留全部历史版本，永不覆盖；不自动 `git push`、不自动打 Tag
+- 发布产物输出到 `Releases/拉片助手/v{版本}/`，三件套（安装包 + Word 说明 + 绿色 zip）全部纳入 git 追踪；不自动 `git push`、不自动打 Tag
 - 阶段性设计/计划/验证报告放 `docs/superpowers/` 对应子目录
 
 ## 版本号指令代号（与用户偏好一致）
