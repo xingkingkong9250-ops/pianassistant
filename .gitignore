@@ -35,6 +35,9 @@ clips/
 # 数据目录运行时产物（开发态）
 %APPDATA%/PianAssistant/
 
+# Node.js（docx 发布工具链）
+node_modules/
+
 # OS
 Thumbs.db
 .DS_Store
