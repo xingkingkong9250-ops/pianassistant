@@ -7,6 +7,30 @@
              Foreground="#E8E8E8">
 
     <UserControl.Resources>
+        <!-- v1.15.2：五角星勾选标记 — 空心☆ 未选中（中灰 #9A9A9A）/ 实心★ 已选中（金 #D7BA7D）。
+             字号 18 放大醒目；金色与已标记黄带、时间轴水滴标记同色系，颜色语义一致；
+             未选中用中灰而非深灰，保证在 #1F1F1F 深色条目背景上仍清晰可辨。 -->
+        <Style x:Key="StarCheckBox" TargetType="CheckBox">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="6,0,2,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <TextBlock x:Name="Star" Text="☆" FontSize="18"
+                                   Foreground="#9A9A9A" VerticalAlignment="Center" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Star" Property="Text" Value="★" />
+                                <Setter TargetName="Star" Property="Foreground" Value="#D7BA7D" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- ListBox 项容器：透明背景、IsSelected 双向同步条目选中态 -->
         <Style x:Key="TimelineListBoxItem" TargetType="ListBoxItem">
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
@@ -44,8 +68,8 @@
                     </ContextMenu>
                 </Border.ContextMenu>
                 <DockPanel>
-                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding IsMarked, Mode=TwoWay}"
-                              VerticalAlignment="Center" Margin="6,0,2,0" Focusable="False"
+                    <CheckBox DockPanel.Dock="Right" Style="{StaticResource StarCheckBox}"
+                              IsChecked="{Binding IsMarked, Mode=TwoWay}"
                               ToolTip="勾选标记（独立记录）：供「导出标记」批量导出与「⚑ 仅标记」叠加筛选使用" />
                     <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="14"
                                VerticalAlignment="Center" Margin="2,0,6,0" />
@@ -76,8 +100,8 @@
                     </ContextMenu>
                 </Border.ContextMenu>
                 <DockPanel>
-                    <CheckBox DockPanel.Dock="Right" IsChecked="{Binding IsMarked, Mode=TwoWay}"
-                              VerticalAlignment="Center" Margin="6,0,2,0" Focusable="False"
+                    <CheckBox DockPanel.Dock="Right" Style="{StaticResource StarCheckBox}"
+                              IsChecked="{Binding IsMarked, Mode=TwoWay}"
                               ToolTip="勾选标记（独立记录）：供「导出标记」批量导出与「⚑ 仅标记」叠加筛选使用" />
                     <TextBlock DockPanel.Dock="Left" Text="{Binding Icon}" FontSize="14"
                                VerticalAlignment="Center" Margin="2,0,6,0" />
