@@ -898,6 +898,18 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             CutPoints = Player.CutPoints.ToList(),
             Screenshots = Screenshots.Items.ToList(),
             Notes = Array.Empty<NoteEntry>(),
+            MarkedScreenshotPaths = Notes.Items.OfType<ScreenshotListItem>()
+                .Where(i => i.IsMarked)
+                .Select(i => i.Entry.OutputPath)
+                .ToList(),
+            MarkedSegments = Notes.Items.OfType<SegmentListItem>()
+                .Where(i => i.IsMarked)
+                .Select(i => (i.Segment.Start.Ticks, i.Segment.End.Ticks))
+                .ToList(),
+            MarkedCutPointMs = Notes.Items.OfType<CutPointListItem>()
+                .Where(i => i.IsMarked)
+                .Select(i => (long)i.Position.TotalMilliseconds)
+                .ToList(),
         };
 
         // 把读回的会话应用到当前会话（服务保证在 UI 线程回调）。
@@ -938,6 +950,31 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                     s.CapturedAt, s.Label);
                 Screenshots.Add(entry);
                 Notes.AddScreenshot(entry);
+            }
+
+            // 还原三类勾选标记（截图按路径、片段按起止毫秒、裁切点按毫秒位置）。
+            var markedShots = session.Screenshots
+                .Where(s => s.Marked)
+                .Select(s => s.FilePath)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var markedSegs = session.MarkedSegments.ToHashSet();
+            var markedCuts = session.MarkedCutPointsMs.ToHashSet();
+            foreach (var item in Notes.Items)
+            {
+                switch (item)
+                {
+                    case ScreenshotListItem shot:
+                        shot.IsMarked = markedShots.Contains(shot.Entry.OutputPath);
+                        break;
+                    case SegmentListItem seg:
+                        seg.IsMarked = markedSegs.Contains((
+                            (long)seg.Segment.Start.TotalMilliseconds,
+                            (long)seg.Segment.End.TotalMilliseconds));
+                        break;
+                    case CutPointListItem cut:
+                        cut.IsMarked = markedCuts.Contains((long)cut.Position.TotalMilliseconds);
+                        break;
+                }
             }
 
             // 还原播放位置与倍速（位置为 0/倍速 1.0 时即等同不还原）。

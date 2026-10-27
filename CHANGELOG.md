@@ -7,6 +7,20 @@
 
 ## [Unreleased]
 
+### v1.15.4 — 补丁：笔记勾选标记持久化（截图/片段/裁切点），重开视频标记不丢失（NO.P，2026-10-27）
+
+- **标记持久化**（W1-C2-D-03）：笔记面板的三类勾选标记（截图★、片段★、裁切点★）随素材会话一起落库，
+  再次打开同一视频时自动还原；此前标记仅存在于撤回快照内存态，关闭/切视频即丢失
+- **数据隔离核查**：标记存储沿用素材会话的两级键（快速键 路径+大小+mtime + 内容哈希 SHA-256），
+  与截图缓存一样按视频独立存储，不会出现多视频数据混淆
+- **数据库迁移 v3**（幂等、不删旧数据）：`session_screenshots` 新增 `marked` 列；
+  新增 `session_marked_segments(session_id, start_ms, end_ms)` 与
+  `session_marked_cut_points(session_id, position_ms)` 两张明细表
+- **模型层**：`SessionScreenshot.Marked`、`MediaSession.MarkedSegments` / `MarkedCutPointsMs`、
+  `MediaSessionSnapshot` 三类标记字段
+- **采集/还原**：`ShellViewModel.CaptureSnapshot` 复用撤回快照的标记采集逻辑；
+  `ApplySession` 在截图与裁切点还原后按 路径/(起止ms)/(位置ms) 恢复 `IsMarked`
+
 ### v1.15.3 — 补丁：倍速标记迁至时间轴右端常驻显示 / 底栏按钮对齐（NO.P，2026-10-27）
 
 - **倍速标记迁至时间轴右端并常驻显示**（W1-R4-03/W1-R3-07）：原底栏左侧「非1×才弹出」的倍速标记移到时间轴右端区域，

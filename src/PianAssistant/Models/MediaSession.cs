@@ -29,6 +29,12 @@ public sealed class MediaSession
 
     /// <summary>时间戳笔记。</summary>
     public List<SessionNote> Notes { get; } = new();
+
+    /// <summary>已勾选标记的片段（起止毫秒）。</summary>
+    public List<(long StartMs, long EndMs)> MarkedSegments { get; } = new();
+
+    /// <summary>已勾选标记的裁切点（毫秒位置）。</summary>
+    public List<long> MarkedCutPointsMs { get; } = new();
 }
 
 /// <summary>会话内的一条截图元数据。</summary>
@@ -38,6 +44,8 @@ public sealed class SessionScreenshot
     public long PositionMs { get; set; }
     public System.DateTime CapturedAt { get; set; }
     public string? Label { get; set; }
+    /// <summary>是否已勾选标记（v1.15.4 持久化）。</summary>
+    public bool Marked { get; set; }
 }
 
 /// <summary>会话内的一条笔记。</summary>
@@ -62,4 +70,13 @@ public sealed class MediaSessionSnapshot
     public IReadOnlyList<System.TimeSpan> CutPoints { get; set; } = System.Array.Empty<System.TimeSpan>();
     public IReadOnlyList<ScreenshotEntry> Screenshots { get; set; } = System.Array.Empty<ScreenshotEntry>();
     public IReadOnlyList<NoteEntry> Notes { get; set; } = System.Array.Empty<NoteEntry>();
+
+    /// <summary>已勾选标记的截图（按输出路径识别，忽略大小写）。</summary>
+    public IReadOnlyList<string> MarkedScreenshotPaths { get; set; } = System.Array.Empty<string>();
+
+    /// <summary>已勾选标记的片段（按起止 Ticks 识别）。</summary>
+    public IReadOnlyList<(long StartTicks, long EndTicks)> MarkedSegments { get; set; } = System.Array.Empty<(long, long)>();
+
+    /// <summary>已勾选标记的裁切点（按毫秒位置识别）。</summary>
+    public IReadOnlyList<long> MarkedCutPointMs { get; set; } = System.Array.Empty<long>();
 }

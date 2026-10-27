@@ -461,7 +461,11 @@ public sealed class ProjectRepository
         }
 
         // 明细整体替换。
-        foreach (var table in new[] { "session_cut_points", "session_screenshots", "session_notes" })
+        foreach (var table in new[]
+        {
+            "session_cut_points", "session_screenshots", "session_notes",
+            "session_marked_segments", "session_marked_cut_points",
+        })
         {
             using var del = conn.CreateCommand();
             del.Transaction = tx;
@@ -485,14 +489,15 @@ public sealed class ProjectRepository
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
             cmd.CommandText = """
-                INSERT INTO session_screenshots (session_id, file_path, position_ms, captured_at, label)
-                VALUES (@sid, @file_path, @pos, @captured_at, @label)
+                INSERT INTO session_screenshots (session_id, file_path, position_ms, captured_at, label, marked)
+                VALUES (@sid, @file_path, @pos, @captured_at, @label, @marked)
                 """;
             AddParam(cmd, "@sid", session.FastKey);
             AddParam(cmd, "@file_path", s.FilePath);
             AddParam(cmd, "@pos", s.PositionMs);
             AddParam(cmd, "@captured_at", s.CapturedAt.ToString("o"));
             AddParam(cmd, "@label", s.Label);
+            AddParam(cmd, "@marked", s.Marked ? 1 : 0);
             cmd.ExecuteNonQuery();
         }
 
@@ -508,6 +513,33 @@ public sealed class ProjectRepository
             AddParam(cmd, "@pos", n.PositionMs);
             AddParam(cmd, "@text", n.Text);
             AddParam(cmd, "@created_at", n.CreatedAt.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+
+        foreach (var seg in session.MarkedSegments)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                INSERT INTO session_marked_segments (session_id, start_ms, end_ms)
+                VALUES (@sid, @start, @end)
+                """;
+            AddParam(cmd, "@sid", session.FastKey);
+            AddParam(cmd, "@start", seg.StartMs);
+            AddParam(cmd, "@end", seg.EndMs);
+            cmd.ExecuteNonQuery();
+        }
+
+        foreach (var cp in session.MarkedCutPointsMs)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                INSERT INTO session_marked_cut_points (session_id, position_ms)
+                VALUES (@sid, @pos)
+                """;
+            AddParam(cmd, "@sid", session.FastKey);
+            AddParam(cmd, "@pos", cp);
             cmd.ExecuteNonQuery();
         }
 
@@ -543,6 +575,8 @@ public sealed class ProjectRepository
             ("session_cut_points", "session_id"),
             ("session_screenshots", "session_id"),
             ("session_notes", "session_id"),
+            ("session_marked_segments", "session_id"),
+            ("session_marked_cut_points", "session_id"),
             ("media_sessions", "fast_key"),
         })
         {
@@ -586,7 +620,7 @@ public sealed class ProjectRepository
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = """
-                SELECT file_path, position_ms, captured_at, label
+                SELECT file_path, position_ms, captured_at, label, marked
                 FROM session_screenshots WHERE session_id = @sid ORDER BY position_ms ASC
                 """;
             AddParam(cmd, "@sid", session.FastKey);
@@ -599,7 +633,36 @@ public sealed class ProjectRepository
                     PositionMs = reader.GetInt64(1),
                     CapturedAt = ParseDate(reader.GetString(2)),
                     Label = reader.IsDBNull(3) ? null : reader.GetString(3),
+                    Marked = reader.GetInt32(4) != 0,
                 });
+            }
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = """
+                SELECT start_ms, end_ms
+                FROM session_marked_segments WHERE session_id = @sid
+                ORDER BY start_ms ASC
+                """;
+            AddParam(cmd, "@sid", session.FastKey);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                session.MarkedSegments.Add((reader.GetInt64(0), reader.GetInt64(1)));
+            }
+        }
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = """
+                SELECT position_ms
+                FROM session_marked_cut_points WHERE session_id = @sid
+                ORDER BY position_ms ASC
+                """;
+            AddParam(cmd, "@sid", session.FastKey);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                session.MarkedCutPointsMs.Add(reader.GetInt64(0));
             }
         }
         using (var cmd = conn.CreateCommand())

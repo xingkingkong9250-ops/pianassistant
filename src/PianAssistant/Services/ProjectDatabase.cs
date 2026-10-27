@@ -10,8 +10,8 @@ namespace PianAssistant.Services;
 /// </summary>
 public sealed class ProjectDatabase
 {
-    /// <summary>当前 schema 版本号（M7 起为 2）。</summary>
-    public const int CurrentSchemaVersion = 2;
+    /// <summary>当前 schema 版本号（v1.15.4 起为 3：标记持久化）。</summary>
+    public const int CurrentSchemaVersion = 3;
 
     /// <summary>v1 初始版本号。</summary>
     public const int BaseSchemaVersion = 1;
@@ -184,6 +184,7 @@ public sealed class ProjectDatabase
     /// 检查当前 schema 版本并执行增量迁移（幂等）。
     /// v1 → v2：新增素材会话表（media_sessions 及明细），全部为
     /// <c>CREATE TABLE IF NOT EXISTS</c>，不修改/删除任何既有数据，老用户升级不丢数据。
+    /// v2 → v3：截图标记列 + 片段/裁切点标记明细表（v1.15.4 勾选标记持久化）。
     /// </summary>
     public void MigrateIfNeeded()
     {
@@ -193,6 +194,8 @@ public sealed class ProjectDatabase
 
         if (current < 2)
             MigrateToV2();
+        if (current < 3)
+            MigrateToV3();
     }
 
     /// <summary>v1 → v2 迁移：新增 media_sessions 会话表与明细表（幂等，不动旧数据）。</summary>
@@ -249,6 +252,67 @@ public sealed class ProjectDatabase
         }
         RecordMigration(conn, 2, tx);
         tx.Commit();
+    }
+
+    /// <summary>
+    /// v2 → v3 迁移（v1.15.4 勾选标记持久化）：
+    /// 给 session_screenshots 加 marked 列；新增片段标记与裁切点标记两张明细表。
+    /// 全部幂等：列已存在则跳过 ALTER；表用 IF NOT EXISTS。不修改/删除旧数据。
+    /// </summary>
+    private void MigrateToV3()
+    {
+        using var conn = CreateConnection();
+        using var tx = conn.BeginTransaction();
+
+        // session_screenshots 加 marked 列（默认未标记）。
+        if (!ColumnExists(conn, "session_screenshots", "marked"))
+        {
+            using var alter = conn.CreateCommand();
+            alter.Transaction = tx;
+            alter.CommandText =
+                "ALTER TABLE session_screenshots ADD COLUMN marked INTEGER NOT NULL DEFAULT 0";
+            alter.ExecuteNonQuery();
+        }
+
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                CREATE TABLE IF NOT EXISTS session_marked_segments (
+                    session_id TEXT NOT NULL,
+                    start_ms INTEGER NOT NULL,
+                    end_ms INTEGER NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS session_marked_cut_points (
+                    session_id TEXT NOT NULL,
+                    position_ms INTEGER NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_session_marked_segments
+                    ON session_marked_segments(session_id);
+                CREATE INDEX IF NOT EXISTS idx_session_marked_cut_points
+                    ON session_marked_cut_points(session_id);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        RecordMigration(conn, 3, tx);
+        tx.Commit();
+    }
+
+    /// <summary>判断指定表是否已存在某列（用于幂等 ALTER TABLE ADD COLUMN）。</summary>
+    private static bool ColumnExists(SqliteConnection conn, string table, string column)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"PRAGMA table_info({table})";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>在迁移完成后记录版本号。</summary>

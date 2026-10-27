@@ -307,6 +307,9 @@ public sealed class MediaSessionService : IDisposable
         };
         foreach (var cp in snapshot.CutPoints)
             session.CutPointsMs.Add((long)cp.TotalMilliseconds);
+
+        var markedShots = snapshot.MarkedScreenshotPaths
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var s in snapshot.Screenshots)
         {
             session.Screenshots.Add(new SessionScreenshot
@@ -315,8 +318,17 @@ public sealed class MediaSessionService : IDisposable
                 PositionMs = (long)s.Position.TotalMilliseconds,
                 CapturedAt = s.CapturedAt,
                 Label = s.Label,
+                Marked = markedShots.Contains(s.OutputPath),
             });
         }
+        foreach (var seg in snapshot.MarkedSegments)
+        {
+            session.MarkedSegments.Add((
+                (long)TimeSpan.FromTicks(seg.StartTicks).TotalMilliseconds,
+                (long)TimeSpan.FromTicks(seg.EndTicks).TotalMilliseconds));
+        }
+        foreach (var cpMs in snapshot.MarkedCutPointMs)
+            session.MarkedCutPointsMs.Add(cpMs);
         foreach (var n in snapshot.Notes)
         {
             session.Notes.Add(new SessionNote

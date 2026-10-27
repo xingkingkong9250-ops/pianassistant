@@ -152,4 +152,47 @@ public class MediaSessionRepositoryTests : IDisposable
         Assert.Null(_repo.LoadSessionByFastKey("d|1|1"));
         Assert.Null(_repo.LoadSessionByHash("hashd"));
     }
+
+    [Fact]
+    public void UpsertSession_Marks_RoundTrip()
+    {
+        // v1.15.4：三类勾选标记随会话落库并回读。
+        var session = BuildSession("marks|1|1", cutPoints: 3, screenshots: 2);
+        session.Screenshots[0].Marked = true;
+        session.Screenshots[1].Marked = false;
+        session.MarkedSegments.Add((0, 1000));
+        session.MarkedSegments.Add((2000, 3000));
+        session.MarkedCutPointsMs.Add(1000);
+        session.MarkedCutPointsMs.Add(3000);
+
+        _repo.UpsertSession(session);
+
+        var loaded = _repo.LoadSessionByFastKey("marks|1|1");
+        Assert.NotNull(loaded);
+        Assert.True(loaded!.Screenshots[0].Marked);
+        Assert.False(loaded.Screenshots[1].Marked);
+        Assert.Equal(new[] { (0L, 1000L), (2000L, 3000L) }, loaded.MarkedSegments);
+        Assert.Equal(new[] { 1000L, 3000L }, loaded.MarkedCutPointsMs);
+    }
+
+    [Fact]
+    public void UpsertSession_Marks_ReplacedOnSecondWrite()
+    {
+        // 标记明细也应随会话整体替换，而非累加。
+        var key = "mrep|1|1";
+        var first = BuildSession(key, cutPoints: 2, screenshots: 1);
+        first.Screenshots[0].Marked = true;
+        first.MarkedCutPointsMs.Add(1000);
+        _repo.UpsertSession(first);
+
+        var second = BuildSession(key, cutPoints: 1, screenshots: 1);
+        second.Screenshots[0].Marked = false;
+        _repo.UpsertSession(second);
+
+        var loaded = _repo.LoadSessionByFastKey(key);
+        Assert.NotNull(loaded);
+        Assert.False(loaded!.Screenshots[0].Marked);
+        Assert.Empty(loaded.MarkedCutPointsMs);
+        Assert.Empty(loaded.MarkedSegments);
+    }
 }
