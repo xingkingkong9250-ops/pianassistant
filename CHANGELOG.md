@@ -7,6 +7,18 @@
 
 ## [Unreleased]
 
+### v1.15.1 — 补丁：截图勾选/选中态同步至时间轴水滴标记（NO.P，2026-10-27）
+
+- **时间轴截图标记颜色反馈**：笔记侧 ☑ 勾选截图条目时，时间轴上对应的水滴标记同步呈**金色**（#D7BA7D，与轴2黄带同色系），便于一眼识别哪些截图已加入导出队列；
+  点击笔记列表某一行时，对应水滴标记加**白色描边**高亮；
+  两个状态可叠加（金色填充 + 白色描边）
+- **模型层**：`TimelineMarker` 变可观察对象（继承 `ObservableObject`），新增 `IsSelected` / `IsMarked` 属性；
+  笔记列表 `TimelineListItem.IsSelected` / `IsMarked` 变化时增量同步到对应 TimelineMarker
+- **控件层**：`TimelineControl` 订阅 `Markers` 集合的 `CollectionChanged` 与每个 marker 的 `PropertyChanged`，
+  单 marker 级 invalidate；OnRender 按 IsMarked/IsSelected 绘制不同 fill/stroke
+- **根因修复**：v1.15.0 前 `RebuildMarkers` 只从 Screenshots 数据源重建、不携带笔记侧选中/勾选状态；
+  `OnItemPropertyChanged` 也没监听 `IsSelected` 变化 → 时间轴与笔记列表状态长期脱节
+
 ### v1.15.0 — 交互细节批：时间轴右端时间码 / 底栏居中重排 / 点击画面暂停（NO.M，2026-10-27）
 
 - **时间轴滚动条滚轮修复**（W1-R3-02）：v1.13.0 按 `OriginalSource is ScrollBar` 判定，

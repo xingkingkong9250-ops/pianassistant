@@ -56,6 +56,8 @@ public sealed class TimelineControl : Control
         DefaultStyleKeyProperty.OverrideMetadata(
             typeof(TimelineControl),
             new FrameworkPropertyMetadata(typeof(TimelineControl)));
+        GoldFillBrush.Freeze();
+        SelectedStrokePen.Freeze();
     }
 
     // --- 依赖属性 ---
@@ -107,7 +109,48 @@ public sealed class TimelineControl : Control
         DependencyProperty.Register(
             nameof(Markers), typeof(IEnumerable<TimelineMarker>), typeof(TimelineControl),
             new FrameworkPropertyMetadata(null,
-                FrameworkPropertyMetadataOptions.AffectsRender));
+                FrameworkPropertyMetadataOptions.AffectsRender, OnMarkersChanged));
+
+    private static void OnMarkersChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not TimelineControl control) return;
+        // 反订阅旧集合 / 旧 marker 属性变化（v1.15.1：TimelineMarker 变可观察）
+        if (e.OldValue is IEnumerable<TimelineMarker> oldMarkers)
+        {
+            foreach (var m in oldMarkers)
+                m.PropertyChanged -= control.OnMarkerPropertyChanged;
+            if (e.OldValue is INotifyCollectionChanged oldCol)
+                oldCol.CollectionChanged -= control.OnMarkersCollectionChanged;
+        }
+        // 订阅新集合 / 新 marker
+        if (e.NewValue is INotifyCollectionChanged newCol)
+            newCol.CollectionChanged += control.OnMarkersCollectionChanged;
+        if (e.NewValue is IEnumerable<TimelineMarker> newMarkers)
+        {
+            foreach (var m in newMarkers)
+                m.PropertyChanged += control.OnMarkerPropertyChanged;
+        }
+        control.InvalidateTimelineVisual();
+    }
+
+    private void OnMarkersCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // 集合内容增删时：新 marker 订阅，旧 marker 反订阅
+        if (e.OldItems is not null)
+            foreach (TimelineMarker m in e.OldItems)
+                m.PropertyChanged -= OnMarkerPropertyChanged;
+        if (e.NewItems is not null)
+            foreach (TimelineMarker m in e.NewItems)
+                m.PropertyChanged += OnMarkerPropertyChanged;
+        InvalidateTimelineVisual();
+    }
+
+    /// <summary>TimelineMarker 内部 IsSelected / IsMarked 变化 → 单 marker 级触发重绘（v1.15.1）。</summary>
+    private void OnMarkerPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(TimelineMarker.IsSelected) or nameof(TimelineMarker.IsMarked))) return;
+        InvalidateTimelineVisual();
+    }
 
     /// <summary>已标记片段集合（笔记 ☑ 勾选同步），绘制为黄色半透明段带。</summary>
     public static readonly DependencyProperty MarkedSegmentsProperty =
@@ -240,6 +283,11 @@ public sealed class TimelineControl : Control
     private double _viewportWidth; // ScrollViewer 可见宽度
     // 标记颜色画笔缓存（ColorHex → 冻结画笔）
     private readonly Dictionary<string, SolidColorBrush> _markerBrushCache = new();
+    // v1.15.1 固定态画笔（避免 OnRender 每帧创建：已 Freeze，线程安全）
+    private static readonly SolidColorBrush GoldFillBrush =
+        new(Color.FromRgb(0xD7, 0xBA, 0x7D));
+    private static readonly Pen SelectedStrokePen =
+        new(Brushes.White, 0.8);
 
     /// <summary>按十六进制颜色取冻结画笔（带缓存与兜底）。</summary>
     private SolidColorBrush GetMarkerBrush(string colorHex)
@@ -472,14 +520,18 @@ public sealed class TimelineControl : Control
             }
         }
 
-        // --- 轴3：截图标记轴（v1.14.0 水滴标记：圆头 + 下尖角，垂直居中） ---
+        // --- 轴3：截图标记轴（v1.14.0 水滴标记：圆头 + 下尖角，垂直居中；
+        //     v1.15.1：IsMarked → 金色（与轴2黄带同色系），IsSelected → 白色描边高亮） ---
         if (Markers is not null)
         {
             var cy = markerTop + markerHeight / 2;
             foreach (var marker in Markers)
             {
                 var x = marker.Position.TotalMilliseconds / lenMs * w;
-                dc.DrawGeometry(GetMarkerBrush(marker.ColorHex), null, BuildDropGeometry(x, cy));
+                // IsMarked 优先（核心导出提示金）；IsSelected 白色描边叠加
+                var fill = marker.IsMarked ? GoldFillBrush : GetMarkerBrush(marker.ColorHex);
+                var stroke = marker.IsSelected ? SelectedStrokePen : null;
+                dc.DrawGeometry(fill, stroke, BuildDropGeometry(x, cy));
             }
         }
 

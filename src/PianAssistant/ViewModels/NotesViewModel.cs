@@ -353,12 +353,32 @@ public sealed class NotesViewModel : ObservableObject
 
     private void OnItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        // 笔记列表行选中态 → 增量更新对应 TimelineMarker（v1.15.1）
+        if (e.PropertyName == nameof(TimelineListItem.IsSelected) && sender is ScreenshotListItem shotItem)
+        {
+            SyncMarkerState(shotItem);
+            return;
+        }
         if (e.PropertyName != nameof(TimelineListItem.IsMarked)) return;
         RaiseChanged(); // 勾选标记是记录信息，触发会话自动保存
         if (sender is SegmentListItem segItem)
             SyncMarkedSegment(segItem);
+        if (sender is ScreenshotListItem shot)
+            SyncMarkerState(shot);
         if (_onlyMarked)
             RefreshFilter();
+    }
+
+    /// <summary>
+    /// 增量同步单个截图条目的 IsSelected / IsMarked 到时间轴 TimelineMarker（v1.15.1）。
+    /// TimelineMarker 变可观察，属性 set 会触发 TimelineControl.OnRender 刷新。
+    /// </summary>
+    private void SyncMarkerState(ScreenshotListItem item)
+    {
+        var marker = Markers.FirstOrDefault(m => m.Position == item.Position);
+        if (marker is null) return;
+        marker.IsSelected = item.IsSelected;
+        marker.IsMarked = item.IsMarked;
     }
 
     /// <summary>增量同步时间轴黄带集合：勾选加入（按 Start 排序）、取消移除。</summary>
@@ -381,12 +401,25 @@ public sealed class NotesViewModel : ObservableObject
             MarkedSegments.Add(seg);
     }
 
-    /// <summary>时间轴标记只来自截图（裁切点时间轴已有红三角）。</summary>
+    /// <summary>
+    /// 全量重建时间轴截图标记（v1.15.1：同时从笔记列表同步 IsSelected/IsMarked 状态）。
+    /// Screenshots 是数据源，状态在 Items 的 ScreenshotListItem 上。
+    /// </summary>
     private void RebuildMarkers()
     {
         Markers.Clear();
         foreach (var s in Screenshots)
-            Markers.Add(new TimelineMarker(s.Position, MarkerKind.Screenshot));
+        {
+            var marker = new TimelineMarker(s.Position, MarkerKind.Screenshot);
+            var item = Items.OfType<ScreenshotListItem>()
+                .FirstOrDefault(i => i.Position == s.Position);
+            if (item is not null)
+            {
+                marker.IsSelected = item.IsSelected;
+                marker.IsMarked = item.IsMarked;
+            }
+            Markers.Add(marker);
+        }
     }
 
     private void RefreshFilter()
