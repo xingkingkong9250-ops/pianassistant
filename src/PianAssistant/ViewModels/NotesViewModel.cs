@@ -340,6 +340,15 @@ public sealed class NotesViewModel : ObservableObject
         RebuildMarkers();
         RebuildMarkedSegments();
         RefreshFilter();
+        // 诊断：记录重建后标记数（v1.15.5 排查标记丢失）
+        var afterShots = Items.OfType<ScreenshotListItem>().Count(i => i.IsMarked);
+        var afterSegs = Items.OfType<SegmentListItem>().Count(i => i.IsMarked);
+        var afterCuts = Items.OfType<CutPointListItem>().Count(i => i.IsMarked);
+        if (markedShots.Count != afterShots || markedSegs.Count != afterSegs || markedCuts.Count != afterCuts)
+        {
+            AppLog.Info($"[NotesVM] RebuildItems mark delta: shots {markedShots.Count}->{afterShots}, " +
+                        $"segs {markedSegs.Count}->{afterSegs}, cuts {markedCuts.Count}->{afterCuts}");
+        }
     }
 
     /// <summary>
@@ -360,6 +369,15 @@ public sealed class NotesViewModel : ObservableObject
             return;
         }
         if (e.PropertyName != nameof(TimelineListItem.IsMarked)) return;
+        // 诊断：记录每次标记变化（v1.15.5 排查标记丢失）
+        var kind = sender switch
+        {
+            ScreenshotListItem s => $"shot pos={s.Position:hh\\:mm\\:ss\\.fff}",
+            SegmentListItem g => $"seg {g.Segment.Start:hh\\:mm\\:ss\\.fff}-{g.Segment.End:hh\\:mm\\:ss\\.fff}",
+            CutPointListItem c => $"cut {c.Position:hh\\:mm\\:ss\\.fff}",
+            _ => "?"
+        };
+        AppLog.Info($"[NotesVM] IsMarked changed: {kind} -> {((TimelineListItem)sender!).IsMarked}");
         RaiseChanged(); // 勾选标记是记录信息，触发会话自动保存
         if (sender is SegmentListItem segItem)
             SyncMarkedSegment(segItem);

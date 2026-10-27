@@ -247,9 +247,13 @@ public sealed class MediaSessionService : IDisposable
             var snapshot = CaptureSnapshot?.Invoke();
             if (snapshot is null) return;
 
+            AppLog.Info($"[MediaSessionService] Flush snapshot: shots={snapshot.Screenshots.Count} markedShots={snapshot.MarkedScreenshotPaths.Count} markedSegs={snapshot.MarkedSegments.Count} markedCuts={snapshot.MarkedCutPointMs.Count}");
+
             var session = BuildSession(fastKey, path, hash, snapshot);
             // 空会话不创建记录（无裁切/截图/笔记/入出点/位置）。
             if (IsEmpty(session)) return;
+
+            AppLog.Info($"[MediaSessionService] Flush upsert: shots={session.Screenshots.Count} markedShots={session.Screenshots.Count(s => s.Marked)} markedSegs={session.MarkedSegments.Count} markedCuts={session.MarkedCutPointsMs.Count}");
 
             _repository.UpsertSession(session);
             Persisted?.Invoke(this, EventArgs.Empty);

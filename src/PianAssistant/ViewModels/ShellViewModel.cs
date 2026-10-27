@@ -43,6 +43,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _volumeSaveCts;
     // 播放位置按秒节流落库，避免高频写库（M7）。
     private long _lastMarkedSecond = -1;
+    // 还原的标记明细：ApplySession 时若 VLC 尚未解析出时长，分段未创建，
+    // 标记无法应用到 Items；待 Length 就绪重算分段后需重新应用（v1.15.5）。
+    private HashSet<(long Start, long End)> _restoredMarkedSegments = new();
+    private HashSet<long> _restoredMarkedCutPoints = new();
+    private HashSet<string> _restoredMarkedScreenshotPaths = new(StringComparer.OrdinalIgnoreCase);
 
     public ServiceRegistry Services => _services;
     public PlayerViewModel Player { get; }
@@ -540,6 +545,10 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             _proxyCts?.Cancel();
             // 撤回历史不跨素材保留（v1.6.0）。
             _undo.Clear();
+            // 清空上一素材的还原标记缓存，避免套用至新素材（v1.15.5）。
+            _restoredMarkedScreenshotPaths.Clear();
+            _restoredMarkedSegments.Clear();
+            _restoredMarkedCutPoints.Clear();
             // 重载过程中抑制变更上报，避免把清空动作本身写回数据库（M7）。
             _isRestoring = true;
             try
@@ -625,6 +634,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         if (e.PropertyName != nameof(PlayerViewModel.Length)) return;
         if (Player.Length <= TimeSpan.Zero || Player.CutPoints.Count == 0) return;
         Notes.RecomputeSegments(Player.CutPoints.ToList(), Player.Length, Player.SourcePathOrCurrent);
+        // Length 就绪后分段才创建：若 ApplySession 时尚无分段导致标记未套用，此处补齐（v1.15.5）。
+        if (_restoredMarkedSegments.Count > 0 || _restoredMarkedCutPoints.Count > 0
+            || _restoredMarkedScreenshotPaths.Count > 0)
+        {
+            ApplyRestoredMarks();
+        }
     }
 
     /// <summary>
@@ -953,29 +968,15 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             }
 
             // 还原三类勾选标记（截图按路径、片段按起止毫秒、裁切点按毫秒位置）。
-            var markedShots = session.Screenshots
+            // 先存入字段：若 VLC 尚未解析出时长，分段此时未创建，标记无法应用，
+            // 待 Length 就绪重算分段后由 OnPlayerPropertyChanged 重新套用（v1.15.5）。
+            _restoredMarkedScreenshotPaths = session.Screenshots
                 .Where(s => s.Marked)
                 .Select(s => s.FilePath)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var markedSegs = session.MarkedSegments.ToHashSet();
-            var markedCuts = session.MarkedCutPointsMs.ToHashSet();
-            foreach (var item in Notes.Items)
-            {
-                switch (item)
-                {
-                    case ScreenshotListItem shot:
-                        shot.IsMarked = markedShots.Contains(shot.Entry.OutputPath);
-                        break;
-                    case SegmentListItem seg:
-                        seg.IsMarked = markedSegs.Contains((
-                            (long)seg.Segment.Start.TotalMilliseconds,
-                            (long)seg.Segment.End.TotalMilliseconds));
-                        break;
-                    case CutPointListItem cut:
-                        cut.IsMarked = markedCuts.Contains((long)cut.Position.TotalMilliseconds);
-                        break;
-                }
-            }
+            _restoredMarkedSegments = session.MarkedSegments.ToHashSet();
+            _restoredMarkedCutPoints = session.MarkedCutPointsMs.ToHashSet();
+            ApplyRestoredMarks();
 
             // 还原播放位置与倍速（位置为 0/倍速 1.0 时即等同不还原）。
             Player.Position = TimeSpan.FromMilliseconds(session.LastPositionMs);
@@ -985,6 +986,49 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         finally
         {
             _isRestoring = false;
+        }
+    }
+
+    /// <summary>
+    /// 把 _restoredMarked* 字段中的还原标记套用到当前 Notes.Items。
+    /// ApplySession 时若分段未创建（Length=0），片段标记无法应用；
+    /// Length 就绪后 OnPlayerPropertyChanged 重算分段，再次调用本方法补齐标记（v1.15.5）。
+    /// 只设 IsMarked=true，不主动取消——避免覆盖还原后用户的手动勾选操作。
+    /// </summary>
+    private void ApplyRestoredMarks()
+    {
+        int restoredShots = 0, restoredSegs = 0, restoredCuts = 0;
+        foreach (var item in Notes.Items)
+        {
+            switch (item)
+            {
+                case ScreenshotListItem shot:
+                    if (_restoredMarkedScreenshotPaths.Contains(shot.Entry.OutputPath))
+                    { shot.IsMarked = true; restoredShots++; }
+                    break;
+                case SegmentListItem seg:
+                    if (_restoredMarkedSegments.Contains((
+                        (long)seg.Segment.Start.TotalMilliseconds,
+                        (long)seg.Segment.End.TotalMilliseconds)))
+                    { seg.IsMarked = true; restoredSegs++; }
+                    break;
+                case CutPointListItem cut:
+                    if (_restoredMarkedCutPoints.Contains((long)cut.Position.TotalMilliseconds))
+                    { cut.IsMarked = true; restoredCuts++; }
+                    break;
+            }
+        }
+        AppLog.Info($"[ShellVM] ApplyRestoredMarks: shots={restoredShots}/{_restoredMarkedScreenshotPaths.Count} " +
+                    $"segs={restoredSegs}/{_restoredMarkedSegments.Count} cuts={restoredCuts}/{_restoredMarkedCutPoints.Count}; " +
+                    $"totalItems={Notes.Items.Count}");
+        // 还原标记已全部套用到 Items 后清空字段，避免后续 RebuildItems 时重复覆盖用户操作。
+        if (restoredShots >= _restoredMarkedScreenshotPaths.Count
+            && restoredSegs >= _restoredMarkedSegments.Count
+            && restoredCuts >= _restoredMarkedCutPoints.Count)
+        {
+            _restoredMarkedScreenshotPaths.Clear();
+            _restoredMarkedSegments.Clear();
+            _restoredMarkedCutPoints.Clear();
         }
     }
 

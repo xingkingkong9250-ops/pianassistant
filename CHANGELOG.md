@@ -7,6 +7,18 @@
 
 ## [Unreleased]
 
+### v1.15.5 — 补丁：修复标记还原时序问题（片段/裁切点标记重开视频丢失）（NO.P，2026-10-27）
+
+- **根因**：`ApplySession` 还原会话时若 VLC 尚未解析出视频时长（`Length=0`），
+  `RecomputeSegments` 跳过片段创建，导致片段/裁切点标记无法套用到不存在的条目上；
+  待 VLC 解析出时长触发重算分段后，标记未重新应用，下一次防抖落库即以 0 标记覆盖已存数据
+- **修复**：还原标记先存入 `_restoredMarkedSegments` / `_restoredMarkedCutPoints` /
+  `_restoredMarkedScreenshotPaths` 字段；`OnPlayerPropertyChanged` 监听 `Length` 变化，
+  重算分段后调用 `ApplyRestoredMarks` 补齐标记；只设 `IsMarked=true` 不覆盖用户后续手动操作；
+  全部套用后清空字段，切视频时也清空防泄漏
+- **诊断日志**：`OnItemPropertyChanged` 记录每次 `IsMarked` 变化、`RebuildItems` 记录
+  标记数前后差异、`ApplyRestoredMarks` 记录还原统计，便于后续排查截图标记丢失问题
+
 ### v1.15.4 — 补丁：笔记勾选标记持久化（截图/片段/裁切点），重开视频标记不丢失（NO.P，2026-10-27）
 
 - **标记持久化**（W1-C2-D-03）：笔记面板的三类勾选标记（截图★、片段★、裁切点★）随素材会话一起落库，
