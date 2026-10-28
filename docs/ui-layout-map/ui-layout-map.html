@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拉片助手 · 界面编号视觉图鉴（v1.7.1）</title>
+<title>拉片助手 · 界面编号视觉图鉴（v1.15.5）</title>
 <style>
 :root{
   --bg:#0F0F0F; --bg2:#1A1A1A; --bg3:#161616;
@@ -63,6 +63,20 @@ tr.hl td{background:rgba(46,138,176,.18)}
 .kv{background:var(--bg2);border:1px solid var(--rule);border-radius:10px;padding:1rem 1.2rem;margin:1rem 0;font-size:.88rem}
 .kv b{color:var(--accent)}
 footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid var(--rule);padding-top:1rem}
+/* 查找工具栏 + 详情面板 */
+#finder{position:sticky;top:0;z-index:7;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;background:rgba(15,15,15,.95);border:1px solid var(--rule);border-radius:10px;padding:.55rem .8rem;margin:1.1rem 0 .2rem}
+#finder input[type=search]{flex:1 1 260px;min-width:160px;background:var(--bg2);border:1px solid var(--rule);border-radius:6px;color:var(--ink);padding:.45rem .7rem;font-size:.85rem;font-family:var(--mono)}
+#finder input[type=search]:focus{outline:none;border-color:var(--accent)}
+#finder label{font-size:.8rem;color:var(--muted);display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;white-space:nowrap}
+#finder .cnt{font-family:var(--mono);font-size:.78rem;color:var(--accent);white-space:nowrap}
+tr.dim{display:none}
+.chip.dim{opacity:.12}
+#detail{position:fixed;right:1rem;bottom:3.3rem;width:min(430px,calc(100% - 2rem));background:var(--bg2);border:1px solid var(--accent);border-radius:10px;padding:.9rem 1.1rem;box-shadow:0 12px 42px rgba(0,0,0,.65);z-index:11;display:none}
+#detail.open{display:block}
+#detail .close{position:absolute;top:.45rem;right:.7rem;color:var(--muted);cursor:pointer;font-size:.95rem;line-height:1}
+#detail h4{margin:0 0 .3rem;font-family:var(--mono);color:var(--accent);font-size:.95rem;letter-spacing:.02em}
+#detail .dn{font-weight:600;margin-bottom:.35rem;font-size:.9rem}
+#detail .dd{font-size:.83rem;color:#C9C9C9;line-height:1.62}
 @media (max-width:700px){.wrap{padding:1.5rem 1rem 5rem}.rules{grid-template-columns:1fr}}
 @media print{#statusbar{display:none}body{background:#fff;color:#111}}
 </style>
@@ -70,7 +84,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <body>
 <div class="wrap">
 
-<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.7.1 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
+<h1>拉片助手 · 界面编号视觉图鉴<small>以视觉布局为主线的编号对照手册 · 适用版本 v1.15.5 · 与 docs/UI_NUMBERING.md（编号真源）同步</small></h1>
 <ul class="toc">
   <li><a href="#rules">编号规则</a></li>
   <li><a href="#w1">W1 主窗口总览</a></li>
@@ -83,6 +97,11 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <li><a href="#w5">W5 标注</a></li>
   <li><a href="#params">布局参数速查</a></li>
 </ul>
+<div id="finder">
+  <input id="q" type="search" placeholder="搜索编号 / 控件 / 说明，例如 R3-05、★、代理、裁切点" autocomplete="off" spellcheck="false">
+  <label><input id="hideDel" type="checkbox"> 隐藏已删除</label>
+  <span class="cnt" id="cnt"></span>
+</div>
 
 <h2 id="rules"><span class="no">§0</span>编号规则与使用方法</h2>
 <p class="lead">编号是<strong>锁定位置的唯一标记</strong>：调整布局前先在图上找到目标编号，改完 XAML 后回来核对编号仍指向同一功能。点击图中任意编号芯片，页面底部会显示它的完整说明；表格行也会同步高亮。</p>
@@ -102,7 +121,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 </div>
 
 <h2 id="w1"><span class="no">§1</span>W1 主窗口 · 总览布局</h2>
-<p class="lead">四行结构：<strong style="color:var(--z-r1)">R1 导航栏(48px)</strong> → <strong style="color:var(--z-r2)">R2 播放列表(220px，可拖 160~400) + 视频区 + 侧边栏(默认 300px，可拖 200~500)</strong> → <strong style="color:var(--z-r3)">R3 时间轴</strong> → <strong style="color:var(--z-r4)">R4 底部控制栏(56px)</strong>。左下虚线框为 E 全局叠加层位置（提示条，右下角浮现）。v0.12.0 起播放列表（C1）固定于视频左侧。</p>
+<p class="lead">四行结构：<strong style="color:var(--z-r1)">R1 导航栏(48px)</strong> → <strong style="color:var(--z-r2)">R2 播放列表(220px，可拖 160~400) + 视频区 + 侧边栏(默认 300px，可拖 200~500)</strong> → <strong style="color:var(--z-r3)">R3 时间轴(64px，三轴 + 右端信息区)</strong> → <strong style="color:var(--z-r4)">R4 底部控制栏(56px，Grid 三区)</strong>。右下虚线框为 E 全局叠加层位置（提示条，右下角浮现）。v0.12.0 起播放列表（C1）固定于视频左侧；<strong>v1.15.0 起时间码与倍速迁入 R3 右端信息区、底栏播放控制按整窗水平居中</strong>。</p>
 <figure>
 <svg viewBox="0 0 1200 640" role="img" aria-label="W1 主窗口总览布局图">
   <!-- R1 -->
@@ -139,39 +158,45 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C3" data-name="片段批量导出面板" data-desc="队列 + 进度 + 全部导出/拼接/取消"><rect x="920" y="200" width="260" height="60" rx="4"/><text x="1050" y="224">W1-C3</text><text x="1050" y="242" style="font-size:10px;fill:var(--muted)">片段批量导出</text></g>
   <g class="chip" style="--z:var(--z-e)" data-num="W1-E-01" data-name="通知提示条" data-desc="右下角浮现，2.5s 自动淡出，不打断操作"><rect x="760" y="430" width="120" height="26" rx="5"/><text x="820" y="444">E-01 Toast</text></g>
 
-  <!-- R3 -->
-  <rect class="wire" x="10" y="490" width="1180" height="60" rx="6"/>
-  <text class="zone-lb" x="20" y="507" fill="var(--z-r3)">W1-R3 时间轴 · TimelineBorder（滚轮缩放 0.5~50×）</text>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-01" data-name="缩放指示区" data-desc="「缩放」+ ZoomLabel 当前倍数"><rect x="20" y="512" width="66" height="26" rx="4"/><text x="53" y="526">R3-01</text></g>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-02" data-name="滚动容器" data-desc="TimelineScroll 横向滚动条"><rect x="90" y="512" width="1090" height="26" rx="4" stroke-dasharray="4 3"/><text x="635" y="526">R3-02 滚动容器 ＋ R3-03 TimelineControl（播放头·裁切点·截图点·入出点·选中段·黄带）</text></g>
+  <!-- R3（高 64，三轴 + 右端信息区） -->
+  <rect class="wire" x="10" y="490" width="1180" height="64" rx="6"/>
+  <text class="zone-lb" x="20" y="506" fill="var(--z-r3)">W1-R3 时间轴 · 高 64 · 三轴（滑块 / 裁切 / 截图）· 滚轮缩放 0.5~50×</text>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-02" data-name="滚动容器 TimelineScroll" data-desc="横向滚动；悬停滚动条滚轮直接水平滚动（按鼠标位置判定，v1.15.0 修复）"><rect x="16" y="512" width="996" height="36" rx="4" stroke-dasharray="4 3"/><text x="514" y="526">R3-02 TimelineScroll</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-04" data-name="轴1 时间滑块轴" data-desc="高 18（v1.14.0 由 20 缩窄）；刻度 + 时间标签 + 白色播放头（v1.14.0 起沙漏形：顶部下三角 + 底部上三角）；点击/拖动 seek；v1.13.0 起以鼠标所指时间点为锚缩放"><rect x="22" y="516" width="984" height="16" rx="3"/><text x="514" y="524">R3-04 轴1 滑块 1 2 5 10 15 30 … 00:01:00 ▼白播放头</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-05" data-name="轴2 裁切片段轴" data-desc="高 14（v1.14.0 由 18 缩窄）；红色裁切点旗标 #E51400、蓝色入出点、选中段（白 @10% + 灰框，自动跟随播放头）、已标记黄带 #D7BA7D；仅本轴命中裁切点拖拽（不越相邻点，一次拖拽 = 一步 Ctrl+Z）"><rect x="22" y="533" width="984" height="12" rx="3"/><text x="514" y="540">R3-05 轴2 裁切点旗标▍▍ · 入点 · 出点 · 选中段 · 已标记黄带</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-06" data-name="轴3 截图标记轴" data-desc="高 14（v1.14.0 由 18 缩窄）；v1.14.0 起水滴标记（圆头+下尖角，#4EC9B0）；v1.15.1 起选中/勾选双态同步（勾选金色填充、行选中白色描边，可叠加）；仅本轴命中截图标记拖拽（只改时间码）"><rect x="22" y="546" width="984" height="10" rx="3"/><text x="514" y="553">R3-06 轴3 截图水滴标记 ▼ ▼（勾选金 / 选中白）</text></g>
+  <!-- R3 右端信息区：08 容器，内含 07 时间码 + 01 缩放 + 03 倍速 -->
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-08" data-name="右端信息区容器" data-desc="v1.15.0 起：缩放 + 时间码合并；v1.15.3 起承载倍速标记；点击整块复位缩放 1.0×"><rect x="1024" y="496" width="156" height="52" rx="4" stroke-dasharray="4 3"/><text x="1102" y="522" style="font-size:10px">R3-08 信息区</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-07" data-name="时间码 当前 / 总时长" data-desc="v1.15.0 由底栏 W1-R4-01/02 迁入；TimeCodeDisplayString / LengthDisplayString"><rect x="1030" y="500" width="144" height="17" rx="3"/><text x="1102" y="509" style="font-size:10px">R3-07 00:12.500 / 01:30.000</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-01" data-name="缩放指示区" data-desc="「缩放」+ ZoomLabel；v1.13.0 起点击恢复 1.0×；v1.15.0 起与时间码合并为右端信息区"><rect x="1030" y="521" width="66" height="20" rx="3"/><text x="1063" y="532" style="font-size:10px">R3-01 1.0×</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R4-03" data-name="倍速标记（现居 R3-08）" data-desc="v1.15.3 由底栏左侧迁入时间轴右端信息区，常驻显示；1.0× 灰显、非 1× 蓝底高亮；点击恢复 1×"><rect x="1100" y="521" width="74" height="20" rx="3"/><text x="1137" y="532" style="font-size:10px">R4-03 倍速</text></g>
 
-  <!-- R4 -->
-  <rect class="wire" x="10" y="558" width="1180" height="60" rx="6"/>
-  <text class="zone-lb" x="20" y="575" fill="var(--z-r4)">W1-R4 底部控制栏 · 高 56 · BottomControlBorder</text>
-  <!-- 左侧：时间码 / 倍速标记 / 音量 / 全屏 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-01" data-name="当前时间码" data-desc="TimeCodeDisplayString"><rect x="20" y="580" width="58" height="22" rx="4"/><text x="49" y="592">R4-01</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-02" data-name="总时长" data-desc="LengthDisplayString"><rect x="82" y="580" width="58" height="22" rx="4"/><text x="111" y="592">R4-02</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-03" data-name="倍速标记" data-desc="非1×时显示；点击恢复1×"><rect x="144" y="580" width="58" height="22" rx="4"/><text x="173" y="592">R4-03</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-04" data-name="🔊 静音" data-desc="M 键"><rect x="206" y="580" width="30" height="22" rx="4"/><text x="221" y="592">04</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100；v0.19.0 起软件级记忆（config.json 持久化）"><rect x="240" y="580" width="90" height="22" rx="4"/><text x="285" y="592">R4-05</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-06" data-name="音量百分比" data-desc="文本"><rect x="334" y="580" width="36" height="22" rx="4"/><text x="352" y="592">06</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-16" data-name="CC 字幕轨选择" data-desc="v1.5.0 新增；弹出字幕菜单（关闭/内嵌轨/外挂字幕/加载字幕文件…）"><rect x="374" y="580" width="24" height="22" rx="4"/><text x="386" y="592">16</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-17" data-name="♪ 音轨选择" data-desc="v1.5.0 新增；弹出音轨菜单（多音轨/双语片源切换）"><rect x="400" y="580" width="24" height="22" rx="4"/><text x="412" y="592">17</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-08" data-name="⛶ 全屏" data-desc="F / Esc"><rect x="428" y="580" width="30" height="22" rx="4"/><text x="443" y="592">08</text></g>
-  <!-- 中间：播放控制（对称排列） -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-09" data-name="⏮ 跳到开头" data-desc="Home"><rect x="462" y="580" width="30" height="22" rx="4"/><text x="477" y="592">09</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-14" data-name="− 降低倍速" data-desc="新增，档位步进"><rect x="496" y="580" width="30" height="22" rx="4"/><text x="511" y="592">14</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-10" data-name="◀ 上一帧" data-desc="←"><rect x="530" y="580" width="30" height="22" rx="4"/><text x="545" y="592">10</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-11" data-name="⏯ 播放/暂停" data-desc="Space，居中大圆钮"><rect x="566" y="578" width="44" height="24" rx="12"/><text x="588" y="591">11</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-12" data-name="▶ 下一帧" data-desc="→"><rect x="616" y="580" width="30" height="22" rx="4"/><text x="631" y="592">12</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-15" data-name="+ 提高倍速" data-desc="新增，档位步进"><rect x="650" y="580" width="30" height="22" rx="4"/><text x="665" y="592">15</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-13" data-name="⏭ 跳到结尾" data-desc="End"><rect x="684" y="580" width="30" height="22" rx="4"/><text x="699" y="592">13</text></g>
-  <!-- 右侧：从 R1 移入 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="S；v0.20.0 起为时间轴截图标记 + ffmpeg 后台抽帧"><rect x="1000" y="580" width="30" height="22" rx="4"/><text x="1015" y="592">05</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 添加裁切点" data-desc="C；v0.20.0 起由截取片段变更"><rect x="1034" y="580" width="30" height="22" rx="4"/><text x="1049" y="592">08</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩 标记片段" data-desc="v1.5.3 新增；V 标记/取消标记当前片段，与笔记 ☑ 同步"><rect x="1068" y="580" width="30" height="22" rx="4"/><text x="1083" y="592">25</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-26" data-name="↩ 撤回" data-desc="Ctrl+Z，撤回上一步笔记操作（v1.6.0，替换原 W1-R1-10）"><rect x="1102" y="580" width="30" height="22" rx="4"/><text x="1117" y="592">26</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="Ctrl+Shift+C；v0.20.0 起含截图标记点，确认框后执行"><rect x="1136" y="580" width="30" height="22" rx="4"/><text x="1151" y="592">11</text></g>
+  <!-- R4（高 56，Grid 三区：左音量/轨道 · 中播放控制整窗居中 · 右功能组） -->
+  <rect class="wire" x="10" y="562" width="1180" height="56" rx="6"/>
+  <text class="zone-lb" x="20" y="576" fill="var(--z-r4)">W1-R4 底部控制栏 · 高 56（v1.15.0 改 Grid 三区）</text>
+  <!-- 左侧：音量 / 轨道 / 播放源 / 全屏 -->
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-04" data-name="🔊/🔇 静音" data-desc="M；v1.15.0 起双态图标 VolumeIcon（静音或音量 0 显示 🔇）"><rect x="20" y="584" width="30" height="24" rx="4"/><text x="35" y="596">04</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100；v0.19.0 起软件级记忆（config.json 持久化）；v1.15.0 起悬停滚轮调节（每格 ±5）"><rect x="56" y="584" width="80" height="24" rx="4"/><text x="96" y="596">R4-05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-06" data-name="音量百分比" data-desc="文本"><rect x="142" y="584" width="34" height="24" rx="4"/><text x="159" y="596">06</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-16" data-name="CC 字幕轨选择" data-desc="v1.5.0 新增；弹出字幕菜单（关闭/内嵌轨/外挂字幕/加载字幕文件…）"><rect x="182" y="584" width="28" height="24" rx="4"/><text x="196" y="596">16</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-17" data-name="♪ 音轨选择" data-desc="v1.5.0 新增；弹出音轨菜单（多音轨/双语片源切换）"><rect x="216" y="584" width="28" height="24" rx="4"/><text x="230" y="596">17</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-19" data-name="源文件 / 代理" data-desc="v1.11.0 新增；已生成代理时切换播放源，保留位置/倍速/音轨/字幕，裁切点与笔记不变；未生成代理时禁用"><rect x="250" y="584" width="72" height="24" rx="4"/><text x="286" y="596" style="font-size:10px">R4-19 源/代理</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-08" data-name="⛶ 全屏" data-desc="F / Esc"><rect x="328" y="584" width="30" height="24" rx="4"/><text x="343" y="596">08</text></g>
+  <!-- 中间：播放控制（按整个窗口水平居中） -->
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-09" data-name="⏮ 上一个视频" data-desc="v1.15.0 起改为播放列表：上一个视频（切换后自动起播）；原「跳到开头」保留 Home 快捷键"><rect x="470" y="584" width="30" height="24" rx="4"/><text x="485" y="596">09</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-14" data-name="− 降低倍速" data-desc="档位步进"><rect x="506" y="584" width="30" height="24" rx="4"/><text x="521" y="596">14</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-20" data-name="⏪ 后退 3 秒" data-desc="v1.15.0 新增；同 ← 键"><rect x="542" y="584" width="30" height="24" rx="4"/><text x="557" y="596">20</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-11" data-name="▶/⏸ 播放/暂停" data-desc="Space，居中大圆钮；v1.13.0 起双态图标（暂停时 ▶、播放中 ⏸）"><rect x="578" y="582" width="44" height="26" rx="13"/><text x="600" y="595">11</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-21" data-name="⏩ 快进 3 秒" data-desc="v1.15.0 新增；同 → 键"><rect x="628" y="584" width="30" height="24" rx="4"/><text x="643" y="596">21</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-15" data-name="+ 提高倍速" data-desc="档位步进"><rect x="664" y="584" width="30" height="24" rx="4"/><text x="679" y="596">15</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-13" data-name="⏭ 下一个视频" data-desc="v1.15.0 起改为播放列表：下一个视频（切换后自动起播）；原「跳到结尾」保留 End 快捷键"><rect x="700" y="584" width="30" height="24" rx="4"/><text x="715" y="596">13</text></g>
+  <!-- 右侧：循环 + 从 R1 移入的功能组 -->
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-18" data-name="🔁 片段循环" data-desc="v1.9.0 新增；在入点/出点之间循环（L），开启时青色高亮；v1.13.0 起移至右侧功能组首位"><rect x="970" y="584" width="30" height="24" rx="4"/><text x="985" y="596">18</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="S；v0.20.0 起为时间轴截图标记 + ffmpeg 后台抽帧"><rect x="1006" y="584" width="30" height="24" rx="4"/><text x="1021" y="596">05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 添加裁切点" data-desc="C；v0.20.0 起由截取片段变更"><rect x="1042" y="584" width="30" height="24" rx="4"/><text x="1057" y="596">08</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩 标记片段" data-desc="v1.5.1 新增；V 标记/取消标记当前片段，与笔记 ★ 同步；v1.9.1 起按状态区分显示"><rect x="1078" y="584" width="30" height="24" rx="4"/><text x="1093" y="596">25</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-26" data-name="↩ 撤回" data-desc="Ctrl+Z，撤回上一步笔记操作（v1.6.0，替换原 W1-R1-10）"><rect x="1114" y="584" width="30" height="24" rx="4"/><text x="1129" y="596">26</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="Ctrl+Shift+C；v0.20.0 起含截图标记点，确认框后执行"><rect x="1150" y="584" width="30" height="24" rx="4"/><text x="1165" y="596">11</text></g>
 </svg>
 <figcaption>图 1 · W1 主窗口总览（点击编号芯片查看说明；虚线 = 浮层/容器）</figcaption>
 </figure>
@@ -183,8 +208,8 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-C1"><td class="num">W1-C1</td><td>播放列表面板</td><td>v0.12.0 起固定于视频左侧（220px）；v0.13.0 起可经 W1-R1-23 展开/收起（默认收起）；01 标题 · 02 列表（拖拽排序/双击播放）· 03 右键菜单（删除/复制路径/资源管理器）</td></tr>
 <tr data-num="W1-C2-D"><td class="num">W1-C2-D</td><td>笔记统一时间线</td><td>v0.14.0 起：截图/片段/裁切点按时间混排（绿/黄/红三色边框）；D-01 筛选栏 · D-02 工具栏 · D-03 统一列表 · D-04~06 右键菜单（详见 §3）</td></tr>
 <tr data-num="W1-C3"><td class="num">W1-C3</td><td>片段批量导出面板</td><td>01 搜索 · 02 计数 · 03 队列 · 04 全部导出 · 05 拼接导出 · 06 取消 · 07 总进度 · 08 百分比</td></tr>
-<tr data-num="W1-R3"><td class="num">W1-R3</td><td>时间轴</td><td>01 缩放指示 · 02 滚动容器 · 03 TimelineControl（白播放头/红裁切点 #E51400/绿截图点 #4EC9B0/蓝入出点/选中段白高亮自动跟随播放头/已标记片段黄带 #D7BA7D，V 键切换）</td></tr>
-<tr data-num="W1-R4"><td class="num">W1-R4</td><td>底部控制栏</td><td>左：01~03 时间码/倍速标记 · 04~06 音量组 · 08 全屏 · 中：09~15 播放控制对称排列 · 右：R1-05/08/10/11 移入</td></tr>
+<tr data-num="W1-R3"><td class="num">W1-R3</td><td>时间轴（高 64）</td><td>01 缩放指示 · 02 滚动容器 · 03 TimelineControl · 04 轴1 时间滑块轴 · 05 轴2 裁切片段轴 · 06 轴3 截图标记轴（三轴并排，v1.8.0 起）· 07 时间码（v1.15.0 迁入）· 08 右端信息区（缩放 + 时间码 + 倍速，v1.15.3 承载倍速）</td></tr>
+<tr data-num="W1-R4"><td class="num">W1-R4</td><td>底部控制栏（高 56）</td><td>v1.15.0 改 Grid 三区：左 04~06 音量组 · 16 CC · 17 音轨 · 19 源/代理 · 08 全屏；中 09/14/20/11/21/15/13 播放控制（整窗居中）；右 18 循环 · R1-05/08/25/26/11 功能组</td></tr>
 <tr data-num="W1-E-01"><td class="num">W1-E-01</td><td>通知提示条</td><td>右下角 ToastBorder，ShowToast 触发，默认 2.5s 淡出（会话恢复统计等轻提示）</td></tr>
 </tbody></table></div>
 
@@ -226,11 +251,11 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
   <rect class="wire" x="350" y="8" width="410" height="410" rx="6"/>
   <text class="lbl-m" x="360" y="26">W1-C2-D 笔记统一时间线（NotesView，v0.14.0）</text>
   <!-- D-01 筛选栏 -->
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-01" data-name="筛选栏" data-desc="基筛选 chip（单选）+ ⚑仅标记叠加开关（v0.15.0）"><rect x="360" y="34" width="390" height="22" rx="4"/><text x="555" y="48">D-01 筛选：☰ 全部 · 📷 · 🎬 · ✂ 仅裁切点 · ⚑ 仅标记</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-01" data-name="筛选栏" data-desc="基筛选 chip 单选（☰ 全部 / 📷 截图 / 🎬 片段 / ✂ 仅裁切点）+ ⚑ 仅标记叠加开关（v0.15.0：文字移至 ToolTip 悬停显示）"><rect x="360" y="34" width="390" height="22" rx="4"/><text x="555" y="48">D-01 筛选：☰ 全部 · 📷 · 🎬 · ✂ 仅裁切点 · ⚑ 仅标记</text></g>
   <!-- D-02 工具栏 -->
   <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-02" data-name="工具栏" data-desc="v0.14.2 起旧按钮移除（备份保留）；v0.16~0.18 新增数据交换"><rect x="360" y="60" width="390" height="22" rx="4"/><text x="555" y="74">D-02 📤 导出标记 · 📋 导出数据 · 📥 导入数据</text></g>
   <!-- D-03 统一时间线列表 -->
-  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-03" data-name="统一时间线列表" data-desc="截图绿框/片段黄框/裁切点红条；☑勾选标记（v0.15.0 独立记录）；Extended 多选；Delete 删裁切点"><rect x="360" y="88" width="390" height="200" rx="4"/><text x="555" y="180">D-03 统一时间线列表（条目右侧 ☑ 勾选）</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W1-C2-D-03" data-name="统一时间线列表" data-desc="截图绿框/片段黄框/裁切点红条；☆/★ 五角星勾选标记（v1.15.2 由 ☑ 改星，v1.15.4 持久化）；Extended 多选；Delete 删裁切点"><rect x="360" y="88" width="390" height="200" rx="4"/><text x="555" y="180">D-03 统一时间线列表（条目右侧 ☆/★ 勾选）</text></g>
   <!-- 截图卡片示意 -->
   <rect x="366" y="96" width="378" height="34" rx="3" fill="#1F1F1F" stroke="#4EC9B0" stroke-width="1.5"/>
   <text x="372" y="112" font-size="10" fill="#4EC9B0">📷</text>
@@ -274,7 +299,7 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W1-C1-03"><td class="num">W1-C1-03</td><td>列表项右键菜单</td><td>删除 / 复制路径 / 在资源管理器中打开</td></tr>
 <tr data-num="W1-C2-D-01"><td class="num">W1-C2-D-01</td><td>筛选栏</td><td>基筛选 chip（单选）：☰ 全部 / 📷 截图 / 🎬 片段（含裁切点）/ ✂ 仅裁切点；叠加开关 ⚑ 仅标记（v0.15.0 起替换「已选中」，与 ☑ 勾选联动）</td></tr>
 <tr data-num="W1-C2-D-02"><td class="num">W1-C2-D-02</td><td>工具栏</td><td>📤 导出标记（勾选条目批量导出）· 📋 导出数据（v0.16.0，.xlsx/CSV 表格）· 📥 导入数据（v0.17.0，覆盖裁切点/截图/标记；<strong>v1.2.0 起文件缺失的截图行按时间码后台 ffmpeg 自动重新截取</strong>）。旧按钮（画廊/导入导出裁切/批量导出）v0.14.2 起从界面移除，功能与处理器备份保留</td></tr>
-<tr data-num="W1-C2-D-03"><td class="num">W1-C2-D-03</td><td>统一时间线列表</td><td>截图（绿框 #4EC9B0 📷）/ 片段（黄框 #D7BA7D 🎬）/ 裁切点（红条 #E51400 ✂）按时间混排；条目右侧 ☑ 勾选标记（v0.14.1 新增，v0.15.0 起为独立记录 IsMarked，跨列表重建保留）；Extended 多选；Delete 删除选中裁切点（合并相邻片段）</td></tr>
+<tr data-num="W1-C2-D-03"><td class="num">W1-C2-D-03</td><td>统一时间线列表</td><td>截图（绿框 #4EC9B0 📷）/ 片段（黄框 #D7BA7D 🎬）/ 裁切点（红条 #E51400 ✂，无缩略图）按时间混排；[图标][缩略图 120×68][名称+时间][☆/★ 勾选标记] 长方条；勾选标记为<strong>独立状态</strong>（用于批量导出 / ⚑ 叠加筛选，与行选中互不影响），<strong>v1.15.2 起由 ☑ 改为五角星双态</strong>：空心 ☆ 未选中（#9A9A9A）/ 实心 ★ 已选中（金 #D7BA7D，字号 18）；<strong>v1.15.4 起勾选标记持久化</strong>，重开视频不丢失；Extended 多选（Ctrl/Shift）；Delete 删除选中裁切点（合并相邻片段）</td></tr>
 <tr data-num="W1-C2-D-04"><td class="num">W1-C2-D-04</td><td>截图项右键菜单</td><td>打开所在文件夹 / 标注 / 删除</td></tr>
 <tr data-num="W1-C2-D-05"><td class="num">W1-C2-D-05</td><td>片段项右键菜单</td><td>导出此段（弹目录选择框）/ 跳转播放</td></tr>
 <tr data-num="W1-C2-D-06"><td class="num">W1-C2-D-06</td><td>裁切点项右键菜单</td><td>删除（合并相邻片段）</td></tr>
@@ -310,109 +335,143 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 
 <h2 id="w1r3r4"><span class="no">§4</span>W1-R3 时间轴 与 W1-R4 底部控制栏</h2>
 <figure>
-<svg viewBox="0 0 1200 200" role="img" aria-label="R3 时间轴与 R4 控制栏放大图">
-  <rect class="wire" x="6" y="8" width="1188" height="84" rx="6"/>
-  <text class="zone-lb" x="16" y="24" fill="var(--z-r3)">W1-R3 时间轴 · TimelineBorder</text>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-01" data-name="缩放指示区" data-desc="「缩放」+ ZoomLabel 倍数"><rect x="16" y="32" width="80" height="22" rx="4"/><text x="56" y="44">R3-01</text></g>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-02" data-name="滚动容器" data-desc="TimelineScroll"><rect x="100" y="32" width="1086" height="42" rx="4" stroke-dasharray="4 3"/><text x="643" y="44">R3-02 滚动容器</text></g>
-  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-03" data-name="TimelineControl" data-desc="刻度/播放头(白)/裁切点(红#E51400)/截图点(绿#4EC9B0)/入出点(蓝)/选中段高亮(白@10%自动跟随)/黄带(V 键标记)；滚轮缩放 0.5~50×；v1.7.0 起裁切点/截图标记可拖拽修改"><rect x="110" y="38" width="1066" height="30" rx="4"/><text x="643" y="54">R3-03 刻度 ┃ 播放头 ▼白 ┃ 裁切点 ▼红 ┃ 截图点 ■绿 ┃ 入出点 ┃ 选中段高亮 ┃ 已标记黄带</text></g>
-  <text class="lbl-m" x="100" y="86">底部为横向滚动条（随缩放出现）</text>
-  <rect class="wire" x="6" y="100" width="1188" height="84" rx="6"/>
-  <text class="zone-lb" x="16" y="116" fill="var(--z-r4)">W1-R4 底部控制栏 · 高 56</text>
-  <!-- R4 左侧：时间码/倍速/音量/全屏 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-01" data-name="当前时间码" data-desc="等宽字体显示"><rect x="16" y="124" width="76" height="24" rx="4"/><text x="54" y="137">R4-01</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-02" data-name="总时长" data-desc="「/ 00:00:00:00」"><rect x="96" y="124" width="70" height="24" rx="4"/><text x="131" y="137">R4-02</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-03" data-name="倍速标记" data-desc="非1×显示，点击恢复1×"><rect x="170" y="124" width="70" height="24" rx="4"/><text x="205" y="137">R4-03</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-04" data-name="🔊 静音" data-desc="M"><rect x="244" y="124" width="30" height="24" rx="4"/><text x="259" y="137">04</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100；v0.19.0 起软件级记忆（config.json 持久化）"><rect x="278" y="124" width="90" height="24" rx="4"/><text x="323" y="137">R4-05</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-06" data-name="百分比" data-desc=""><rect x="372" y="124" width="36" height="24" rx="4"/><text x="390" y="137">06</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-16" data-name="CC 字幕" data-desc="v1.5.0 新增；字幕轨菜单"><rect x="412" y="124" width="26" height="24" rx="4"/><text x="425" y="137">16</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-17" data-name="♪ 音轨" data-desc="v1.5.0 新增；音轨菜单"><rect x="440" y="124" width="26" height="24" rx="4"/><text x="453" y="137">17</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-08" data-name="⛶ 全屏" data-desc="F / Esc"><rect x="470" y="124" width="30" height="24" rx="4"/><text x="485" y="137">08</text></g>
-  <!-- R4 中间：对称播放控制 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-09" data-name="⏮" data-desc="Home"><rect x="500" y="124" width="30" height="24" rx="4"/><text x="515" y="137">09</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-14" data-name="− 降速" data-desc="新增"><rect x="534" y="124" width="30" height="24" rx="4"/><text x="549" y="137">14</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-10" data-name="◀" data-desc="← 上一帧"><rect x="568" y="124" width="30" height="24" rx="4"/><text x="583" y="137">10</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-11" data-name="⏯" data-desc="Space 大圆钮"><rect x="602" y="122" width="44" height="26" rx="13"/><text x="624" y="136">11</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-12" data-name="▶" data-desc="→ 下一帧"><rect x="650" y="124" width="30" height="24" rx="4"/><text x="665" y="137">12</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-15" data-name="+ 提速" data-desc="新增"><rect x="684" y="124" width="30" height="24" rx="4"/><text x="699" y="137">15</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-13" data-name="⏭" data-desc="End"><rect x="718" y="124" width="30" height="24" rx="4"/><text x="733" y="137">13</text></g>
-  <!-- R4 右侧：从 R1 移入 -->
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷" data-desc="S 截图；v0.20.0 起时间轴标记 + ffmpeg 抽帧"><rect x="1000" y="124" width="30" height="24" rx="4"/><text x="1015" y="137">05</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂" data-desc="C 添加裁切点（v0.20.0）"><rect x="1034" y="124" width="30" height="24" rx="4"/><text x="1049" y="137">08</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩" data-desc="v1.5.3 新增；V 标记片段"><rect x="1068" y="124" width="30" height="24" rx="4"/><text x="1083" y="137">25</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-26" data-name="↩" data-desc="Ctrl+Z 撤回（v1.6.0，替换原 W1-R1-10）"><rect x="1102" y="124" width="30" height="24" rx="4"/><text x="1117" y="137">26</text></g>
-  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖" data-desc="Ctrl+Shift+C 清空全部标记（v0.20.0）"><rect x="1136" y="124" width="30" height="24" rx="4"/><text x="1151" y="137">11</text></g>
-  <text class="lbl-m" x="624" y="163">居中播放控制组（09~15）对称排列，右端为 R1 移入按钮</text>
+<svg viewBox="0 0 1200 215" role="img" aria-label="R3 时间轴与 R4 控制栏放大图">
+  <rect class="wire" x="6" y="8" width="1188" height="100" rx="6"/>
+  <text class="zone-lb" x="16" y="24" fill="var(--z-r3)">W1-R3 时间轴 · 高 64 · 三轴并排（v1.8.0）+ 右端信息区（v1.15.0）</text>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-02" data-name="滚动容器 TimelineScroll" data-desc="横向滚动条；v1.13.0 起悬停滚动条滚轮直接水平滚动（v1.15.0 改按鼠标位置判定）"><rect x="16" y="30" width="996" height="66" rx="4" stroke-dasharray="4 3"/><text x="514" y="42">R3-02 TimelineScroll</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-04" data-name="轴1 时间滑块轴（高 18）" data-desc="刻度 + 时间标签 + 白色播放头（竖线贯穿三轴，v1.14.0 起沙漏形：顶部下三角 + 底部上三角）；点击/拖动 seek；v1.13.0 起刻度自适应像素密度取 1/2/5/10/15/30 → 分 → 时，只绘制视口可见区段；v1.15.0 起主刻度参考线延伸至轴2/轴3"><rect x="22" y="46" width="984" height="18" rx="3"/><text x="514" y="58">R3-04 轴1 时间滑块 · 刻度 0:00 0:10 0:20 … · ▼ 白色播放头（贯穿三轴）</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-05" data-name="轴2 裁切片段轴（高 14）" data-desc="底色略亮；红色裁切点旗标 #E51400（竖线旗杆 + 顶部小三角旗面）/ 蓝色入出点 / 选中段（白 @10% + 灰框，播放头所在片段自动选中）/ 已标记片段黄带 #D7BA7D（V 键）；仅本轴命中裁切点拖拽（虚影 + 实时 seek 预览，不可越过相邻点，一次拖拽 = 一步 Ctrl+Z）"><rect x="22" y="66" width="984" height="14" rx="3"/><text x="514" y="76">R3-05 轴2 裁切片段 · ▍裁切点(红) · 入点 · 出点 · 选中段(白@10%) · 已标记黄带</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-06" data-name="轴3 截图标记轴（高 14）" data-desc="v1.14.0 起水滴标记（圆头 + 下尖角，默认青 #4EC9B0）；v1.15.1 起选中/勾选双态同步：勾选金色填充、行选中白色描边（可叠加）；仅本轴命中截图标记拖拽（虚影 + 时间码气泡，只改时间码记录，可撤回）"><rect x="22" y="82" width="984" height="14" rx="3"/><text x="514" y="92">R3-06 轴3 截图标记 · 水滴 ▼ ▼ ▼（勾选金 / 行选中白描边）</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-08" data-name="右端信息区容器" data-desc="v1.15.0 起缩放 + 时间码合并于此；v1.15.3 起承载倍速标记（W1-R4-03 迁入）；点击整块复位缩放 1.0×"><rect x="1024" y="30" width="156" height="66" rx="4" stroke-dasharray="4 3"/><text x="1102" y="42" style="font-size:10px">R3-08 右端信息区</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-07" data-name="时间码（当前 / 总时长）" data-desc="v1.15.0 新增，由底栏左下角 W1-R4-01/02 迁入；TimeCodeDisplayString / LengthDisplayString"><rect x="1030" y="48" width="144" height="18" rx="3"/><text x="1102" y="59" style="font-size:10px">R3-07 00:12.500 / 01:30.000</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R3-01" data-name="缩放指示区" data-desc="「缩放」+ ZoomLabel；v1.13.0 起点击恢复默认 1.0×；v1.15.0 起与时间码合并为右端信息区，点击整块均可复位"><rect x="1030" y="70" width="66" height="20" rx="3"/><text x="1063" y="81" style="font-size:10px">R3-01 1.0×</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W1-R4-03" data-name="倍速标记（编号保留，现居 R3-08）" data-desc="v1.15.3 由底栏左侧迁入时间轴右端信息区，常驻显示（原仅非 1.0× 时显示）；1.0× 灰显、非 1× 蓝底 #1A6B8A 高亮；点击恢复 1×"><rect x="1100" y="70" width="74" height="20" rx="3"/><text x="1137" y="81" style="font-size:10px">R4-03 倍速</text></g>
+
+  <rect class="wire" x="6" y="118" width="1188" height="88" rx="6"/>
+  <text class="zone-lb" x="16" y="134" fill="var(--z-r4)">W1-R4 底部控制栏 · 高 56 · Grid 三区（v1.15.0）</text>
+  <!-- 左区 -->
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-04" data-name="🔊/🔇 静音" data-desc="M；v1.15.0 起双态图标 VolumeIcon：静音或音量为 0 显示 🔇，否则 🔊"><rect x="16" y="142" width="30" height="26" rx="4"/><text x="31" y="155">04</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-05" data-name="音量滑块" data-desc="0~100；v0.19.0 起软件级记忆（config.json 持久化）；v1.15.0 起悬停滚动中键滚轮调节音量（每格 ±5）"><rect x="52" y="142" width="80" height="26" rx="4"/><text x="92" y="155">R4-05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-06" data-name="音量百分比" data-desc="文本"><rect x="138" y="142" width="34" height="26" rx="4"/><text x="155" y="155">06</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-16" data-name="CC 字幕" data-desc="v1.5.0 新增；字幕轨选择菜单：关闭字幕 / 内嵌轨 / 外挂字幕 / 加载字幕文件…，当前轨打 ✓"><rect x="178" y="142" width="28" height="26" rx="4"/><text x="192" y="155">16</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-17" data-name="♪ 音轨" data-desc="v1.5.0 新增；音轨选择菜单（多音轨/双语片源切换），当前轨打 ✓"><rect x="212" y="142" width="28" height="26" rx="4"/><text x="226" y="155">17</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-19" data-name="源文件 / 代理" data-desc="v1.11.0 新增；已生成代理时在源文件与代理之间切换，保留位置/倍速/音轨/字幕，裁切点与笔记不变；未生成代理时禁用"><rect x="246" y="142" width="80" height="26" rx="4"/><text x="286" y="155" style="font-size:10px">R4-19 源/代理</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-08" data-name="⛶ 全屏" data-desc="F / Esc"><rect x="332" y="142" width="30" height="26" rx="4"/><text x="347" y="155">08</text></g>
+  <!-- 中区（整窗居中） -->
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-09" data-name="⏮ 上一个视频" data-desc="v1.15.0 起改为播放列表：上一个视频（切换后自动起播）；「跳到开头」保留 Home 快捷键"><rect x="470" y="142" width="30" height="26" rx="4"/><text x="485" y="155">09</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-14" data-name="− 降低倍速" data-desc="档位步进；步长见 W2-A-10"><rect x="506" y="142" width="30" height="26" rx="4"/><text x="521" y="155">14</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-20" data-name="⏪ 后退 3 秒" data-desc="v1.15.0 新增；同 ← 键"><rect x="542" y="142" width="30" height="26" rx="4"/><text x="557" y="155">20</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-11" data-name="▶/⏸ 播放/暂停" data-desc="Space，居中大圆钮；v1.13.0 起双态图标（暂停时 ▶、播放中 ⏸）"><rect x="578" y="140" width="44" height="28" rx="14"/><text x="600" y="154">11</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-21" data-name="⏩ 快进 3 秒" data-desc="v1.15.0 新增；同 → 键"><rect x="628" y="142" width="30" height="26" rx="4"/><text x="643" y="155">21</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-15" data-name="+ 提高倍速" data-desc="档位步进；上限见 W2-A-08（最高倍率）"><rect x="664" y="142" width="30" height="26" rx="4"/><text x="679" y="155">15</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-13" data-name="⏭ 下一个视频" data-desc="v1.15.0 起改为播放列表：下一个视频（切换后自动起播）；「跳到结尾」保留 End 快捷键"><rect x="700" y="142" width="30" height="26" rx="4"/><text x="715" y="155">13</text></g>
+  <!-- 右区 -->
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R4-18" data-name="🔁 片段循环" data-desc="v1.9.0 新增；片段循环开关（L）：在入点/出点之间循环，开启时青色高亮；无完整入/出点时点击弹提示；v1.13.0 起移至右侧功能组首位"><rect x="970" y="142" width="30" height="26" rx="4"/><text x="985" y="155">18</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-05" data-name="📷 截图" data-desc="从 R1 移入；截图（S）；v0.20.0 起为 ffmpeg 后台抽帧（时间轴标记 + 缩略图进笔记列表）"><rect x="1006" y="142" width="30" height="26" rx="4"/><text x="1021" y="155">05</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-08" data-name="✂ 添加裁切点" data-desc="从 R1 移入；添加裁切点（C）；v0.20.0 起由「截取片段」改为「添加裁切点」，截取片段保留 Ctrl+Shift+E"><rect x="1042" y="142" width="30" height="26" rx="4"/><text x="1057" y="155">08</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-25" data-name="🚩 标记片段" data-desc="v1.5.1 新增；标记/取消标记当前片段（V），与笔记列表 ★ 勾选同步；v1.9.1 起按状态区分显示（未标记暗灰 / 已标记金黄高亮）"><rect x="1078" y="142" width="30" height="26" rx="4"/><text x="1093" y="155">25</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-26" data-name="↩ 撤回" data-desc="v1.6.0 新增；撤回上一步笔记操作（Ctrl+Z），无可撤回时禁用；替换原 W1-R1-10"><rect x="1114" y="142" width="30" height="26" rx="4"/><text x="1129" y="155">26</text></g>
+  <g class="chip" style="--z:var(--z-r4)" data-num="W1-R1-11" data-name="✖ 清空全部标记" data-desc="从 R1 移入；清空全部标记（Ctrl+Shift+C）：裁切点 + 截图标记点（确认框后执行，png 文件保留）"><rect x="1150" y="142" width="30" height="26" rx="4"/><text x="1165" y="155">11</text></g>
+  <text class="lbl-m" x="16" y="196">左区：音量 / 字幕 / 音轨 / 播放源 / 全屏</text>
+  <text class="lbl-m" x="514" y="196" text-anchor="middle">中区：播放控制组（v1.15.0 起按整个窗口水平居中）</text>
+  <text class="lbl-m" x="1050" y="196" text-anchor="middle">右区：功能组（循环 → 截图 → 裁切 → 标记 → 撤回 → 清空）</text>
 </svg>
 <figcaption>图 4 · R3 时间轴（上）与 R4 底部控制栏（下）</figcaption>
 </figure>
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明 / 快捷键</th></tr></thead>
 <tbody>
-<tr data-num="W1-R3-01"><td class="num">W1-R3-01</td><td>缩放指示区</td><td>「缩放」+ ZoomLabel 当前倍数</td></tr>
-<tr data-num="W1-R3-02"><td class="num">W1-R3-02</td><td>滚动容器 TimelineScroll</td><td>横向滚动条</td></tr>
-<tr data-num="W1-R3-03"><td class="num">W1-R3-03</td><td>TimelineControl</td><td>刻度 / 白播放头 / 红裁切点 #E51400（8×8 三角）/ 绿截图点 #4EC9B0（6×6 圆角方块）/ 蓝入出点 / 选中段高亮（白 @10% + 灰边框，<strong>v1.1.0 起播放头所在片段自动选中</strong>）/ 已标记片段黄带 #D7BA7D（<strong>V 键</strong>：切换标记，与拉片笔记 ☑ 双向同步；v1.1.3 前默认 X）；滚轮缩放 0.5~50×；<strong>v1.7.0 起裁切点/截图标记支持选中拖拽修改</strong>（虚影 + 时间码气泡 + 实时 seek 预览；裁切点不越相邻点；一次拖拽 = 一步 Ctrl+Z；截图只改时间码记录）</td></tr>
-<tr data-num="W1-R4-01"><td class="num">W1-R4-01</td><td>当前时间码</td><td>TimeCodeDisplayString</td></tr>
-<tr data-num="W1-R4-02"><td class="num">W1-R4-02</td><td>总时长</td><td>LengthDisplayString</td></tr>
-<tr data-num="W1-R4-03"><td class="num">W1-R4-03</td><td>倍速标记</td><td>非 1.0× 时显示蓝色标签；<strong>点击恢复 1×</strong></td></tr>
-<tr data-num="W1-R4-04"><td class="num">W1-R4-04</td><td>按钮「🔊」</td><td>静音（M）</td></tr>
-<tr data-num="W1-R4-05"><td class="num">W1-R4-05</td><td>音量滑块</td><td>0~100；软件级全局属性，v0.19.0 起持久化到 config.json（防抖写盘 + 退出冲刷），不写入视频数据</td></tr>
+<tr data-num="W1-R3-01"><td class="num">W1-R3-01</td><td>缩放指示区</td><td>「缩放」+ ZoomLabel 当前倍数；v1.13.0 起可点击恢复默认 1.0×（手型光标 + ToolTip）；v1.15.0 起与时间码合并为右端信息区，点击整块均可复位缩放</td></tr>
+<tr data-num="W1-R3-02"><td class="num">W1-R3-02</td><td>滚动容器 TimelineScroll</td><td>横向滚动条；v1.13.0 起悬停滚动条上滚轮直接水平滚动（不触发缩放）；v1.15.0 修复：改按鼠标位置判定（原 OriginalSource is ScrollBar 在滑块/轨道子元素上落空）</td></tr>
+<tr data-num="W1-R3-03"><td class="num">W1-R3-03</td><td>TimelineControl 容器</td><td>高 46px（v1.14.0 由 56 缩窄）；内含三条并排轴（W1-R3-04~06）；缩放后整体宽度 = 视口宽度 × Scale；滚轮缩放 0.5×~50×，v1.13.0 起以鼠标所指时间点为锚缩放</td></tr>
+<tr data-num="W1-R3-04"><td class="num">W1-R3-04</td><td>轴1 时间滑块轴（高 18）</td><td><strong>v1.8.0 新增</strong>；刻度 + 时间标签 + 白色播放头（竖线贯穿三轴，v1.14.0 起顶部下三角 + 底部上三角沙漏形）；点击/拖动 seek；v1.13.0 起刻度/标签自适应像素密度取整齐间隔（1/2/5/10/15/30 → 分 → 时），只绘制视口可见区段；v1.15.0 起主刻度参考线（#333）延伸至轴2/轴3</td></tr>
+<tr data-num="W1-R3-05"><td class="num">W1-R3-05</td><td>轴2 裁切片段轴（高 14）</td><td><strong>v1.8.0 新增</strong>；底色略亮；红色裁切点旗标（#E51400，竖线旗杆 + 顶部小三角旗面）/ 蓝色入出点 / 选中段（白 @10% + 灰框，播放头所在片段自动选中）/ 已标记片段黄带（#D7BA7D，V 键切换，与笔记 ★ 勾选同步）；仅本轴命中裁切点拖拽（虚影 + 实时 seek 预览；不可越过相邻点；一次拖拽 = 一步 Ctrl+Z）</td></tr>
+<tr data-num="W1-R3-06"><td class="num">W1-R3-06</td><td>轴3 截图标记轴（高 14）</td><td><strong>v1.8.0 新增</strong>；<strong>v1.14.0 起为水滴标记（圆头 + 下尖角，默认青 #4EC9B0）</strong>，替代原 8×8 圆角方块；<strong>v1.15.1 起支持选中/勾选双态同步</strong>（勾选金色填充、行选中白色描边，两种状态可叠加）；仅本轴命中截图标记拖拽（虚影 + 时间码气泡；只改时间码记录，png 不动；可撤回）</td></tr>
+<tr data-num="W1-R3-07"><td class="num">W1-R3-07</td><td>时间码（当前 / 总时长）</td><td><strong>v1.15.0 新增</strong>（由底栏左下角 W1-R4-01/02 迁入时间轴右端信息区）；TimeCodeDisplayString / LengthDisplayString</td></tr>
+<tr data-num="W1-R3-08"><td class="num">W1-R3-08</td><td>右端信息区容器</td><td><strong>v1.15.3 起承载倍速标记</strong>：W1-R4-03 由底栏左侧迁入本区，常驻显示（原仅非 1.0× 时显示），与 R3-01 缩放标签、R3-07 时间码叠放，点击整块仍复位缩放</td></tr>
+<tr data-num="W1-R4-01"><td class="num">~~W1-R4-01~~</td><td>~~当前时间码~~</td><td><strong>已移至 W1-R3-07</strong>（v1.15.0，编号保留）</td></tr>
+<tr data-num="W1-R4-02"><td class="num">~~W1-R4-02~~</td><td>~~总时长~~</td><td><strong>已移至 W1-R3-07</strong>（v1.15.0，编号保留）</td></tr>
+<tr data-num="W1-R4-03"><td class="num">W1-R4-03</td><td>倍速标记（编号保留，现居 W1-R3-08）</td><td><strong>v1.15.3 已迁至时间轴右端信息区</strong>，常驻显示；1.0× 灰显、非 1× 蓝底 #1A6B8A 高亮；<strong>点击恢复 1×</strong></td></tr>
+<tr data-num="W1-R4-04"><td class="num">W1-R4-04</td><td>按钮「🔊/🔇」</td><td>静音（M）；<strong>v1.15.0 起双态图标</strong>（VolumeIcon）：静音或音量为 0 显示 🔇，否则 🔊</td></tr>
+<tr data-num="W1-R4-05"><td class="num">W1-R4-05</td><td>音量滑块</td><td>0~100；软件级全局属性，v0.19.0 起持久化到 config.json（防抖写盘 + 退出冲刷），不写入视频数据；<strong>v1.15.0 起悬停滚动中键滚轮调节音量（每格 ±5）</strong></td></tr>
 <tr data-num="W1-R4-06"><td class="num">W1-R4-06</td><td>音量百分比文本</td><td></td></tr>
 <tr data-num="W1-R4-16"><td class="num">W1-R4-16</td><td>按钮「CC」</td><td><strong>v1.5.0 新增</strong>；字幕轨选择：弹出字幕菜单（关闭字幕 / 内嵌轨 / 外挂字幕 / 加载字幕文件…），当前轨打「✓」</td></tr>
 <tr data-num="W1-R4-17"><td class="num">W1-R4-17</td><td>按钮「♪」</td><td><strong>v1.5.0 新增</strong>；音轨选择：弹出音轨菜单（多音轨/双语片源切换），当前轨打「✓」</td></tr>
+<tr data-num="W1-R4-19"><td class="num">W1-R4-19</td><td>按钮「源文件 / 代理」</td><td><strong>v1.11.0 新增</strong>；播放源切换：已生成代理时在源文件与代理之间切换，保留位置/倍速/音轨/字幕，裁切点与笔记不变；未生成代理时禁用</td></tr>
 <tr data-num="W1-R4-08"><td class="num">W1-R4-08</td><td>按钮「⛶」</td><td>全屏（F / Esc）</td></tr>
-<tr data-num="W1-R4-09"><td class="num">W1-R4-09</td><td>按钮「⏮」</td><td>跳到开头（Home）</td></tr>
-<tr data-num="W1-R4-14"><td class="num">W1-R4-14</td><td>按钮「−」</td><td><strong>新增</strong>；降低倍速（档位步进）</td></tr>
-<tr data-num="W1-R4-10"><td class="num">W1-R4-10</td><td>按钮「◀」</td><td>上一帧（←）</td></tr>
-<tr data-num="W1-R4-11"><td class="num">W1-R4-11</td><td>按钮「⏯」</td><td>播放/暂停（Space），居中大圆钮</td></tr>
-<tr data-num="W1-R4-12"><td class="num">W1-R4-12</td><td>按钮「▶」</td><td>下一帧（→）</td></tr>
-<tr data-num="W1-R4-15"><td class="num">W1-R4-15</td><td>按钮「+」</td><td><strong>新增</strong>；提高倍速（档位步进）</td></tr>
-<tr data-num="W1-R4-13"><td class="num">W1-R4-13</td><td>按钮「⏭」</td><td>跳到结尾（End）</td></tr>
+<tr data-num="W1-R4-09"><td class="num">W1-R4-09</td><td>按钮「⏮」</td><td><strong>v1.15.0 起改为播放列表：上一个视频</strong>（切换后自动起播）；原「跳到开头」保留 Home 快捷键</td></tr>
+<tr data-num="W1-R4-14"><td class="num">W1-R4-14</td><td>按钮「−」</td><td>降低倍速（档位步进，步长见 W2-A-10）</td></tr>
+<tr data-num="W1-R4-20"><td class="num">W1-R4-20</td><td>按钮「⏪」</td><td><strong>v1.15.0 新增</strong>；后退 3 秒（同 ← 键）</td></tr>
+<tr data-num="W1-R4-11"><td class="num">W1-R4-11</td><td>按钮「▶/⏸」</td><td>播放/暂停（Space），居中大圆钮；<strong>v1.13.0 起双态图标</strong>：暂停时显示 ▶、播放中显示 ⏸（原为固定 ⏯）</td></tr>
+<tr data-num="W1-R4-21"><td class="num">W1-R4-21</td><td>按钮「⏩」</td><td><strong>v1.15.0 新增</strong>；快进 3 秒（同 → 键）</td></tr>
+<tr data-num="W1-R4-15"><td class="num">W1-R4-15</td><td>按钮「+」</td><td>提高倍速（档位步进，上限见 W2-A-08）</td></tr>
+<tr data-num="W1-R4-13"><td class="num">W1-R4-13</td><td>按钮「⏭」</td><td><strong>v1.15.0 起改为播放列表：下一个视频</strong>（切换后自动起播）；原「跳到结尾」保留 End 快捷键</td></tr>
+<tr data-num="W1-R4-18"><td class="num">W1-R4-18</td><td>按钮「🔁」</td><td><strong>v1.9.0 新增</strong>；片段循环开关（L）：在入点/出点之间循环，开启时青色高亮；无完整入/出点时点击弹提示；<strong>v1.13.0 起移至右侧功能组首位</strong>（截图按钮之前）</td></tr>
+<tr data-num="W1-R4-10"><td class="num">~~W1-R4-10~~</td><td>~~按钮「◀」上一帧~~</td><td><strong>已移出底栏</strong>（v1.15.0；, 快捷键保留）</td></tr>
+<tr data-num="W1-R4-12"><td class="num">~~W1-R4-12~~</td><td>~~按钮「▶」下一帧~~</td><td><strong>已移出底栏</strong>（v1.15.0；. 快捷键保留）</td></tr>
 <tr data-num="W1-R1-05"><td class="num">W1-R1-05</td><td>按钮「📷」</td><td><strong>从 R1 移入</strong>；截图（S）：时间轴添加截图标记点，后台 ffmpeg 抽帧生成缩略图进笔记列表（v0.20.0）</td></tr>
 <tr data-num="W1-R1-08"><td class="num">W1-R1-08</td><td>按钮「✂」</td><td><strong>从 R1 移入</strong>；添加裁切点（C）——v0.20.0 起功能由「截取片段」变更（截取片段保留 Ctrl+Shift+E）</td></tr>
-<tr data-num="W1-R1-25"><td class="num">W1-R1-25</td><td>按钮「🚩」</td><td><strong>v1.5.3 新增</strong>；标记/取消标记当前片段（V），与笔记列表 ☑ 勾选同步</td></tr>
-<tr data-num="W1-R1-26"><td class="num">W1-R1-26</td><td>按钮「↩」</td><td><strong>v1.6.0 替换原 W1-R1-10</strong>；撤回上一步笔记操作（Ctrl+Z），步数上限见 W2-A-18；Backspace 撤销裁切点快捷键保留</td></tr>
+<tr data-num="W1-R1-25"><td class="num">W1-R1-25</td><td>按钮「🚩」</td><td><strong>v1.5.1 新增</strong>；标记/取消标记当前片段（V），与笔记列表 ★ 勾选同步；v1.9.1 起按状态区分显示（未标记暗灰 / 已标记金黄高亮 + 深金底色）</td></tr>
+<tr data-num="W1-R1-26"><td class="num">W1-R1-26</td><td>按钮「↩」</td><td><strong>v1.6.0 新增</strong>；撤回上一步笔记操作（Ctrl+Z），无可撤回时禁用；步数上限见 W2-A-18；原 W1-R1-10 被替换</td></tr>
 <tr data-num="W1-R1-11"><td class="num">W1-R1-11</td><td>按钮「✖」</td><td><strong>从 R1 移入</strong>；清空全部标记：裁切点 + 截图标记点（Ctrl+Shift+C，确认框后执行）——v0.20.0 起由「清空裁切点」扩展</td></tr>
 </tbody></table></div>
 
 <h2 id="w2"><span class="no">§5</span>W2 设置窗口</h2>
-<p class="lead">v1.5.3 起拆分为三个页签：<strong>A 通用</strong>（A-01~04 已废弃，A-06~A-14 + A-18 共 10 项）、<strong>C 输出</strong>（A-05、A-15~A-17 迁入，编号保留）与 <strong>B 快捷键</strong>（6 项），底部 <strong>D-01 保存并关闭</strong>。数据目录为唯一路径（A-11），截图/片段子目录自动派生。</p>
+<p class="lead">v1.5.3 起拆分为三个页签：<strong>A 通用</strong>（A-01~04 已废弃，A-06~A-14 + A-18 共 10 项）、<strong>C 输出</strong>（A-05、A-15~A-17 迁入，编号保留；A-19~22 代理媒体为 v1.11.0/v1.12.0 新增）与 <strong>B 快捷键</strong>（6 项），底部 <strong>D-01 保存并关闭</strong>。数据目录为唯一路径（A-11），截图/片段子目录自动派生。</p>
 <figure>
-<svg viewBox="0 0 1200 480" role="img" aria-label="W2 设置窗口布局图">
-  <rect class="wire" x="6" y="8" width="1188" height="464" rx="6"/>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabA" data-name="页签「通用」" data-desc="W2-A 共 10 项（v1.5.3 起）"><rect x="20" y="20" width="90" height="24" rx="4"/><text x="65" y="33">Tab A</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabC" data-name="页签「输出」" data-desc="W2-C（v1.5.3 起；A-05/15/16/17 迁入，编号保留）"><rect x="114" y="20" width="80" height="24" rx="4"/><text x="154" y="33">Tab C</text></g>
-  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabB" data-name="页签「快捷键」" data-desc="W2-B 共 6 项"><rect x="198" y="20" width="80" height="24" rx="4"/><text x="238" y="33">Tab B</text></g>
-  <text class="lbl-m" x="20" y="66">左列（通用 W2-A；A-05/15/16/17 已迁至输出页 W2-C）：标签+输入行</text>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-01" data-name="截图目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="20" y="74" width="250" height="20" rx="4"/><text x="145" y="85">A-01（废）</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-02" data-name="浏览…(截图)（已废弃）" data-desc=""><rect x="274" y="74" width="60" height="20" rx="4"/><text x="304" y="85">A-02</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-03" data-name="片段目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="20" y="98" width="250" height="20" rx="4"/><text x="145" y="109">A-03（废）</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-04" data-name="浏览…(片段)（已废弃）" data-desc=""><rect x="274" y="98" width="60" height="20" rx="4"/><text x="304" y="109">A-04</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-05" data-name="截图格式（迁至 W2-C）" data-desc="下拉 png/jpg；v1.5.3 起在输出页"><rect x="20" y="122" width="120" height="20" rx="4"/><text x="80" y="133">A-05→C</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-06" data-name="按日期分目录" data-desc="复选框 yyyyMMdd"><rect x="150" y="122" width="120" height="20" rx="4"/><text x="210" y="133">A-06</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-07" data-name="项目名" data-desc="二级子目录，留空不启用"><rect x="20" y="146" width="120" height="20" rx="4"/><text x="80" y="157">A-07</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-08" data-name="最高倍率" data-desc="2×~32×，默认 8×"><rect x="20" y="170" width="120" height="20" rx="4"/><text x="80" y="181">A-08</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-09" data-name="后退/快进步长" data-desc="1~600 帧，默认 5（←/→ 单步量）"><rect x="20" y="194" width="120" height="20" rx="4"/><text x="80" y="205">A-09</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-10" data-name="倍速步长" data-desc="0.05~1.0，默认 0.25（↑/↓ 增减量）"><rect x="20" y="218" width="120" height="20" rx="4"/><text x="80" y="229">A-10</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-11" data-name="数据目录（唯一路径）" data-desc="截图/片段/数据库/日志统一根；自动建 screenshots/、clips/ 子目录；改动需重启、不自动搬迁"><rect x="20" y="250" width="314" height="22" rx="4"/><text x="177" y="262">A-11 数据目录输入框</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-12" data-name="浏览…(数据目录)" data-desc="选择数据根目录"><rect x="338" y="250" width="60" height="22" rx="4"/><text x="368" y="262">A-12</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-13" data-name="恢复上次拉片记录" data-desc="复选框，默认开；内容哈希识别同一素材"><rect x="20" y="276" width="200" height="20" rx="4"/><text x="120" y="287">A-13</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-14" data-name="恢复播放位置与倍速" data-desc="复选框，默认开；仅 A-13 开启时生效"><rect x="20" y="300" width="200" height="20" rx="4"/><text x="120" y="311">A-14</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-15" data-name="视频格式（迁至 W2-C）" data-desc="下拉 mp4/mkv/mov，默认 mp4；片段导出容器格式（v1.4.0）；v1.5.3 起在输出页"><rect x="20" y="324" width="200" height="20" rx="4"/><text x="120" y="335">A-15 视频格式→C</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-16" data-name="视频分辨率（迁至 W2-C）" data-desc="源/1080P/720P/480P，默认 1080P；非源档强制重编码（v1.4.0）；v1.5.3 起在输出页"><rect x="20" y="348" width="200" height="20" rx="4"/><text x="120" y="359">A-16 视频分辨率→C</text></g>
-  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-17" data-name="截图分辨率（迁至 W2-C）" data-desc="源/1080P/720P/480P，默认 1080P；长边封顶、只缩不放（v1.4.0）；v1.5.3 起在输出页"><rect x="20" y="372" width="200" height="20" rx="4"/><text x="120" y="383">A-17 截图分辨率→C</text></g>
-  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-18" data-name="撤回步数上限" data-desc="1~50，默认 5（v1.6.0；Ctrl+Z 撤回深度）"><rect x="20" y="396" width="200" height="20" rx="4"/><text x="120" y="407">A-18 撤回步数上限</text></g>
-  <text class="lbl-m" x="480" y="66">右列（快捷键 W2-B）</text>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-01" data-name="启用全局热键" data-desc="失焦时 X 截图 / Space 播放"><rect x="480" y="74" width="150" height="20" rx="4"/><text x="555" y="85">B-01</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-02" data-name="手势编辑框" data-desc="EditingGesture，只读"><rect x="480" y="98" width="150" height="20" rx="4"/><text x="555" y="109">B-02</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-03" data-name="全部重置" data-desc=""><rect x="480" y="122" width="70" height="20" rx="4"/><text x="515" y="133">B-03</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-04" data-name="重置" data-desc="当前动作"><rect x="554" y="122" width="56" height="20" rx="4"/><text x="582" y="133">B-04</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-05" data-name="应用" data-desc="当前手势"><rect x="614" y="122" width="56" height="20" rx="4"/><text x="642" y="133">B-05</text></g>
-  <g class="chip" style="--z:var(--z-c)" data-num="W2-B-06" data-name="动作列表" data-desc="40 条动作 + 手势；深底浅字 ListBox"><rect x="480" y="148" width="420" height="240" rx="4"/><text x="690" y="260">B-06 动作列表（40 条）</text></g>
-  <g class="chip" style="--z:var(--z-e)" data-num="W2-D-01" data-name="保存并关闭" data-desc="底部右侧主按钮"><rect x="1050" y="420" width="120" height="26" rx="5"/><text x="1110" y="434">D-01</text></g>
+<svg viewBox="0 0 1200 500" role="img" aria-label="W2 设置窗口布局图">
+  <rect class="wire" x="6" y="8" width="1188" height="484" rx="6"/>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabA" data-name="页签「通用」" data-desc="W2-A：A-06~A-14 + A-18 共 10 项在用；A-01~04 已废弃"><rect x="20" y="20" width="96" height="24" rx="4"/><text x="68" y="33" style="font-size:10px">Tab A 通用</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabC" data-name="页签「输出」" data-desc="W2-C（v1.5.3 新增；A-05/17 截图参数、A-15/16 视频参数迁入，A-19~22 代理媒体于 v1.11.0/v1.12.0 新增）"><rect x="122" y="20" width="96" height="24" rx="4"/><text x="170" y="33" style="font-size:10px">Tab C 输出</text></g>
+  <g class="chip" style="--z:var(--z-r1)" data-num="W2-TabB" data-name="页签「快捷键」" data-desc="W2-B 共 6 项"><rect x="224" y="20" width="104" height="24" rx="4"/><text x="276" y="33" style="font-size:10px">Tab B 快捷键</text></g>
+
+  <!-- 通用页 W2-A -->
+  <rect class="wire" x="16" y="58" width="384" height="410" rx="6"/>
+  <text class="lbl-m" x="26" y="78">W2-A 通用页签（数据目录 + 播放/恢复/撤回）</text>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-11" data-name="数据目录（唯一路径）" data-desc="截图/片段/数据库/日志统一根；自动建 screenshots/、clips/ 子目录；默认 %APPDATA%\Qianlan_App\PianAssistant\"><rect x="26" y="88" width="276" height="22" rx="4"/><text x="164" y="101" style="font-size:10px">A-11 数据目录输入框</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-12" data-name="浏览…（数据目录）" data-desc="选择数据根目录"><rect x="308" y="88" width="80" height="22" rx="4"/><text x="348" y="101" style="font-size:10px">A-12 浏览…</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-06" data-name="按日期分目录" data-desc="复选框；yyyyMMdd 子目录"><rect x="26" y="118" width="150" height="20" rx="4"/><text x="101" y="131" style="font-size:10px">A-06 按日期分目录</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-07" data-name="项目名输入框" data-desc="二级子目录，留空不启用"><rect x="26" y="142" width="180" height="20" rx="4"/><text x="116" y="155" style="font-size:10px">A-07 项目名</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-08" data-name="最高倍率" data-desc="2×~32×，默认 8×；联动 ± 按钮步进上限"><rect x="26" y="166" width="180" height="20" rx="4"/><text x="116" y="179" style="font-size:10px">A-08 最高倍率</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-09" data-name="后退/快进步长" data-desc="1~600 帧，默认 5；←/→ 单步量"><rect x="26" y="190" width="180" height="20" rx="4"/><text x="116" y="203" style="font-size:10px">A-09 后退/快进步长</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-10" data-name="倍速步长" data-desc="0.05~1.0，默认 0.25；↑/↓ 增减量"><rect x="26" y="214" width="180" height="20" rx="4"/><text x="116" y="227" style="font-size:10px">A-10 倍速步长</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-13" data-name="恢复上次拉片记录" data-desc="复选框，默认开；打开同一素材时自动还原裁切/截图/笔记（内容哈希识别）"><rect x="26" y="242" width="230" height="20" rx="4"/><text x="141" y="255" style="font-size:10px">A-13 恢复上次拉片记录</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-14" data-name="恢复播放位置与倍速" data-desc="复选框，默认开；仅 A-13 开启时生效"><rect x="26" y="266" width="230" height="20" rx="4"/><text x="141" y="279" style="font-size:10px">A-14 恢复播放位置与倍速</text></g>
+  <g class="chip" style="--z:var(--z-r2)" data-num="W2-A-18" data-name="撤回步数上限" data-desc="1~50，默认 5，实时生效；超出上限丢弃最旧撤回记录"><rect x="26" y="290" width="230" height="20" rx="4"/><text x="141" y="303" style="font-size:10px">A-18 撤回步数上限</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-01" data-name="截图目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="26" y="334" width="276" height="18" rx="4"/><text x="164" y="346" style="font-size:10px">A-01 截图目录（废）</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-02" data-name="浏览…(截图)（已废弃）" data-desc=""><rect x="308" y="334" width="80" height="18" rx="4"/><text x="348" y="346" style="font-size:10px">A-02（废）</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-03" data-name="片段目录（已废弃）" data-desc="v0.11.0 起统一从数据根派生"><rect x="26" y="358" width="276" height="18" rx="4"/><text x="164" y="370" style="font-size:10px">A-03 片段目录（废）</text></g>
+  <g class="chip" style="--z:var(--z-r2);opacity:.35" data-num="W2-A-04" data-name="浏览…(片段)（已废弃）" data-desc=""><rect x="308" y="358" width="80" height="18" rx="4"/><text x="348" y="370" style="font-size:10px">A-04（废）</text></g>
+  <text class="lbl-m" x="26" y="398">A-05 / 15 / 16 / 17 已迁至输出页（编号保留）</text>
+
+  <!-- 输出页 W2-C -->
+  <rect class="wire" x="412" y="58" width="300" height="410" rx="6"/>
+  <text class="lbl-m" x="422" y="78">W2-C 输出页签（截图 / 视频 / 代理媒体）</text>
+  <text class="lbl-m" x="422" y="100" fill="var(--z-c)">截图</text>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-05" data-name="截图格式下拉框" data-desc="png / jpg；v1.3.0 修复 SelectedValue 绑定导致下拉框长期空显示"><rect x="422" y="106" width="130" height="20" rx="4"/><text x="487" y="119" style="font-size:10px">A-05 截图格式</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-17" data-name="截图分辨率下拉框" data-desc="源分辨率 / 1080P / 720P / 480P，默认 1080P；长边封顶、只缩不放（v1.4.0）"><rect x="558" y="106" width="144" height="20" rx="4"/><text x="630" y="119" style="font-size:10px">A-17 截图分辨率</text></g>
+  <text class="lbl-m" x="422" y="144" fill="var(--z-c)">视频</text>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-15" data-name="视频格式下拉框" data-desc="mp4 / mkv / mov，默认 mp4；片段导出容器格式（v1.4.0）"><rect x="422" y="150" width="130" height="20" rx="4"/><text x="487" y="163" style="font-size:10px">A-15 视频格式</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-16" data-name="视频分辨率下拉框" data-desc="源分辨率 / 1080P / 720P / 480P，默认 1080P；非「源」档强制重编码（v1.4.0）"><rect x="558" y="150" width="144" height="20" rx="4"/><text x="630" y="163" style="font-size:10px">A-16 视频分辨率</text></g>
+  <text class="lbl-m" x="422" y="188" fill="var(--z-c)">代理媒体（v1.11.0 / v1.12.0）</text>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-19" data-name="素材超过 1080P 时提示生成代理" data-desc="复选框，默认勾选；关闭后打开 4K/1440P 素材不再弹推荐"><rect x="422" y="194" width="280" height="20" rx="4"/><text x="562" y="207" style="font-size:10px">A-19 超 1080P 提示生成代理</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-20" data-name="代理档位下拉框" data-desc="标准 720P（2.5 Mbps）/ 轻量 540P（1.5 Mbps）/ 快速 360P（0.8 Mbps），默认 720P"><rect x="422" y="218" width="280" height="20" rx="4"/><text x="562" y="231" style="font-size:10px">A-20 代理档位</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-21" data-name="代理缓存上限输入框" data-desc="GB，0 表示不限制，默认 50；超限按最近使用时间从旧到新清理"><rect x="422" y="242" width="280" height="20" rx="4"/><text x="562" y="255" style="font-size:10px">A-21 代理缓存上限（GB）</text></g>
+  <g class="chip" style="--z:var(--z-c)" data-num="W2-A-22" data-name="代理生成速度下拉框" data-desc="v1.12.0 新增；安静（单进程）/ 均衡（双路并行，默认）/ 极速（四路并行）；并行按时长分段转码再拼接"><rect x="422" y="266" width="280" height="20" rx="4"/><text x="562" y="279" style="font-size:10px">A-22 代理生成速度</text></g>
+
+  <!-- 快捷键页 W2-B -->
+  <rect class="wire" x="728" y="58" width="456" height="330" rx="6"/>
+  <text class="lbl-m" x="738" y="78">W2-B 快捷键页签</text>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W2-B-01" data-name="启用全局热键" data-desc="应用失焦时 X 仍可截图、Space 仍可播放"><rect x="738" y="88" width="170" height="20" rx="4"/><text x="823" y="101" style="font-size:10px">B-01 启用全局热键</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W2-B-02" data-name="手势编辑框" data-desc="EditingGesture，只读"><rect x="738" y="112" width="170" height="20" rx="4"/><text x="823" y="125" style="font-size:10px">B-02 手势编辑框</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W2-B-03" data-name="全部重置" data-desc="重置全部快捷键"><rect x="738" y="136" width="70" height="20" rx="4"/><text x="773" y="149" style="font-size:10px">B-03</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W2-B-04" data-name="重置" data-desc="重置当前动作"><rect x="812" y="136" width="56" height="20" rx="4"/><text x="840" y="149" style="font-size:10px">B-04</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W2-B-05" data-name="应用" data-desc="应用当前手势；保存后主窗即时重建绑定"><rect x="872" y="136" width="56" height="20" rx="4"/><text x="900" y="149" style="font-size:10px">B-05</text></g>
+  <g class="chip" style="--z:var(--z-r3)" data-num="W2-B-06" data-name="动作列表" data-desc="动作名 + 手势 ListBox；v1.1.3 默认调整：截图 X、标记当前片段 V；v1.6.0 新增撤回 Ctrl+Z"><rect x="738" y="164" width="436" height="214" rx="4"/><text x="956" y="274">B-06 动作列表</text></g>
+
+  <g class="chip" style="--z:var(--z-e)" data-num="W2-D-01" data-name="保存并关闭" data-desc="底部右侧主按钮；触发 SettingsViewModel.Saved"><rect x="1050" y="452" width="130" height="28" rx="5"/><text x="1115" y="467" style="font-size:11px">D-01 保存并关闭</text></g>
 </svg>
-<figcaption>图 5 · W2 设置窗口（左：通用 A-01~18；输出页 W2-C：A-05/15/16/17 迁入；右：快捷键 B-01~06；右下：D-01）</figcaption>
+<figcaption>图 5 · W2 设置：左「通用」；中「输出」（截图 / 视频 / 代理媒体）；右「快捷键」；右下 D-01</figcaption>
 </figure>
 <div class="table-wrap"><table>
 <thead><tr><th>编号</th><th>控件</th><th>说明</th></tr></thead>
@@ -435,6 +494,10 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr data-num="W2-A-16"><td class="num">W2-A-16</td><td>视频分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；非「源」档自动重编码（v1.4.0）；v1.5.3 起迁至输出页签（W2-C）</td></tr>
 <tr data-num="W2-A-17"><td class="num">W2-A-17</td><td>截图分辨率下拉框</td><td>源分辨率 / 1080P / 720P / 480P，默认 <strong>1080P</strong>；长边封顶、只缩不放（v1.4.0）；v1.5.3 起迁至输出页签（W2-C）</td></tr>
 <tr data-num="W2-A-18"><td class="num">W2-A-18</td><td>撤回步数上限输入框</td><td>1~50，默认 5；Ctrl+Z 撤回深度（v1.6.0，通用页签）</td></tr>
+<tr data-num="W2-A-19"><td class="num">W2-A-19</td><td>复选框「素材超过 1080P 时提示生成代理」</td><td><strong>v1.11.0 新增</strong>（输出页签 代理媒体 区块）；默认勾选；关闭后打开 4K/1440P 素材不再弹推荐</td></tr>
+<tr data-num="W2-A-20"><td class="num">W2-A-20</td><td>代理档位下拉框</td><td><strong>v1.11.0 新增</strong>；标准 720P（2.5 Mbps）/ 轻量 540P（1.5 Mbps）/ 快速 360P（0.8 Mbps），默认 720P</td></tr>
+<tr data-num="W2-A-21"><td class="num">W2-A-21</td><td>代理缓存上限输入框</td><td><strong>v1.11.0 新增</strong>；单位 GB，0 表示不限制，默认 <strong>50</strong>；超限按最近使用时间从旧到新清理</td></tr>
+<tr data-num="W2-A-22"><td class="num">W2-A-22</td><td>代理生成速度下拉框</td><td><strong>v1.12.0 新增</strong>；安静（单进程）/ 均衡（双路并行，默认）/ 极速（四路并行）；并行按时长分段转码再拼接，HEVC 等重解码格式自动用 NVDEC 硬解</td></tr>
 <tr data-num="W2-B-01"><td class="num">W2-B-01</td><td>复选框「启用全局热键」</td><td>应用失焦时 X 仍可截图、Space 仍可播放</td></tr>
 <tr data-num="W2-B-02"><td class="num">W2-B-02</td><td>手势编辑框</td><td>EditingGesture，只读</td></tr>
 <tr data-num="W2-B-03"><td class="num">W2-B-03</td><td>按钮「全部重置」</td><td></td></tr>
@@ -572,9 +635,11 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 <tr><td>侧边栏拖拽范围</td><td>200 ~ 500px</td><td>W1-R2-04</td><td>MainWindow.xaml → SidebarSplitter 限幅</td></tr>
 <tr><td>分隔条宽度</td><td>6px</td><td>W1-R2-04 / W1-R2-07</td><td>MainWindow.xaml → GridSplitter Width</td></tr>
 <tr><td>底部控制栏高度</td><td>56px</td><td>W1-R4</td><td>MainWindow.xaml → BottomControlBorder Height</td></tr>
-<tr><td>时间轴行高</td><td>50（固定，v0.10.0 锁定）</td><td>W1-R3</td><td>MainWindow.xaml → RowDefinition[2] Height</td></tr>
+<tr><td>时间轴行高</td><td>64px（v1.14.0 由 76 缩窄）</td><td>W1-R3</td><td>MainWindow.xaml → RowDefinition[2] Height / TimelineBorder</td></tr>
+<tr><td>时间轴控件高</td><td>46px（v1.14.0 由 56 缩窄）；轴1 18 / 轴2 14 / 轴3 14</td><td>W1-R3-03~06</td><td>TimelineControl.xaml → 高度与三轴 RowDefinition</td></tr>
 <tr><td>时间轴缩放范围</td><td>0.5× ~ 50×</td><td>W1-R3-03</td><td>TimelineControl.cs → Zoom 常量</td></tr>
-<tr><td>截图列表缩略图</td><td>120 × 68</td><td>W1-C2-A-02</td><td>NotesView.xaml → 截图列表项尺寸</td></tr>
+<tr><td>R3 右端信息区</td><td>MinWidth 156</td><td>W1-R3-08</td><td>MainWindow.xaml → 时间轴右侧 Border</td></tr>
+<tr><td>笔记列表缩略图</td><td>120 × 68</td><td>W1-C2-D-03</td><td>NotesView.xaml → 时间线条目缩略图尺寸</td></tr>
 <tr><td>画廊缩略图</td><td>160 × 90</td><td>W3-V1-01</td><td>GalleryWindow.xaml → WrapPanel 卡片尺寸</td></tr>
 <tr><td>方向键反馈淡出</td><td>600ms</td><td>W1-R2-02</td><td>MainWindow.xaml.cs → ArrowFeedback 定时器</td></tr>
 <tr><td>提示条停留</td><td>2.5s</td><td>W1-E-01</td><td>MainWindow.xaml.cs → Toast 定时器</td></tr>
@@ -588,39 +653,131 @@ footer{margin-top:4rem;color:var(--muted);font-size:.8rem;border-top:1px solid v
 </div>
 
 <footer>
-<div>拉片助手（PianAssistant）界面编号视觉图鉴 · 依据 docs/UI_NUMBERING.md（编号唯一真源）与 v0.20.0 实际界面绘制 · 本图为可视化对照工具，编号定义以 UI_NUMBERING.md 为准。</div>
+<div>拉片助手（PianAssistant）界面编号视觉图鉴 · 依据 docs/UI_NUMBERING.md（编号唯一真源）与 v1.15.5 实际界面绘制 · 本图为可视化对照工具，编号定义以 UI_NUMBERING.md 为准。</div>
 </footer>
 
 </div>
 
-<div id="statusbar"><span class="hint">点击图中编号芯片查看说明 · 再次点击空白处清除</span></div>
+<div id="detail">
+  <span class="close" id="detailClose" title="关闭（Esc）">✕</span>
+  <h4 id="dNum"></h4>
+  <div class="dn" id="dName"></div>
+  <div class="dd" id="dDesc"></div>
+</div>
+<div id="statusbar"><span class="hint">点击图中编号芯片或表格行查看说明 · 上方搜索框可按编号/关键词过滤 · 再次点击空白处或按 Esc 清除</span></div>
 <script>
 (function(){
   var bar=document.getElementById('statusbar');
-  var hint=bar.querySelector('.hint');
-  function show(el){
-    bar.textContent=el.dataset.num+' · '+el.dataset.name+(el.dataset.desc?' — '+el.dataset.desc:'');
+  var hintHTML='<span class="hint">点击图中编号芯片或表格行查看说明 · 上方搜索框可按编号/关键词过滤 · 再次点击空白处或按 Esc 清除</span>';
+  var detail=document.getElementById('detail');
+  var dNum=document.getElementById('dNum'),dName=document.getElementById('dName'),dDesc=document.getElementById('dDesc');
+  var q=document.getElementById('q'),hideDel=document.getElementById('hideDel'),cnt=document.getElementById('cnt');
+
+  /* ── 收集编号：图中芯片 + 表格数据行 ── */
+  var chips=[].slice.call(document.querySelectorAll('.chip'));
+  var rows=[].slice.call(document.querySelectorAll('tr')).filter(function(r){return r.querySelector('td.num');});
+
+  function rowNum(r){return (r.dataset.num||(r.querySelector('td.num').textContent||'')).replace(/~~/g,'').trim();}
+
+  /* 已删除 / 已废弃：首列带删除线，或说明以「已废弃」开头 */
+  rows.forEach(function(r){
+    var cells=r.querySelectorAll('td');
+    var numTxt=cells[0]?cells[0].textContent:'';
+    var descTxt=cells[2]?cells[2].textContent:'';
+    if(numTxt.indexOf('~~')>=0||/^已废弃/.test(descTxt.trim()))r.classList.add('del');
+  });
+  chips.forEach(function(c){
+    var s=c.getAttribute('style')||'';
+    var n=(c.dataset.name||'')+(c.dataset.desc||'');
+    if(/opacity:\s*\.3/.test(s)||n.indexOf('已废弃')>=0||n.indexOf('（废）')>=0)c.classList.add('del');
+  });
+
+  function chipVisible(c){return !c.classList.contains('del');}
+  function norm(s){return (s||'').toLowerCase();}
+  function hay(el){return norm(el.textContent+' '+(el.dataset&&el.dataset.name||'')+' '+(el.dataset&&el.dataset.desc||''));}
+
+  /* ── 详情面板 ── */
+  function openDetail(num,name,desc){
+    dNum.textContent=num;
+    dName.textContent=name||'（未命名）';
+    dDesc.textContent=desc||'（暂无说明）';
+    detail.classList.add('open');
+    bar.innerHTML='<span class="hint">'+num+(name?' · '+name:'')+(desc?' — '+desc:'')+'</span>';
   }
-  document.querySelectorAll('.chip').forEach(function(c){
-    var activate=function(){
-      document.querySelectorAll('.chip.on').forEach(function(o){if(o!==c)o.classList.remove('on');});
-      c.classList.toggle('on');
-      if(c.classList.contains('on'))show(c);else bar.innerHTML='<span class="hint">点击图中编号芯片查看说明 · 再次点击空白处清除</span>';
-      document.querySelectorAll('tr.hl').forEach(function(r){r.classList.remove('hl');});
-      var key=c.dataset.num.replace(/-\d+$/,'');
-      document.querySelectorAll('tr[data-num]').forEach(function(r){
-        var n=r.dataset.num;
-        if(n===c.dataset.num||n.indexOf(c.dataset.num)===0||c.dataset.num.indexOf(n)===0)r.classList.add('hl');
-      });
-    };
-    c.addEventListener('click',function(e){e.stopPropagation();activate();});
-    c.addEventListener('mouseenter',function(){show(c);});
+  function closeDetail(){
+    detail.classList.remove('open');
+    chips.forEach(function(c){c.classList.remove('on');});
+    rows.forEach(function(r){r.classList.remove('hl');});
+    bar.innerHTML=hintHTML;
+  }
+  function markRows(num){
+    rows.forEach(function(r){
+      var n=rowNum(r);
+      r.classList.toggle('hl',!!num&&!!n&&(n===num||num.indexOf(n)===0||n.indexOf(num)===0));
+    });
+  }
+  function markChips(num){
+    chips.forEach(function(c){
+      var n=(c.dataset.num||'');
+      c.classList.toggle('on',!!num&&!!n&&(n===num||num.indexOf(n)===0||n.indexOf(num)===0));
+    });
+  }
+
+  /* ── 过滤 ── */
+  function applyFilter(){
+    var term=norm(q.value.trim());
+    var hide=hideDel.checked;
+    var shownRows=0,shownChips=0;
+    rows.forEach(function(r){
+      var ok=(!term||hay(r).indexOf(term)>=0)&&(!hide||!r.classList.contains('del'));
+      r.classList.toggle('dim',!ok);
+      if(ok&&!r.classList.contains('del'))shownRows++;
+    });
+    chips.forEach(function(c){
+      var ok=(!term||hay(c).indexOf(term)>=0)&&(!hide||!c.classList.contains('del'));
+      c.classList.toggle('dim',!ok);
+      if(ok&&chipVisible(c))shownChips++;
+    });
+    if(term||hide)cnt.textContent='命中 '+shownRows+' 行 · '+shownChips+' 个芯片';
+    else cnt.textContent='共 '+rows.length+' 行 · '+chips.length+' 个芯片';
+  }
+
+  /* ── 事件绑定 ── */
+  chips.forEach(function(c){
+    c.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(c.classList.contains('on')){closeDetail();return;}
+      chips.forEach(function(o){o.classList.remove('on');});
+      c.classList.add('on');
+      openDetail(c.dataset.num||'',c.dataset.name||'',c.dataset.desc||'');
+      markRows(c.dataset.num);
+    });
+    c.addEventListener('mouseenter',function(){
+      if(!detail.classList.contains('open'))bar.innerHTML='<span class="hint">'+c.dataset.num+' · '+(c.dataset.name||'')+(c.dataset.desc?' — '+c.dataset.desc:'')+'</span>';
+    });
   });
-  document.addEventListener('click',function(){
-    document.querySelectorAll('.chip.on').forEach(function(o){o.classList.remove('on');});
-    document.querySelectorAll('tr.hl').forEach(function(r){r.classList.remove('hl');});
-    bar.innerHTML='<span class="hint">点击图中编号芯片查看说明 · 再次点击空白处清除</span>';
+
+  rows.forEach(function(r){
+    var cells=r.querySelectorAll('td');
+    r.addEventListener('click',function(e){
+      e.stopPropagation();
+      var num=rowNum(r);
+      var name=(cells[1]?cells[1].textContent:'').replace(/~~/g,'').trim();
+      var desc=(cells[2]?cells[2].textContent:'').replace(/~~/g,'').trim();
+      chips.forEach(function(o){o.classList.remove('on');});
+      markChips(num);
+      markRows(num);
+      openDetail(num,name,desc);
+    });
   });
+
+  q.addEventListener('input',applyFilter);
+  hideDel.addEventListener('change',applyFilter);
+  document.getElementById('detailClose').addEventListener('click',function(e){e.stopPropagation();closeDetail();});
+  detail.addEventListener('click',function(e){e.stopPropagation();});
+  document.addEventListener('click',closeDetail);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDetail();});
+  applyFilter();
 })();
 </script>
 </body>
