@@ -157,6 +157,95 @@ public sealed class FfmpegRunner
     }
 
     /// <summary>
+    /// 探测源文件的内嵌字幕流数量（ffprobe 失败或无字幕时返回 0）。
+    /// </summary>
+    public int GetSubtitleStreamCount(string source)
+    {
+        if (!File.Exists(source)) return 0;
+        var stdout = RunFfprobe(
+            $"-v error -select_streams s -show_entries stream=index -of csv=p=0 \"{source}\"");
+        if (string.IsNullOrWhiteSpace(stdout)) return 0;
+        return stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Count(line => line.Trim().Length > 0);
+    }
+
+    /// <summary>
+    /// 把指定的内嵌字幕流完整导出为 SRT（不做时间裁剪，裁剪由
+    /// <see cref="SubtitleTimeline"/> 按片段起止重算）；位图字幕（PGS/DVD）转文本失败时返回 false。
+    /// </summary>
+    public bool TryExportSubtitleStreamToSrt(
+        string source, int subtitleIndex, string outputSrt,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputSrt);
+        var args = new StringBuilder();
+        args.Append("-y -v error -i \"").Append(source).Append("\" ");
+        args.Append("-map 0:s:").Append(subtitleIndex).Append(' ');
+        args.Append("-c:s srt -f srt ");
+        args.Append('"').Append(outputSrt).Append('"');
+        var (exit, _) = Run(args.ToString(), cancellationToken);
+        return exit == 0 && File.Exists(outputSrt);
+    }
+
+    /// <summary>把外挂字幕文件（srt/ass/ssa/vtt/sub）完整转成 SRT，失败返回 false。</summary>
+    public bool TryConvertSubtitleToSrt(
+        string subtitlePath, string outputSrt, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subtitlePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputSrt);
+        var args = new StringBuilder();
+        args.Append("-y -v error -i \"").Append(subtitlePath).Append("\" ");
+        args.Append("-c:s srt -f srt ");
+        args.Append('"').Append(outputSrt).Append('"');
+        var (exit, _) = Run(args.ToString(), cancellationToken);
+        return exit == 0 && File.Exists(outputSrt);
+    }
+
+    /// <summary>
+    /// 把已按片段起止裁剪好的 SRT 字幕轨合并进片段：视频/音频流复制（不重编码、不损画质），
+    /// 字幕按目标容器编码（mp4/mov → mov_text，mkv → srt）。
+    /// 输出写到 <paramref name="outputPath"/>（须与片段路径不同，由调用方随后覆盖回片段）。
+    /// </summary>
+    public void MuxSubtitlesIntoClip(
+        string clipPath,
+        IReadOnlyList<string> subtitleFiles,
+        string outputPath,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clipPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        ArgumentNullException.ThrowIfNull(subtitleFiles);
+        if (subtitleFiles.Count == 0) return;
+        if (!File.Exists(clipPath))
+            throw new FileNotFoundException("片段文件不存在，无法合并字幕。", clipPath);
+
+        var args = new StringBuilder();
+        args.Append("-y -v error -i \"").Append(clipPath).Append("\" ");
+        foreach (var sub in subtitleFiles)
+            args.Append("-i \"").Append(sub).Append("\" ");
+        args.Append("-map 0:v? -map 0:a? ");
+        for (int i = 0; i < subtitleFiles.Count; i++)
+            args.Append("-map ").Append(i + 1).Append(":0 ");
+        args.Append("-c copy ");
+        var ext = Path.GetExtension(outputPath).ToLowerInvariant();
+        if (ext is ".mp4" or ".mov")
+        {
+            args.Append("-c:s mov_text ");
+            args.Append("-movflags +faststart ");
+        }
+        else
+        {
+            args.Append("-c:s srt ");
+        }
+        args.Append('"').Append(outputPath).Append('"');
+        var (exit, stderr) = Run(args.ToString(), cancellationToken);
+        if (exit != 0)
+            throw new InvalidOperationException(
+                $"ffmpeg 字幕合并失败（exit {exit}）：{stderr}");
+    }
+
+    /// <summary>
     /// 生成代理媒体（v1.11.0）：按档位降分辨率 + 限码率重编码。
     /// 关键点：<c>-fps_mode passthrough</c> 保持帧率直通，代理与源的时间码逐帧对齐，
     /// 裁切点/截图/片段导出均可直接复用源时间码。

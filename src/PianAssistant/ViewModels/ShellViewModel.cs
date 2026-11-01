@@ -248,8 +248,12 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         // 片段批量导出：抽取走 ffmpeg 服务；拼接走 ConcatService（均经 Task.Run 保持异步）。
         Clips = new ClipListViewModel(
             (range, reencode, ct, onProgress) =>
-                System.Threading.Tasks.Task.Run(
-                    () => services.Clips.Extract(range, reencode, ct, onProgress)),
+            {
+                // 已加载的外挂字幕随片段一起导出（v1.15.6：修复片段导出丢字幕）
+                var subtitles = Player.LoadedExternalSubtitles.ToList();
+                return System.Threading.Tasks.Task.Run(
+                    () => services.Clips.Extract(range, reencode, ct, onProgress, subtitles));
+            },
             (ranges, outputPath, ct, onProgress) =>
                 services.Concats.ConcatAsync(ranges, outputPath, ct, onProgress));
         Screenshots = new ScreenshotGalleryViewModel();
@@ -1227,7 +1231,9 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         var source = segment.SourcePath ?? Player.SourcePathOrCurrent
             ?? throw new InvalidOperationException("没有已打开的视频，无法导出片段。");
         var range = new ClipRange(source, segment.Start, segment.End);
-        var outputPath = _services.Clips.ExtractTo(range, targetDirectory);
+        // 已加载的外挂字幕随片段一起导出（v1.15.6：修复片段导出丢字幕）
+        var outputPath = _services.Clips.ExtractTo(
+            range, targetDirectory, externalSubtitles: Player.LoadedExternalSubtitles.ToList());
         _clipOutputPaths[range.InPoint.TotalMilliseconds] = outputPath;
         return outputPath;
     }

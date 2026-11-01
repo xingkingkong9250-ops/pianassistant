@@ -59,7 +59,9 @@ public sealed class ConcatService
                 var tempPath = await Task.Run(
                     () => tempExtractor.Extract(
                         ranges[index], false, cancellationToken,
-                        p => onProgress?.Invoke(baseRatio + p / totalSteps)),
+                        p => onProgress?.Invoke(baseRatio + p / totalSteps),
+                        // 临时片段不带字幕：各段字幕轨不一致会阻塞 concat 拼接（v1.15.6）
+                        includeSubtitles: false),
                     cancellationToken).ConfigureAwait(false);
                 tempClips.Add(tempPath);
                 onProgress?.Invoke((double)(i + 1) / totalSteps);

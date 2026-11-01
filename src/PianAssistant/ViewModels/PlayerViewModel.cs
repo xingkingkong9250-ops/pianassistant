@@ -1002,8 +1002,10 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         try
         {
             var range = new ClipRange(source, inP, outP);
+            // 已加载的外挂字幕随片段一起导出（v1.15.6）
+            var subtitles = LoadedExternalSubtitles.ToList();
             var outputPath = await Task.Run(() => _clips.Extract(
-                range, false, CancellationToken.None, p => ExtractProgress = p));
+                range, false, CancellationToken.None, p => ExtractProgress = p, subtitles));
             ExtractProgress = 1;
             ClipExtracted?.Invoke(this, new ClipExtractedEventArgs(range, outputPath));
         }
@@ -1189,8 +1191,9 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         try
         {
             var range = new ClipRange(source, inP, outP);
+            var subtitles = LoadedExternalSubtitles.ToList();
             var outputPath = await Task.Run(() => _clips.Extract(
-                range, false, CancellationToken.None, p => ExtractProgress = p));
+                range, false, CancellationToken.None, p => ExtractProgress = p, subtitles));
             ExtractProgress = 1;
             SegmentExported?.Invoke(this, new ClipExtractedEventArgs(range, outputPath));
         }
