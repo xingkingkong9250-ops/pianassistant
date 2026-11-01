@@ -71,6 +71,78 @@ function Get-ProjectVersion {
     return $versionNode.Trim()
 }
 
+<#
+    Search for Inno Setup ISCC.exe in common install locations.
+    Returns the first found absolute path, or $null if none found.
+    Search order (checked top-to-bottom):
+      1. %ProgramFiles(x86)%\Inno Setup 6\ISCC.exe
+      2. %ProgramFiles%\Inno Setup 6\ISCC.exe
+      3. %ProgramFiles(x86)%\Inno Setup 5\ISCC.exe
+      4. %ProgramFiles%\Inno Setup 5\ISCC.exe
+      5. %LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe   (user-level install)
+      6. %LOCALAPPDATA%\Programs\Inno Setup 5\ISCC.exe
+      7. %APPDATA%\Inno Setup 6\ISCC.exe
+      8. %APPDATA%\Inno Setup 5\ISCC.exe
+      9. HKLM\SOFTWARE\...\Uninstall\ & HKCU\...\Uninstall\
+         Inno Setup 6_is1 / Inno Setup 5_is1 → InstallLocation
+     10. PATH (Get-Command ISCC)
+    NOTE: must be defined BEFORE the switch below — PowerShell executes a
+    script top-to-bottom and does not hoist function definitions.
+#>
+function Get-IsccPath {
+    $candidates = @(
+        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+        "${env:ProgramFiles(x86)}\Inno Setup 5\ISCC.exe",
+        "${env:ProgramFiles}\Inno Setup 5\ISCC.exe",
+        "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe",
+        "${env:LOCALAPPDATA}\Programs\Inno Setup 5\ISCC.exe",
+        "${env:APPDATA}\Inno Setup 6\ISCC.exe",
+        "${env:APPDATA}\Inno Setup 5\ISCC.exe"
+    )
+
+    foreach ($path in $candidates) {
+        if (Test-Path -LiteralPath $path) {
+            return $path
+        }
+    }
+
+    # Fallback: check registry for uninstall entries (HKLM + HKCU)
+    $regRoots = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
+    )
+    foreach ($regRoot in $regRoots) {
+        if (Test-Path -LiteralPath $regRoot) {
+            foreach ($key in (Get-ChildItem -Path $regRoot -ErrorAction SilentlyContinue)) {
+                $displayName = $key.GetValue('DisplayName', '')
+                if ($displayName -like 'Inno Setup *') {
+                    $installDir = $key.GetValue('InstallLocation', '')
+                    if (-not $installDir) { $installDir = $key.GetValue('DisplayIcon', '') }
+                    if ($installDir) {
+                        # DisplayIcon may point directly to ISCC.exe
+                        if ($installDir -like '*ISCC.exe' -and (Test-Path -LiteralPath $installDir)) {
+                            return $installDir
+                        }
+                        $tryPath = Join-Path $installDir 'ISCC.exe'
+                        if (Test-Path -LiteralPath $tryPath) {
+                            return $tryPath
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    # Last resort: PATH
+    $cmd = Get-Command ISCC -ErrorAction SilentlyContinue
+    if ($cmd) {
+        return $cmd.Source
+    }
+
+    return $null
+}
+
 switch ($Mode) {
     'Prepare' {
         $version = Get-ProjectVersion -CsprojPath $csprojPath
@@ -158,74 +230,4 @@ switch ($Mode) {
         Write-Host "  UserGuide : $(Join-Path $destDir "拉片助手_安装使用说明_v$version.docx")"
         Write-Host "  Staging   : $staging"
     }
-}
-
-<#
-    Search for Inno Setup ISCC.exe in common install locations.
-    Returns the first found absolute path, or $null if none found.
-    Search order (checked top-to-bottom):
-      1. %ProgramFiles(x86)%\Inno Setup 6\ISCC.exe
-      2. %ProgramFiles%\Inno Setup 6\ISCC.exe
-      3. %ProgramFiles(x86)%\Inno Setup 5\ISCC.exe
-      4. %ProgramFiles%\Inno Setup 5\ISCC.exe
-      5. %LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe   (user-level install)
-      6. %LOCALAPPDATA%\Programs\Inno Setup 5\ISCC.exe
-      7. %APPDATA%\Inno Setup 6\ISCC.exe
-      8. %APPDATA%\Inno Setup 5\ISCC.exe
-      9. HKLM\SOFTWARE\...\Uninstall\ & HKCU\...\Uninstall\
-         Inno Setup 6_is1 / Inno Setup 5_is1 → InstallLocation
-     10. PATH (Get-Command ISCC)
-#>
-function Get-IsccPath {
-    $candidates = @(
-        "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-        "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
-        "${env:ProgramFiles(x86)}\Inno Setup 5\ISCC.exe",
-        "${env:ProgramFiles}\Inno Setup 5\ISCC.exe",
-        "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe",
-        "${env:LOCALAPPDATA}\Programs\Inno Setup 5\ISCC.exe",
-        "${env:APPDATA}\Inno Setup 6\ISCC.exe",
-        "${env:APPDATA}\Inno Setup 5\ISCC.exe"
-    )
-
-    foreach ($path in $candidates) {
-        if (Test-Path -LiteralPath $path) {
-            return $path
-        }
-    }
-
-    # Fallback: check registry for uninstall entries (HKLM + HKCU)
-    $regRoots = @(
-        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
-        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall'
-    )
-    foreach ($regRoot in $regRoots) {
-        if (Test-Path -LiteralPath $regRoot) {
-            foreach ($key in (Get-ChildItem -Path $regRoot -ErrorAction SilentlyContinue)) {
-                $displayName = $key.GetValue('DisplayName', '')
-                if ($displayName -like 'Inno Setup *') {
-                    $installDir = $key.GetValue('InstallLocation', '')
-                    if (-not $installDir) { $installDir = $key.GetValue('DisplayIcon', '') }
-                    if ($installDir) {
-                        # DisplayIcon may point directly to ISCC.exe
-                        if ($installDir -like '*ISCC.exe' -and (Test-Path -LiteralPath $installDir)) {
-                            return $installDir
-                        }
-                        $tryPath = Join-Path $installDir 'ISCC.exe'
-                        if (Test-Path -LiteralPath $tryPath) {
-                            return $tryPath
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    # Last resort: PATH
-    $cmd = Get-Command ISCC -ErrorAction SilentlyContinue
-    if ($cmd) {
-        return $cmd.Source
-    }
-
-    return $null
 }
