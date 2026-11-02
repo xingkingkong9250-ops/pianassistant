@@ -54,6 +54,11 @@ public sealed class VideoPlaybackService : IVideoPlayback
     // 往返的阻塞调用。位置缓存由 TimeChanged 原生回调第一时间写入，音量由
     // 设置时写入期望值，UI 侧一律读缓存。
     private long _cachedTimeMs;
+    // 暂停态位置权威值（v1.15.7 精准截图）：LibVLC 在暂停态 seek 后不刷新 get_time，
+    // 仍返回暂停瞬间的旧时间（实测滑块在 7.663s，get_time 仍报 0.250s），而画面已渲染
+    // 到 seek 目标。该字段记录「暂停时刻的原生时间」或「暂停态 seek 目标」，供截图 /
+    // 单帧步进使用；恢复播放、停止、换片时置 -1 失效。
+    private long _pausedSeekTargetMs = -1;
     // 总时长缓存（v1.7.7 根因修复）：
     // Media.DurationChanged 在 LibVLCSharp 3.x 里不可靠——即使订阅了也经常不触发。
     // 改为由后台控制线程读 _mediaPlayer.Length（来自 input 线程，demux 启动后即有值）
@@ -91,6 +96,10 @@ public sealed class VideoPlaybackService : IVideoPlayback
             // 截图 / 跳转，Position 返回旧时间码导致位置偏差。
             // 改用 ResolveSeekBaseMs：settle 窗口内存在 pending seek 目标时用它（此时
             // PositionChanged 手动通知也刚触发，UI 播放头已对齐），否则回落到缓存。
+            // v1.15.7：暂停态位置优先——暂停态 seek 后原生 get_time 不刷新（仍返回暂停
+            // 瞬间的旧值），画面却已渲染到 seek 目标；此时缓存/pending 都会给出旧位置
+            var pausedMs = Volatile.Read(ref _pausedSeekTargetMs);
+            if (pausedMs >= 0) return TimeSpan.FromMilliseconds(pausedMs);
             var cached = Volatile.Read(ref _cachedTimeMs);
             var sincePending = _pendingSeekTargetMs >= 0
                 ? (DateTime.UtcNow - _pendingSeekAtUtc).TotalMilliseconds
@@ -99,6 +108,37 @@ public sealed class VideoPlaybackService : IVideoPlayback
             return TimeSpan.FromMilliseconds(ms < 0 ? 0 : ms);
         }
     }
+    public TimeSpan GetPrecisePosition()
+    {
+        // v1.15.7：暂停态 seek 后 get_time 仍返回暂停瞬间的旧时间（实测滑块 7.663s、
+        // 截图却落在 0.250s），必须优先使用暂停态权威位置
+        var pausedMs = Volatile.Read(ref _pausedSeekTargetMs);
+        if (pausedMs >= 0) return TimeSpan.FromMilliseconds(pausedMs);
+
+        // 待生效的 seek 目标优先：原生 Time 尚未更新时直读仍是旧值（如暂停态 seek）
+        var pendingMs = _pendingSeekTargetMs;
+        if (pendingMs >= 0 &&
+            (DateTime.UtcNow - _pendingSeekAtUtc).TotalMilliseconds <= SeekSettleWindowMs)
+            return TimeSpan.FromMilliseconds(pendingMs);
+
+        try
+        {
+            var ms = _mediaPlayer.Time;
+            if (ms >= 0)
+            {
+                Volatile.Write(ref _cachedTimeMs, ms);
+                return TimeSpan.FromMilliseconds(ms);
+            }
+        }
+        catch (Exception ex)
+        {
+            // 直读原生时钟失败不影响截图主流程：退回缓存值
+            AppLog.Error("[VideoPlayback] 精确位置读取失败（退回缓存值）", ex);
+        }
+        var cached = Volatile.Read(ref _cachedTimeMs);
+        return TimeSpan.FromMilliseconds(cached < 0 ? 0 : cached);
+    }
+
     public TimeSpan Length
     {
         get
@@ -187,12 +227,15 @@ public sealed class VideoPlaybackService : IVideoPlayback
         _mediaPlayer.EndReached += (_, _) => RaiseOnUi(() =>
         {
             _pendingSeekTargetMs = -1;
+            Volatile.Write(ref _pausedSeekTargetMs, -1);
             EndReached?.Invoke(this, EventArgs.Empty);
         });
         // Parse track info (fps/dimensions) once playback starts — tracks
         // are demuxed by then. Replaces ESAdded (not available in 3.8.2).
         _mediaPlayer.Playing += (_, _) => RaiseOnUi(() =>
         {
+            // 真正恢复播放：原生时钟恢复刷新，暂停态权威位置失效（v1.15.7）
+            Volatile.Write(ref _pausedSeekTargetMs, -1);
             OnMediaParsed();
             // 音轨此刻才完成选择：若当前处于高速档（如打开时按倍速记忆恢复 8×），
             // 需再次应用音轨策略禁用音频，解除 4× 时钟钳制。
@@ -236,6 +279,7 @@ public sealed class VideoPlaybackService : IVideoPlayback
         _mediaPlayer.Stopped += (_, _) => RaiseOnUi(() =>
         {
             _pendingSeekTargetMs = -1;
+            Volatile.Write(ref _pausedSeekTargetMs, -1);
             lock (_controlSync) _rateEstablished = false;
             Stopped?.Invoke(this, EventArgs.Empty);
         });
@@ -280,6 +324,17 @@ public sealed class VideoPlaybackService : IVideoPlayback
         long pendingTargetMs, double sinceSeekMs, long cachedMs,
         double windowMs = SeekSettleWindowMs)
         => pendingTargetMs >= 0 && sinceSeekMs <= windowMs ? pendingTargetMs : cachedMs;
+
+    /// <summary>
+    /// 位置基准（纯函数，便于单测）：暂停态权威位置优先（v1.15.7），其次按
+    /// pending seek 抑制窗规则，最后用缓存。暂停态 seek 后原生 get_time 不刷新，
+    /// 只有这个权威值能对应当前画面。
+    /// </summary>
+    public static long ResolvePausedBaseMs(
+        long pausedTargetMs, long pendingTargetMs, double sinceSeekMs, long cachedMs)
+        => pausedTargetMs >= 0
+            ? pausedTargetMs
+            : ResolveSeekBaseMs(pendingTargetMs, sinceSeekMs, cachedMs);
 
     /// <summary>
     /// 是否需要进入 seek 合并等待（纯函数，便于单测）：距上次原生下发过近即为
@@ -339,6 +394,7 @@ public sealed class VideoPlaybackService : IVideoPlayback
         // 新素材从 0 开始：位置/时长缓存都清零，避免沿用上一素材的值（v1.7.6 + v1.7.7）
         Volatile.Write(ref _cachedTimeMs, 0);
         Volatile.Write(ref _cachedLengthMs, 0);
+        Volatile.Write(ref _pausedSeekTargetMs, -1);
         _controlSignal.Set();
     }
 
@@ -362,6 +418,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
 
     public void Play()
     {
+        // 恢复播放：原生时钟恢复刷新，暂停态权威位置失效（v1.15.7）
+        Volatile.Write(ref _pausedSeekTargetMs, -1);
         lock (_controlSync)
         {
             _rateEstablished = false;
@@ -375,6 +433,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
     /// <summary>暂停：同样下沉到后台控制线程，避免 set_pause 阻塞 UI（v1.7.3）。</summary>
     public void Pause()
     {
+        // 暂停生效后由控制线程写入暂停瞬间的原生时间（v1.15.7）；先失效旧值
+        Volatile.Write(ref _pausedSeekTargetMs, -1);
         lock (_controlSync)
         {
             _pendingPause = true;
@@ -400,6 +460,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
     public void TogglePlayPause()
     {
         var pause = IsPlaybackActive(_mediaPlayer.State);
+        // 播放/暂停切换：暂停态权威位置先失效，暂停生效时由控制线程重建（v1.15.7）
+        Volatile.Write(ref _pausedSeekTargetMs, -1);
         lock (_controlSync)
         {
             _pendingPause = pause;
@@ -611,9 +673,14 @@ public sealed class VideoPlaybackService : IVideoPlayback
                         if (pause)
                         {
                             _mediaPlayer.SetPause(true);
+                            // 暂停瞬间的原生时间即画面位置：暂停态 seek 后 get_time
+                            // 不再刷新，这里记录权威值供截图使用（v1.15.7）
+                            var pausedMs = _mediaPlayer.Time;
+                            if (pausedMs >= 0) Volatile.Write(ref _pausedSeekTargetMs, pausedMs);
                         }
                         else
                         {
+                            Volatile.Write(ref _pausedSeekTargetMs, -1);
                             if (_mediaPlayer.State is not VLCState.Paused)
                             {
                                 lock (_controlSync) _rateEstablished = false;
@@ -644,7 +711,9 @@ public sealed class VideoPlaybackService : IVideoPlayback
         // 连续触发（长按）时基准用上次 seek 目标叠加，避免偏差累积与来回跳动。
         // 基准位置取缓存值而非直读原生 Time：后者经 input 线程同步往返，
         // 大文件解码繁忙时会把 UI 线程卡住（v1.7.6）
-        var baseMs = ResolveSeekBaseMs(_pendingSeekTargetMs,
+        // v1.15.7：暂停态 seek 后原生时钟不刷新，基准改用暂停态权威位置
+        var baseMs = ResolvePausedBaseMs(Volatile.Read(ref _pausedSeekTargetMs),
+            _pendingSeekTargetMs,
             (DateTime.UtcNow - _pendingSeekAtUtc).TotalMilliseconds,
             Volatile.Read(ref _cachedTimeMs));
         var targetMs = baseMs + (long)delta.TotalMilliseconds;
@@ -689,6 +758,9 @@ public sealed class VideoPlaybackService : IVideoPlayback
         _controlSignal.Set();
         if (!wasPlaying)
         {
+            // v1.15.7：暂停态 seek 的目标就是画面将呈现的位置。原生 get_time 在暂停态
+            // 不随 seek 刷新（实测仍返回暂停瞬间的旧值），必须记录该目标供截图使用
+            Volatile.Write(ref _pausedSeekTargetMs, targetMs);
             // 暂停态：原生补帧由控制线程随 seek 一并执行；先手动通知 UI 刷新播放头
             PositionChanged?.Invoke(this, TimeSpan.FromMilliseconds(targetMs));
         }

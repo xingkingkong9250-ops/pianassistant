@@ -22,6 +22,13 @@ public interface IVideoPlayback : IDisposable
 
     bool IsPlaying { get; }
     TimeSpan Position { get; }
+    /// <summary>
+    /// 读取当前播放位置的精确值（直读播放引擎原生时钟，绕过节流缓存）。
+    /// <see cref="Position"/> 由 TimeChanged 事件缓存驱动，高倍速时每次回调间隔
+    /// 折算成媒体时间可达 1 秒以上，暂停瞬间则可能落后数帧；截图等对时间精度
+    /// 敏感的场景必须用本方法（v1.15.7 精准截图修复）。
+    /// </summary>
+    TimeSpan GetPrecisePosition();
     TimeSpan Length { get; }
     /// <summary>
     /// 播放倍速。读取返回「期望倍速」：原生层的实际套用由后台控制线程异步完成

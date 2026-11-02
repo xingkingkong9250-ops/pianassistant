@@ -7,6 +7,36 @@
 
 ## [Unreleased]
 
+### v1.15.7 — 补丁：修复截图帧偏移（NO.P，2026-11-02）
+
+- **根因 1（时间点取自节流缓存）**：截图时间用 `IVideoPlayback.Position`，它由
+  LibVLC `TimeChanged` 事件缓存驱动。高倍速下每次回调间隔折算成媒体时间可达
+  1 秒以上（8× 时约 2s），暂停瞬间也可能落后数帧 → 截出的帧比用户看到的画面
+  早或晚，与反馈的「偏移几帧 / 偏移 1 秒甚至更多」完全对应
+- **根因 2（容器起始时间未补偿）**：`ffmpeg -ss` 放在 `-i` 前，对 mpegts 等
+  `start_time != 0` 的容器会按字节位置估算并越界——实测请求 6.5s 实际取到
+  8.33s（偏移 1.83s）；mp4/mkv 起始时间为 0 时该写法本身帧精确
+- **根因 3（暂停态位置读错，画面已到位但时间戳停在旧值）**：LibVLC 在暂停态
+  seek 后 `get_time` 不刷新，仍返回暂停瞬间的原生时间。实测：暂停在 0.250s →
+  拖时间轴到 7.663s（画面已渲染到目标）→ 4 次截图的时间戳全部为 0.250s，
+  即用户反馈的「截图点生成到前面」。初版 `GetPrecisePosition()` 只在 seek 后
+  400ms 内信任 seek 目标，超窗后回读原生时钟又落回旧值
+- **修复**：
+  1. 新增 `IVideoPlayback.GetPrecisePosition()`：直读播放引擎原生时钟
+     （待生效 seek 目标优先，读取失败退回缓存），截图改用它
+  2. 新增 `FfmpegRunner.BuildCaptureFrameArgs`：`start_time != 0` 时改为
+     「前 8 秒粗 seek 预卷 + `-copyts` + 按 `内容时间 + start_time` 绝对时间戳
+     二次 seek」，仍只解码预卷后的少量帧；`start_time == 0` 保持原有输入 seek
+  3. 新增暂停态权威位置 `_pausedSeekTargetMs`（暂停瞬间的原生时间 / 暂停态
+     seek 目标）：`Position`、`GetPrecisePosition()`、相对 seek 基准
+     （`ResolvePausedBaseMs`）一律优先使用，不再受 400ms 窗口限制；
+     恢复播放、停止、换片、EndReached 时失效
+- **验证**：md5 逐帧比对源参考帧，mp4 / mkv / 带 1.5s 偏移的 mkv、mp4 /
+  real.ts 全部命中目标帧（修复前 ts 偏移 1.83s，且旧写法在部分文件偏移数帧）；
+  暂停态位置判定另有 `ResolvePausedBaseMs` 单元用例覆盖
+- **影响范围**：手动截图、快捷键截图、批量执行截图、片段缩略图（共用
+  `CaptureSingleFrame`）全部受益
+
 ### v1.15.6 — 补丁：修复截取视频片段字幕丢失（NO.P，2026-11-01）
 
 - **根因**：片段导出的两条 ffmpeg 命令都没有 `-map` 字幕流——流复制用默认流选择，

@@ -460,6 +460,36 @@ public class PlayerViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task CaptureScreenshot_UsesPrecisePosition_NotThrottledCache()
+    {
+        // v1.15.7：截图时间点必须取播放引擎原生时钟（GetPrecisePosition），
+        // 不能取 TimeChanged 节流缓存的 Position
+        var ffmpegPath = FindBundledFfmpeg();
+        if (ffmpegPath is null) return;
+        var source = TryCreateTestVideo(ffmpegPath, Path.Combine(_tempDir, "src-precise.mp4"));
+        if (source is null) return;
+
+        var runner = new FfmpegRunner(ffmpegPath,
+            Path.Combine(Path.GetDirectoryName(ffmpegPath)!, "ffprobe.exe"));
+        var shotsDir = Path.Combine(_tempDir, "shots-precise");
+        Directory.CreateDirectory(shotsDir);
+        var stub = new StubVideoPlayback { Length = TimeSpan.FromSeconds(2) };
+        stub.Open(source);
+        stub.Seek(TimeSpan.FromSeconds(0.5));                              // 节流缓存位置
+        stub.PrecisePositionOverride = TimeSpan.FromSeconds(1.25);         // 原生时钟实际位置
+        var svc = new ScreenshotService(stub, runner, shotsDir);
+        using var vm = new PlayerViewModel(stub, svc, _clips, () => 5, () => 0.25, () => 8.0);
+
+        ScreenshotEntry? captured = null;
+        vm.ScreenshotCaptured += (_, e) => captured = e;
+
+        await vm.CaptureScreenshotCommand.ExecuteAsync();
+        Assert.NotNull(captured);
+        Assert.Equal(TimeSpan.FromSeconds(1.25), captured!.Position);
+        Assert.True(File.Exists(captured.OutputPath));
+    }
+
+    [Fact]
     public void TimeCodeDisplayString_NotEmpty_WhenPositionSet()
     {
         _playback.Open("video.mp4");

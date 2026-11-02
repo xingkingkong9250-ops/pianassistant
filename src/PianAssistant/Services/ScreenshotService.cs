@@ -62,7 +62,7 @@ public sealed class ScreenshotService
     /// Captures a screenshot at the current player position (ffmpeg 单帧抽帧)
     /// and returns the screenshot entry.
     /// </summary>
-    public ScreenshotEntry Capture(string? label = null) => CaptureAt(_playback.Position, label);
+    public ScreenshotEntry Capture(string? label = null) => CaptureAt(_playback.GetPrecisePosition(), label);
 
     /// <summary>
     /// 在指定时间码抽帧（不依赖播放器当前位置）：导入数据时按 CSV 时间码

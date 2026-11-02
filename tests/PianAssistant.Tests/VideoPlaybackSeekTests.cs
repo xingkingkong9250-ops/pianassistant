@@ -93,10 +93,36 @@ public class VideoPlaybackSeekTests
     [Fact]
     public void ResolveSeekBase_PausedSeek_StaleAfterSettleWindow()
     {
-        // 暂停态 seek 超窗后 TimeChanged 仍没来（VLC 暂停态不主动推 TimeChanged），
-        // pending 目标被视为 stale，回落缓存。实际运行中不会出现——seek 到位后 TimeChanged 会清掉 pending。
-        // 这条测试只是确认边界行为。
+        // 暂停态 seek 超窗后若仍无 TimeChanged，pending 目标按本函数规则失效。
+        // v1.15.7 实测：VLC 暂停态 seek 后根本不推新时间（get_time 也停在暂停瞬间），
+        // 因此实际运行改由 ResolvePausedBaseMs 的「暂停态权威位置」兜底，见下方用例。
         Assert.Equal(50_000, VideoPlaybackService.ResolveSeekBaseMs(
+            pendingTargetMs: 60_000, sinceSeekMs: 500, cachedMs: 50_000));
+    }
+
+    // --- v1.15.7 精准截图：暂停态权威位置 ---
+    // 用户暂停在 0.250s → 拖动时间轴到 7.663s → 截图。
+    // 实测 LibVLC 暂停态 seek 后 get_time 仍返回 0.250s，画面却已渲染到 7.663s。
+
+    [Fact]
+    public void ResolvePausedBase_PausedTargetWinsEvenOutOfWindow()
+    {
+        // 暂停态 seek 目标 60s 是权威位置：即使 pending 超窗、缓存仍是旧的 50s，
+        // 也必须返回 60s（否则截图会落回暂停前的位置）
+        Assert.Equal(60_000, VideoPlaybackService.ResolvePausedBaseMs(
+            pausedTargetMs: 60_000,
+            pendingTargetMs: 60_000, sinceSeekMs: 5_000, cachedMs: 50_000));
+    }
+
+    [Fact]
+    public void ResolvePausedBase_NoPausedTarget_FallsBackToPendingRule()
+    {
+        // 播放态（无暂停权威值）：沿用 pending 抑制窗规则
+        Assert.Equal(60_000, VideoPlaybackService.ResolvePausedBaseMs(
+            pausedTargetMs: -1,
+            pendingTargetMs: 60_000, sinceSeekMs: 100, cachedMs: 50_000));
+        Assert.Equal(50_000, VideoPlaybackService.ResolvePausedBaseMs(
+            pausedTargetMs: -1,
             pendingTargetMs: 60_000, sinceSeekMs: 500, cachedMs: 50_000));
     }
 

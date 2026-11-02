@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -57,19 +58,64 @@ public sealed class FfmpegRunner
                 "未找到 ffmpeg.exe，请运行 tools\\download-ffmpeg.ps1 下载后再试。", _ffmpegPath);
     }
 
+    /// <summary>单帧截图用的快速 seek 预卷长度（秒）：先粗 seek 到这里之前，再按绝对时间戳精确选帧。</summary>
+    private const double CapturePreRollSeconds = 8;
+
     /// <summary>
-    /// Capture a single still frame at the given position using ffmpeg.
-    /// Used as a fallback when LibVLC TakeSnapshot fails.
+    /// 探测源文件的起始时间戳（秒）。mpegts 等容器常见非 0（如 1.4667s），
+    /// 播放器时间轴从内容起点算，而 ffmpeg -ss 需要绝对时间戳才能对齐（v1.15.7）。
+    /// 探测失败或为 N/A 时返回 0（按起始时间为 0 处理）。
     /// </summary>
-    /// <param name="scaleFilter">可选缩放滤镜（导出分辨率预设）；null 保持源分辨率。</param>
-    public void CaptureSingleFrame(string source, TimeSpan position, string outputPath,
-        string? scaleFilter = null)
+    public double GetStartTimeSeconds(string source)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(source);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        if (!File.Exists(source)) return 0;
+        try
+        {
+            var stdout = RunFfprobe(
+                $"-v error -show_entries format=start_time -of csv=p=0 \"{source}\"");
+            var text = stdout.Trim();
+            if (text.Length == 0 || text.Equals("N/A", StringComparison.OrdinalIgnoreCase))
+                return 0;
+            return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var sec)
+                ? sec
+                : 0;
+        }
+        catch (Exception ex)
+        {
+            // 探测失败不影响截图主流程：按起始时间 0 处理
+            AppLog.Error("[FfmpegRunner] 读取 start_time 失败（按 0 处理）", ex);
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 构造单帧截图命令（纯函数，便于单测）。
+    /// <para>v1.15.7 精准截图：mpegts 等容器的输入级 -ss 会按字节位置估算并越界，
+    /// 实测请求 6.5s 实际取到 8.33s（偏移 1.83s）。改为「粗 seek 预卷 + -copyts
+    /// 按绝对时间戳二次 seek」，全部容器实测帧级一致，且仍只解码预卷后的少量帧。</para>
+    /// </summary>
+    public static string BuildCaptureFrameArgs(
+        string source, TimeSpan position, string outputPath,
+        double startTimeSeconds, string? scaleFilter)
+    {
+        var targetSec = Math.Max(0, position.TotalSeconds);
+        var absoluteSec = targetSec + startTimeSeconds;
         var args = new StringBuilder();
-        args.Append("-ss ").Append(position.TotalSeconds.ToString("0.###")).Append(' ');
-        args.Append("-i \"").Append(source).Append("\" ");
+        if (absoluteSec >= 0 && startTimeSeconds != 0)
+        {
+            var preRollSec = Math.Max(0, targetSec - CapturePreRollSeconds);
+            args.Append("-ss ").Append(FormatSeconds(preRollSec)).Append(' ');
+            args.Append("-i \"").Append(source).Append("\" ");
+            // -copyts 保留原始时间戳，输出级 -ss 才能按「内容时间 + 起始时间」精确选帧
+            args.Append("-copyts ");
+            args.Append("-ss ").Append(FormatSeconds(absoluteSec)).Append(' ');
+        }
+        else
+        {
+            // 起始时间为 0（mp4/mkv 常态）：输入级 -ss 本身就帧精确
+            args.Append("-ss ").Append(FormatSeconds(targetSec)).Append(' ');
+            args.Append("-i \"").Append(source).Append("\" ");
+        }
         args.Append("-frames:v 1 ");
         AppendScaleFilter(args, scaleFilter);
         var ext = Path.GetExtension(outputPath).ToLowerInvariant();
@@ -80,9 +126,36 @@ public sealed class FfmpegRunner
             _ => string.Empty,
         });
         args.Append('"').Append(outputPath).Append('"');
-        var (exit, _) = Run(args.ToString(), CancellationToken.None);
+        return args.ToString();
+    }
+
+    /// <summary>
+    /// 秒数格式化为 ffmpeg 参数：向下取整到毫秒。
+    /// 必须向下取整——ffmpeg 输出级 -ss 选「第一个时间戳 ≥ 目标」的帧，
+    /// 向上取整（如 7.966667 → 7.967）会把刚好落在帧边界上的目标帧跳过，
+    /// 实际取到下一帧（v1.15.7 实测）。
+    /// </summary>
+    private static string FormatSeconds(double seconds)
+    {
+        var floored = Math.Floor(seconds * 1000) / 1000;
+        return floored.ToString("0.###", CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Capture a single still frame at the given position using ffmpeg.
+    /// </summary>
+    /// <param name="scaleFilter">可选缩放滤镜（导出分辨率预设）；null 保持源分辨率。</param>
+    public void CaptureSingleFrame(string source, TimeSpan position, string outputPath,
+        string? scaleFilter = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
+        var startTimeSeconds = GetStartTimeSeconds(source);
+        var arguments = BuildCaptureFrameArgs(source, position, outputPath, startTimeSeconds, scaleFilter);
+        var (exit, stderr) = Run(arguments, CancellationToken.None);
         if (exit != 0)
-            throw new InvalidOperationException($"ffmpeg single-frame capture failed (exit {exit}).");
+            throw new InvalidOperationException(
+                $"ffmpeg single-frame capture failed (exit {exit}). stderr: {stderr}");
     }
 
     /// <summary>

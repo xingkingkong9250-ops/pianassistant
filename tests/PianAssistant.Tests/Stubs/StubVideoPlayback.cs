@@ -18,6 +18,10 @@ public sealed class StubVideoPlayback : IVideoPlayback
 
     public bool IsPlaying { get; private set; }
     public TimeSpan Position { get; private set; }
+    /// <summary>测试辅助：模拟「原生时钟」与缓存 Position 不一致（截图精度回归用）。</summary>
+    public TimeSpan? PrecisePositionOverride { get; set; }
+
+    public TimeSpan GetPrecisePosition() => PrecisePositionOverride ?? Position;
     public TimeSpan Length { get; set; } = TimeSpan.FromMinutes(5);
     public double Rate { get; set; } = 1.0;
     public int Volume { get; set; } = 100;
