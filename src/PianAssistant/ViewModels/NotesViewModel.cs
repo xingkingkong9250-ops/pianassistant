@@ -461,13 +461,14 @@ public sealed class NotesViewModel : ObservableObject
     private void KickOffThumbnails(string? sourcePath)
     {
         var svc = Thumbnails;
-        if (svc is null) return;
-        // 孤儿缓存清理不依赖源视频是否打开
-        svc.PruneOrphans(Segments.Select(s => (long)s.Start.TotalMilliseconds).ToHashSet());
-        if (string.IsNullOrWhiteSpace(sourcePath)) return;
+        if (svc is null || string.IsNullOrWhiteSpace(sourcePath)) return;
+        var valid = Segments.Select(s => (long)s.Start.TotalMilliseconds).ToHashSet();
+        // v1.15.8：孤儿清理涉及目录遍历与删除，放到后台，避免大目录时阻塞 UI
+        _ = Task.Run(() => svc.PruneOrphans(sourcePath, valid));
         foreach (var item in Items.OfType<SegmentListItem>())
         {
             var captured = item;
+            if (!string.IsNullOrEmpty(captured.ThumbnailPath)) continue; // 已有缩略图不重复排队
             var start = captured.Segment.Start;
             _ = Task.Run(async () =>
             {

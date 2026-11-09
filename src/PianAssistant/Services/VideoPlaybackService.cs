@@ -65,6 +65,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
     // 并写入此缓存，UI 侧一律读缓存。
     private long _cachedLengthMs;
     private bool _lengthQueryPending;
+    // 待后台控制线程赋值的新素材（v1.15.8）：UI 线程不再直接 set_media
+    private Media? _pendingMediaSet;
     private int _cachedVolume = 100;
     private int _desiredVolume = -1;
     private bool _volumeApplyPending;
@@ -380,11 +382,13 @@ public sealed class VideoPlaybackService : IVideoPlayback
         // v1.7.7：订阅 DurationChanged —— Media.Duration 只有在媒体解析完成后才被填充，
         // 这是它唯一可靠的更新来源。没有这行时 Length 永远是 0
         _media.DurationChanged += OnMediaDurationChanged;
-        _mediaPlayer.Media = _media;
+        // v1.15.8：Media 赋值下沉后台控制线程。set_media 会阻塞到旧 input 完成停止，
+        // 频繁切片时在 UI 线程调用可卡住消息泵数秒（Windows Application Hang / AppHangB1）
         // 新素材音轨 id 无效化：高速档禁用的音轨记忆仅在同一素材内有效；
         // 策略状态由后台控制线程重置，避免与正在执行的倍速/音轨调用竞争
         lock (_controlSync)
         {
+            _pendingMediaSet = _media;
             _resetPolicyPending = true;
             _rateEstablished = false;
             _tracksRaisedForMedia = false;
@@ -573,6 +577,7 @@ public sealed class VideoPlaybackService : IVideoPlayback
                 bool applyRate, applyPolicy, resetPolicy, hasAudioTrack, hasPause, pause, hasSeek, applyVolume, hasLengthQuery;
                 int audioTrack, volume;
                 long seekMs;
+                Media? mediaToApply;
                 lock (_controlSync)
                 {
                     if (_stopControl) return;
@@ -589,6 +594,8 @@ public sealed class VideoPlaybackService : IVideoPlayback
                     applyVolume = _volumeApplyPending;
                     volume = _desiredVolume;
                     hasLengthQuery = _lengthQueryPending;
+                    mediaToApply = _pendingMediaSet;
+                    _pendingMediaSet = null;
                     _rateApplyPending = false;
                     _policyApplyPending = false;
                     _resetPolicyPending = false;
@@ -596,12 +603,17 @@ public sealed class VideoPlaybackService : IVideoPlayback
                     _pauseApplyPending = false;
                     _seekApplyPending = false;
                     _volumeApplyPending = false;
-                    if (!applyRate && !applyPolicy && !resetPolicy && !hasAudioTrack && !hasPause && !hasSeek && !applyVolume && !hasLengthQuery)
+                    if (mediaToApply is null && !applyRate && !applyPolicy && !resetPolicy && !hasAudioTrack && !hasPause && !hasSeek && !applyVolume && !hasLengthQuery)
                         break;
                 }
 
                 try
                 {
+                    // v1.15.8：先换素材（后台线程），后续倍速/seek/播放才作用于新 input
+                    if (mediaToApply is not null)
+                    {
+                        _mediaPlayer.Media = mediaToApply;
+                    }
                     // v1.7.7：从 input 线程读总时长（Media.DurationChanged 在 LibVLCSharp 3.x 里不可靠）
                     if (hasLengthQuery)
                     {

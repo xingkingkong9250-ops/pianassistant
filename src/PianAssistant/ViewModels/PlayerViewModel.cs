@@ -979,9 +979,19 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
         // v1.15.7：改读精确位置（直读原生时钟）——Position 走 TimeChanged 节流缓存，
         // 高倍速时滞后可达 1 秒以上，用户反馈截图前后偏移即源于此
         var position = _playback.GetPrecisePosition();
+        // v1.15.8：同时锁定源文件——抽帧在后台执行期间用户可能已切片，
+        // 若此时再读源路径会把旧位置的帧写进新视频目录；
+        // 完成后若已切片则丢弃该条目，避免旧截图串入新素材笔记
+        var source = SourcePathOrCurrent;
+        if (source is null) return;
         try
         {
-            var entry = await Task.Run(() => _screenshots.CaptureAt(position));
+            var entry = await Task.Run(() => _screenshots.CaptureAt(position, null, source));
+            if (!string.Equals(SourcePathOrCurrent, source, StringComparison.OrdinalIgnoreCase))
+            {
+                AppLog.Info($"[PlayerVM] 截图完成时已切换素材，丢弃条目：{entry.OutputPath}");
+                return;
+            }
             ScreenshotCaptured?.Invoke(this, entry);
         }
         catch (Exception ex)
@@ -1009,6 +1019,12 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             var outputPath = await Task.Run(() => _clips.Extract(
                 range, false, CancellationToken.None, p => ExtractProgress = p, subtitles));
             ExtractProgress = 1;
+            // v1.15.8：导出期间切了素材则不再加入当前笔记列表（片段文件已生成，仅提示日志）
+            if (!string.Equals(SourcePathOrCurrent, source, StringComparison.OrdinalIgnoreCase))
+            {
+                AppLog.Info($"[PlayerVM] 片段导出完成时已切换素材，不加入笔记：{outputPath}");
+                return;
+            }
             ClipExtracted?.Invoke(this, new ClipExtractedEventArgs(range, outputPath));
         }
         catch (Exception ex)
@@ -1197,6 +1213,12 @@ public sealed class PlayerViewModel : ObservableObject, IDisposable
             var outputPath = await Task.Run(() => _clips.Extract(
                 range, false, CancellationToken.None, p => ExtractProgress = p, subtitles));
             ExtractProgress = 1;
+            // v1.15.8：导出期间切了素材则不再加入当前笔记列表
+            if (!string.Equals(SourcePathOrCurrent, source, StringComparison.OrdinalIgnoreCase))
+            {
+                AppLog.Info($"[PlayerVM] 片段导出完成时已切换素材，不加入笔记：{outputPath}");
+                return;
+            }
             SegmentExported?.Invoke(this, new ClipExtractedEventArgs(range, outputPath));
         }
         catch (Exception ex)

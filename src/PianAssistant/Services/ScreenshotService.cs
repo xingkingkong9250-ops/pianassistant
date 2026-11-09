@@ -67,10 +67,12 @@ public sealed class ScreenshotService
     /// <summary>
     /// 在指定时间码抽帧（不依赖播放器当前位置）：导入数据时按 CSV 时间码
     /// 重建缺失截图用（v1.2.0）。文件命名与 <see cref="Capture"/> 一致。
+    /// <paramref name="sourceOverride"/> 用于调用方在切片前锁定源文件，
+    /// 避免后台抽帧开始时已切到新视频而写错目录（v1.15.8）。
     /// </summary>
-    public ScreenshotEntry CaptureAt(TimeSpan position, string? label = null)
+    public ScreenshotEntry CaptureAt(TimeSpan position, string? label = null, string? sourceOverride = null)
     {
-        var source = ActiveSourcePath;
+        var source = sourceOverride ?? ActiveSourcePath;
         if (source is null)
             throw new InvalidOperationException("No media is open.");
         // 按组织选项解析本次输出目录（日期/项目子目录），确保存在

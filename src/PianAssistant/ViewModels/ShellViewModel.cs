@@ -559,7 +559,11 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
             {
                 Player.Open(media.Path);
                 _services.Settings.AddRecentFile(media.Path);
-                // 打开新视频时清空截图和段
+                // 打开新视频时清空截图和段（v1.15.8）
+                // 画廊 Screenshots 是会话落库的截图来源，必须一并清空：
+                // 只清 Notes 时上一素材的截图仍留在画廊里，切片后任一变更触发的
+                // 防抖落库会把它们写进新素材会话，重开后笔记列表就出现上个视频的截图
+                Screenshots.Clear();
                 Notes.ClearAll();
             }
             finally
@@ -961,15 +965,21 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
                 session.InPointMs is { } inMs ? TimeSpan.FromMilliseconds(inMs) : null,
                 session.OutPointMs is { } outMs ? TimeSpan.FromMilliseconds(outMs) : null);
 
+            var skipped = 0;
             foreach (var s in session.Screenshots)
             {
                 if (string.IsNullOrWhiteSpace(s.FilePath)) continue;
+                // v1.15.8：过滤历史串库数据——截图文件名以源片名开头，
+                // 不属于当前素材的条目（旧版本切片时串入的上一视频截图）不再还原
+                if (!BelongsToSource(session.Path, s.FilePath)) { skipped++; continue; }
                 var entry = new ScreenshotEntry(
                     session.Path, s.FilePath, TimeSpan.FromMilliseconds(s.PositionMs),
                     s.CapturedAt, s.Label);
                 Screenshots.Add(entry);
                 Notes.AddScreenshot(entry);
             }
+            if (skipped > 0)
+                AppLog.Info($"[ShellVM] 会话还原跳过 {skipped} 条其它素材的截图（历史串库数据）");
 
             // 还原三类勾选标记（截图按路径、片段按起止毫秒、裁切点按毫秒位置）。
             // 先存入字段：若 VLC 尚未解析出时长，分段此时未创建，标记无法应用，
@@ -991,6 +1001,19 @@ public sealed class ShellViewModel : ObservableObject, IDisposable
         {
             _isRestoring = false;
         }
+    }
+
+    /// <summary>
+    /// 截图文件是否属于指定素材：文件名形如「片名_时间码_时间戳.ext」，
+    /// 以此过滤旧版本切片时串入会话的其它视频截图（v1.15.8）。
+    /// </summary>
+    private static bool BelongsToSource(string sourcePath, string filePath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(sourcePath);
+        if (string.IsNullOrEmpty(stem)) return true; // 路径异常时不拦截
+        var name = Path.GetFileName(filePath);
+        return name.StartsWith(stem + "_", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
