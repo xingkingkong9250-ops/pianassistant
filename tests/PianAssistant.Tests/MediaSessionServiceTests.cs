@@ -11,6 +11,7 @@ namespace PianAssistant.Tests;
 /// <summary>
 /// M7 素材会话服务测试：两级键还原、哈希升级、防抖落库、空会话不落库与退出 flush。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class MediaSessionServiceTests : IDisposable
 {
     private readonly string _tempDir;

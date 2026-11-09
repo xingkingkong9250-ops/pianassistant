@@ -9,6 +9,7 @@ namespace PianAssistant.Tests;
 /// <summary>
 /// 项目文件全流程测试（M6 C2/C6）：保存写库（含元数据）、打包导出、导入并在新项目中读回。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class ProjectFileFlowTests : IDisposable
 {
     private readonly string _tempDir;

@@ -8,6 +8,7 @@ namespace PianAssistant.Tests;
 /// <summary>
 /// M7 schema v1 → v2 迁移测试：新增素材会话表，幂等且不破坏既有数据。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class ProjectDatabaseMigrationTests : IDisposable
 {
     private readonly string _tempDir;

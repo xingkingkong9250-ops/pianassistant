@@ -9,6 +9,7 @@ namespace PianAssistant.Tests;
 /// 数据库损坏自愈测试：健康库不自愈；损坏库被隔离为 *.corrupt 并重建空库，
 /// 原始损坏文件被完整保留（绝不静默丢弃）。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class ProjectDatabaseRecoveryTests : IDisposable
 {
     private readonly string _tempDir;

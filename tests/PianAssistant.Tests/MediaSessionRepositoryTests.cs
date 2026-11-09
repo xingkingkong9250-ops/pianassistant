@@ -9,6 +9,7 @@ namespace PianAssistant.Tests;
 /// <summary>
 /// M7 素材会话仓储 CRUD 测试：两种键查询、明细整体替换、哈希唯一与删除级联。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class MediaSessionRepositoryTests : IDisposable
 {
     private readonly string _tempDir;

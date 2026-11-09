@@ -10,6 +10,7 @@ namespace PianAssistant.Tests;
 /// M3 持久化测试：SQLite schema 初始化、ProjectRepository 各表 CRUD、级联删除。
 /// 每个测试用独立临时目录隔离数据库文件，Dispose 中释放连接池以便清理。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class ProjectDatabaseTests : IDisposable
 {
     private readonly string _tempDir;

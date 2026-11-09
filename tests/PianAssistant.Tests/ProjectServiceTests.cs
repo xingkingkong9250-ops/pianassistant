@@ -10,6 +10,7 @@ namespace PianAssistant.Tests;
 /// 项目加载/导入的韧性测试：损坏或缺失的输入返回友好失败结果，
 /// 绝不抛异常到 UI，也不修改原始文件。
 /// </summary>
+[Collection(SqliteTempFilesCollection.Name)]
 public class ProjectServiceTests : IDisposable
 {
     private readonly string _tempDir;
